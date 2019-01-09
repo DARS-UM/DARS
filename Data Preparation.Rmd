@@ -271,6 +271,48 @@ for(n in 1 : n_catalogue){
 print(d_description)
 ```
 
+### Extracting Descriptions
+Since the overviews contain a lot of information that does not interest us, we extract the description section of the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
+```{r description}
+# Setup
+symbol_to_line <- c("\r\n", "\n")
+symbol_to_line <- paste(symbol_to_line, collapse = "|")
+
+start_descrip <- c("^Description", "^Course Description")
+start_descrip <- paste(start_descrip, collapse = "|")
+
+end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
+                   "^Required Litera", "^ Literature$", "Literature \\(all")
+end_descrip   <- paste(end_descrip, collapse = "|")
+
+d_description <- d_description %>%
+  mutate(Description = NA)
+
+# Loop
+for(course in 1 : nrow(d_description)){
+  
+  overview <- d_description$Overview[course]
+  
+  overview_line <- strsplit(x = toString(overview), split = symbol_to_line)[[1]]
+  line_start    <- grep(pattern = start_descrip, x = overview_line) + 1
+  line_end      <- grep(pattern = end_descrip  , x = overview_line) - 1
+
+  # for overviews w/o Literature section, find section Instructional Format.
+  if(is_empty(line_end)){
+    line_end <- grep(pattern = "^Instructional format$", x = overview_line) - 1
+    print(paste("line_end irregular for", d_description$Code[course],
+                "in catalogue", d_description$`Calendar Year`[course]))
+    } # close if-statement
+  
+  description <- paste(overview_line[line_start : line_end], collapse = " ")
+  
+  d_description$Description[course] <- description
+  
+}
+
+print(d_description)
+```
+
 ## Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
