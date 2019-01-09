@@ -82,6 +82,21 @@ print(transcripts)
 
 # Variable Engineering
 
+## AoD
+In this analysis, we conside that a course can cover an AoD in two ways: a course covers an AoD if one of its ILOs covers it or if one of its assessments cover it. For instance, if one of the ILO of a course states that the students will learn to analyze empirical data in the context of academic research, then the course in question covers the AoD `Research Skills`; and if one of the assessment is a group presentation, then the course also covers the AoD `Collaborative Skills` and `Communication Skills`.
+
+### AoD from ILOs
+In order to determine which AoD each course covers with its ILOs, we first eliminate the AoD that are not covered by the ILOs and then we take the unique combination of course and AoD in case a course had several ILOs covering the same AoD.
+```{r}
+d_AoD_ILO <- d_ILO %>%
+  select(Code, AoD) %>%
+  unique
+
+print(d_AoD_ILO)
+```
+
+
+
 ##Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
