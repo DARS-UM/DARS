@@ -34,3 +34,8 @@ scale_y_reordered <- function(..., sep = "___") {
   ggplot2::scale_y_discrete(labels = function(x) gsub(reg, "", x), ...)
 }
 ```
+
+# Setup
+```{r}
+load("data_pillar_2.RDATA")
+```
