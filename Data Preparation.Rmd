@@ -587,6 +587,38 @@ d_grade <- d_reduce %>%
 d_grade <- d_grade[!duplicated(d_grade),]
 ```
 
+##Estimating concentrations:
+For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops" 
+
+
+NOTE TO RAPHAEL: we might want o have your course concentrations because they take double concentrations into account!
+
+```{r}
+d_student_concentration <- d_grade %>%
+  group_by(ID, `Course concentration`) %>%
+  summarise(count = n()) %>%
+  arrange(ID,desc(count)) %>% #LONG
+  spread(`Course concentration`,count, fill=0) %>% #WIDE
+  transmute(student_Concentration = case_when(
+    (HUM  >  2    &   SSC >  2   &  SCI <= 2) ~ "HUM/SSC",
+    (HUM  >  2    &   SSC <= 2   &  SCI >  2) ~ "HUM/SCI",
+    (HUM  >  2    &   SSC <= 2   &  SCI <= 2) ~ "HUM",
+    (HUM  <= 2    &   SSC >  2   &  SCI >  2)  ~ "SSC/SCI",
+    (HUM  <= 2    &   SSC >  2   &  SCI <= 2) ~ "SSC",
+    (HUM  <= 2    &   SSC <= 2   &  SCI >  2)  ~ "SCI",
+    (HUM  <  2    &   SSC <  2   &  SCI <  2) ~ "UNDECIDED",
+    (HUM  >  2    &   SSC >  2   &  SCI >  2) ~ "CONFUSED", #normal cases ^
+    (HUM > SCI    &   HUM > SSC)              ~ "HUM",
+    (SSC > SCI    &   SSC > HUM)              ~ "SSC",
+    (SCI > HUM    &   SCI > SSC)              ~ "HUM",
+    TRUE ~ "oops"
+  ))
+```
+
+Since we will need to check each student with an "oops" concentration to see what happened, lets separate this data for later:
+```{r}
+checkup <- filter(d_student_concentration, student_Concentration == "oops") 
+```
 
 # Save Data
 
