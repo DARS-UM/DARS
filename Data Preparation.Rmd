@@ -82,7 +82,129 @@ print(transcripts)
 
 # Variable Engineering
 
-##Course Manual 
+## AoD
+In this analysis, we conside that a course can cover an AoD in two ways: a course covers an AoD if one of its ILOs covers it or if one of its assessments cover it. For instance, if one of the ILO of a course states that the students will learn to analyze empirical data in the context of academic research, then the course in question covers the AoD `Research Skills`; and if one of the assessment is a group presentation, then the course also covers the AoD `Collaborative Skills` and `Communication Skills`.
+
+### AoD from ILOs
+In order to determine which AoD each course covers with its ILOs, we first eliminate the AoD that are not covered by the ILOs and then we take the unique combination of course and AoD in case a course had several ILOs covering the same AoD.
+```{r}
+d_AoD_ILO <- d_ILO %>%
+  select(Code, AoD) %>%
+  unique
+
+print(d_AoD_ILO)
+```
+
+### AoD from Assessment Type
+In order to determine which AoD each course covers with its assessments, we need to create a binary matrix which indicates which AoD(s) each assessment type covers. We have created such matrix on our google drive and we save it in the following piece of code as `map_assessment_AoD`. `map_assessment_AoD` indicates that, for instance, the assessment type `Essay` covers the AoD `Critical Thinking Skills`, `Communication Skills` and `Writing Skill`.
+```{r}
+map_assessment_AoD <- as.matrix(gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216')[,lists$AoD] %>%
+                                  mutate_all(as.logical))
+rownames(map_assessment_AoD) <- lists$Assessment
+print(map_assessment_AoD[1:5, 8:12])
+```
+
+Now that we have the matrix `map_assessment_AoD`, we create the tibble `d_assessment_clean` which only contains the assessments that are covered by each course and we loop through its rows to determine which AoD, each assessment covers. In the loop, we first extract the row of `d_assessment_clean` and save it as `observation` and determine the corresponding assessment which we save as `assessment`. Then we use the matrix `map_assessment_AoD` to determine which AoD `assessment` covers and use `cbind` and `rbind` to add the information to the tibble `d_AoD_assessment`.
+```{r}
+d_AoD_assessment <- tibble(Code        = character(0),
+                           Assessment  = character(0),
+                           AoD         = character(0))
+
+for(i in 1 : nrow(d_assessment)){
+  
+  observation <- d_assessment[i, ]
+  
+  assessment  <- observation$Assessment
+  AoD_covered <- map_assessment_AoD[assessment, ]
+  AoD         <- lists$AoD[AoD_covered]
+  
+  if(length(AoD) >= 1){ # if no AoD are covered by assessment (e.g. written exam), then do not rbind rows to d_AoD_assessment
+      AoD_assessment_tidy <- cbind(observation, AoD) %>%
+    as_tibble
+      d_AoD_assessment <- rbind(d_AoD_assessment, AoD_assessment_tidy)
+  }
+
+}
+
+print(d_AoD_assessment)
+```
+
+Similarly to what we did with the tibble `d_AoD_ILO`, we first eliminate the AoD that are not covered by the assessments and then we take the unique combination of course and AoD in case a course had several assessments covering the same AoD.
+```{r}
+d_AoD_assessment <- d_AoD_assessment %>%
+  select(Code, AoD) %>%
+  unique
+print(d_AoD_assessment)
+```
+
+### Combining AoD from ILOs and from assessments
+Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_assessment`. We also use `unique` in case a course covers an AoD with both its ILOS and its assessments.
+```{r}
+d_AoD <- rbind(d_AoD_ILO, d_AoD_assessment) %>%
+  unique %>%
+  arrange(Code)
+print(d_AoD)
+```
+
+## Course Data
+Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and assessments (`d_assessment`) among the courses, let us add variables to the tibble `d_course` that contain the information at the course level. The tibble `d_ILO_detail` contains two columns indicating the code of the course and the number of ILOs it contains; `d_assessment_detail` contains three columns indicating the code of the course, the number of assessments it covers and a list of the assessments it covers; `d_AoD_detail` contains three columns indicating the code of the course, the number of AoD it covers and a list of the AoD it covers. We use a `full_join` to add these variables to the tibble `d_course`.
+```{r}
+d_ILO_detail <- d_ILO %>% 
+  select(Code, ILO) %>%
+  unique %>%
+  count(Code) %>%
+  rename(n_ILO = n)
+print(d_ILO_detail)
+
+d_assessment_detail <- d_assessment %>%
+  group_by(Code) %>%
+  summarise(n_assessment = n(),
+            `Assessments Covered` = paste(Assessment, collapse = ", "))
+print(d_assessment_detail)
+
+d_AoD_detail <- d_AoD %>%
+  group_by(Code) %>%
+  summarise(n_AoD = n(),
+            `AoD Covered` = paste(AoD, collapse = ", "))
+print(d_AoD_detail)
+```
+
+```{r}
+d_course <- d_course %>%
+  full_join(d_ILO_detail       , by = "Code") %>%
+  full_join(d_assessment_detail, by = "Code") %>%
+  full_join(d_AoD_detail       , by = "Code") %>%
+  select(Code, `Course Title`, Cluster, n_ILO, n_assessment, `Assessments Covered`, n_AoD, `AoD Covered`, everything())
+print(d_course)
+```
+
+The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
+```{r}
+d_course <- d_course %>%
+  rbind(filter(., Code %in% c("UGR3001", "UGR3002", "UGR3003", "UGR3005")) %>%
+          mutate(Code = case_when(Code == "UGR3001" ~ "UGR2001",
+                                  Code == "UGR3002" ~ "UGR2002",
+                                  Code == "UGR3003" ~ "UGR2003",
+                                  Code == "UGR3005" ~ "UGR2005")))
+
+print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
+                                   "UGR3001", "UGR3002", "UGR3003", "UGR3005")))
+```
+
+Finally, we add a series of informative variable at the course level.
+```{r}
+d_course <- d_course %>%
+  mutate(
+    `Missing from ILO File` = as.logical(`Missing from ILO File`),
+    Letters = substring(Code, 1, 3),
+    Number  = as.numeric(substring(Code, 4, 7)),
+    Level   = case_when(between(Number, 1000, 1999) ~ "Introductory",
+                        between(Number, 2000, 2999) ~ "Intermediate",
+                        between(Number, 3000, 3999) ~ "Advanced"    ))
+print(select(d_course, Code, Letters, Number, Level))
+```
+
+## Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
 
