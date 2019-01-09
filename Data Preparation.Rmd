@@ -15,10 +15,25 @@ library(hunspell) # Stemmer
 ```
 
 # Import Data
+The datasets we use are saved as spreadsheet on our google drive *DARS*. We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based.
+
+## Setup
+Before importing the spreadsheets from the drive, let us create two vectors `list_assessment` and `list_AoD` which respectively list the `19` types of assessment and the `18` aims of the degree (AoD) of the degree which we take into consideration in the analysis. The information comes from a spreadsheet from our google drive *DARS* which we save as `lists`. In addition, we also create two additional vectors `list_assessment_plot` and `list_AoD_plot` which contain a selection of prominent assessment types and AoD that we will consider when ploting the data[^1].
+```{r list}
+lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
+
+lists <- list(
+  Assessment      = lists_brut$Assessment,
+  Assessment_plot = lists_brut$Assessment[lists_brut$`Assessment for Plot` == 1],
+  AoD             = lists_brut$Aim[!is.na(lists_brut$Aim)],
+  AoD_plot        = lists_brut$Aim[lists_brut$`Aim for Plot`[!is.na(lists_brut$Aim)] == 1]
+  )
+```
+
 
 ## Textual Data
 
-## Course Catalogues
+### Course Catalogues
 In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus` contains the pdfs of the `5` most recent course catalogues.
 ```{r corpus, cache = TRUE}
 corpus <- Corpus(x             = DirSource("Catalogues"),
