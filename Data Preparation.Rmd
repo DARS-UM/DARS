@@ -566,6 +566,17 @@ d_rename <-d_rename %>%
      )
            )
 ```
+###Dropping useless variables:
+Now that our `Period` variable is clean, we can exclude the variables that we will not use, and we will delete newly generated duplicate rows:
+
+```{r}
+d_reduce <- d_rename %>%
+  select(-not_keep,-Session,-`Program Abbreviation`)
+  
+d_reduce <- d_reduce[!duplicated(d_reduce),]
+```
+###Extracting grades
+
 
 
 # Save Data
