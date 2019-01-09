@@ -4,4 +4,12 @@ output: github_document:
   number_section: TRUE
 ---
 
+```{r library, message = F}
+library(tidyverse)
+library(tidytext)
 
+library(ggwordcloud) # Word Clouds
+library(topicmodels)
+library(lemon)
+library(ggthemes)
+```
