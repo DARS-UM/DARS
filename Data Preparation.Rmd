@@ -4,19 +4,14 @@ author: "DARS"
 date: "1/9/2019"
 output: pdf_document
 ---
-#Libraries:
+# Libraries:
 ```{r setup, include=FALSE}
-
 library(tidyverse)
 library(tidytext)
 
-library(tm          ) # text mining
-library(topicmodels)  #topic modeling
-
-library(pdftools)
-library(ggplot2)
-
-
+library(gsheet) # import spreadsheets from google drive
+library(tm)
+library(hunspell) # Stemmer
 ```
 
 # Import Data
