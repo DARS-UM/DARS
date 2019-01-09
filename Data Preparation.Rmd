@@ -398,3 +398,7 @@ save(lists, d_course, d_AoD, d_assessment, d_transcript,
      d_overview_stem, d_description_stem,
      file = "data_pillar_2.RDATA")
 ```
+
+[^1]: We do not include all assessments and all AoDs on the plots in order to keep them readable.
+
+[^2]: We are currently cleaning the dataset containing the transcripts of all the students of the college (alumni and current students) in order to integrate it to the analysis.
