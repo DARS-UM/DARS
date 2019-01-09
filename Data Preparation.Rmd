@@ -8,7 +8,7 @@ output: pdf_document
 ```{r setup, include=FALSE}
 
 library(tidyverse)
-library(tidytext)
+library(tidytext) 
 
 library(tm          ) # text mining
 library(topicmodels)  #topic modeling
@@ -27,6 +27,12 @@ corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
 ```
 
 # Variable Engineering
+We create a dataframe from the Corpus:
+```{r}
+
+manuals_td <- tidy(corpus_manuals)
+
+```
 
 # Save Data
 
