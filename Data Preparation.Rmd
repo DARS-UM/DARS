@@ -313,6 +313,20 @@ for(course in 1 : nrow(d_description)){
 print(d_description)
 ```
 
+### Tidy Text Format
+We first create two tibbles `d_overview_tidy` and `d_description_tidy` that respectively store the overviews and the descriptions in the tidy text format, with one row per course-year-word.
+```{r tidy text data}
+d_overview_tidy <- d_description %>%
+  select(Code, `Calendar Year`, Overview) %>%
+  unnest_tokens(output = word, input = Overview)
+print(d_overview_tidy)
+
+d_description_tidy <- d_description %>%
+  select(Code, `Calendar Year`, Description) %>%
+  unnest_tokens(output = word, input = Description)
+print(d_description_tidy)
+```
+
 ## Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
