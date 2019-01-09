@@ -391,3 +391,10 @@ manuals_tokens <- manuals_td %>%
 
 # Save Data
 
+```{r}
+save(lists, d_course, d_AoD, d_assessment, d_transcript,
+     file = "data_pillar_1.RDATA")
+save(lists, d_course, d_AoD, d_assessment, d_transcript,
+     d_overview_stem, d_description_stem,
+     file = "data_pillar_2.RDATA")
+```
