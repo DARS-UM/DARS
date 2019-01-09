@@ -2,7 +2,8 @@
 title: "Data Preparation"
 author: "DARS"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: pdf_document:
+    number_sections: TRUE
 ---
 
 ```{r setup, message = FALSE}
@@ -220,12 +221,178 @@ d_course <- d_course %>%
 print(select(d_course, Code, Letters, Number, Level))
 ```
 
+## Course Catalogue
+In order to conduct a topic analysis of course content, we extract the *overview* and *description* of each course from the course catalogues.
+
+### Extracting Overviews
+We start by extracting the overviews which are 1 or 2 page long and contain important information of a course. To accomplish this, for each catalogue (loop), we first use `grep` to determine which pages should be excluded from the analysis (`pages_to_exclude`). These pages are typically headers. Excluding them before the analysis allows use to keep the code relatively simple. We also make use the fact that the overviews always start with the code of the course, i.e. it starts with one of the elements of `course_code` and use `grep` to identify the first page of each overview. We use grep a 3rd time to identify the page containing the header *Core Coureses (COR)* and which marks the beginning of the overviews in the catalogue, and we loop from this page to the last page of the catalogue.
+
+In the loop, we first determine the content of the current and following page. If the current page is the first page of an overview, then we identify the overview (one or two pages) and save it to the tibble `d_description`. To identify the overview of a course, we check if the following page is either the first page of an overview or a page to exclude. If it is either of these, then the overview correspond to the content of the current page; but if the following page is neiter of these, then the overview correspond to the content of the current page and that of the following page.
+
+```{r overview}
+# Setup
+n_catalogue <- length(corpus)
+calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
+d_description <- tibble(Code            = character(0),
+                        `Calendar Year` = character(0),
+                        Overview        = character(0))
+
+course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP")
+course_code <- paste(course_code, collapse = "|")
+
+content_to_exclude <- c("^Core Courses \\(COR\\)",
+                        "^Humanities \\(HUM\\)",
+                        "^Sciences \\(SCI\\)",
+                        "^Social Sciences \\(SSC\\)",
+                        "^Skills Trainings \\(SKI\\)",
+                        "^Projects \\(PRO\\)",
+                        "^Undergraduate Research \\(UGR\\)",
+                        "Appendix")
+content_to_exclude <- paste(content_to_exclude, collapse = "|")
+
+# Loop
+for(n in 1 : n_catalogue){
+  
+  cat <- content(corpus[[n]])
+  
+  pages_to_exclude     <- grep(pattern = content_to_exclude, x = cat)
+  first_three_letters  <- substr(cat, start = 1, stop = 3)
+  first_pages_overview <- grep(pattern = course_code, x = first_three_letters)
+  
+  page_start_loop <- grep(pattern = "^Core Courses \\(COR\\)", x = cat) + 1
+  page_end_loop   <- length(cat)
+  
+  for(page in page_start_loop : page_end_loop){
+    
+    current_page           <- page
+    following_page         <- page + 1
+    current_page_content   <- cat[page          ]
+    following_page_content <- cat[following_page]
+    
+    if(current_page %in% first_pages_overview){
+      
+      if(following_page %in% c(first_pages_overview, pages_to_exclude)) course_overview <- current_page_content
+      else course_overview <- paste(current_page_content, following_page_content)
+
+      # Save Overview
+      Code <- substring(course_overview, first = 1, last = 7)      
+      year <- calendar_years[n]
+      d_description <- add_row(d_description,
+                               Code            = Code,
+                               `Calendar Year` = year,
+                               Overview        = course_overview)
+    } # close if-statement
+  } # close for-loop (page)
+} # close for-loop (n)
+
+print(d_description)
+```
+
+### Extracting Descriptions
+Since the overviews contain a lot of information that does not interest us, we extract the description section of the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
+```{r description}
+# Setup
+symbol_to_line <- c("\r\n", "\n")
+symbol_to_line <- paste(symbol_to_line, collapse = "|")
+
+start_descrip <- c("^Description", "^Course Description")
+start_descrip <- paste(start_descrip, collapse = "|")
+
+end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
+                   "^Required Litera", "^ Literature$", "Literature \\(all")
+end_descrip   <- paste(end_descrip, collapse = "|")
+
+d_description <- d_description %>%
+  mutate(Description = NA)
+
+# Loop
+for(course in 1 : nrow(d_description)){
+  
+  overview <- d_description$Overview[course]
+  
+  overview_line <- strsplit(x = toString(overview), split = symbol_to_line)[[1]]
+  line_start    <- grep(pattern = start_descrip, x = overview_line) + 1
+  line_end      <- grep(pattern = end_descrip  , x = overview_line) - 1
+
+  # for overviews w/o Literature section, find section Instructional Format.
+  if(is_empty(line_end)){
+    line_end <- grep(pattern = "^Instructional format$", x = overview_line) - 1
+    print(paste("line_end irregular for", d_description$Code[course],
+                "in catalogue", d_description$`Calendar Year`[course]))
+    } # close if-statement
+  
+  description <- paste(overview_line[line_start : line_end], collapse = " ")
+  
+  d_description$Description[course] <- description
+  
+}
+
+print(d_description)
+```
+
+### Tidy Text Format
+We first create two tibbles `d_overview_tidy` and `d_description_tidy` that respectively store the overviews and the descriptions in the tidy text format, with one row per course-year-word.
+```{r tidy text data}
+d_overview_tidy <- d_description %>%
+  select(Code, `Calendar Year`, Overview) %>%
+  unnest_tokens(output = word, input = Overview)
+print(d_overview_tidy)
+
+d_description_tidy <- d_description %>%
+  select(Code, `Calendar Year`, Description) %>%
+  unnest_tokens(output = word, input = Description)
+print(d_description_tidy)
+```
+
+### Stemming
+We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We then apply `stem_hunspell` on the words of `d_overview_tidy`. Since, `stem_hunspell` is not a vectorized function and the number of words in `d_overview_tidy` is large, we first use distinct on the `word` variable to find the a list containing *once* each term present in the course overviews and apply the function `stem_hunspell` on this list. We save the terms and their stems in the tibble `stems`. Since the course descriptions can be conceptualized as a subset of the course overviews, the tibble `stems` contains all the terms present in the descriptions and can therefore safely used to stem the words in `d_description_tidy`.
+```{r function stem_hunspell, cache = TRUE}
+stem_hunspell <- function(term) {
+  # look up the term in the dictionary
+  stems <- hunspell_stem(term)[[1]]
+  
+  if (length(stems) == 0) { # if there are no stems, use the original term
+    stem <- term
+  } else { # if there are multiple stems, use the last one
+    stem <- stems[[length(stems)]]
+  }
+  
+  return(stem)
+}
+
+stems <- d_overview_tidy %>% 
+  select(word) %>%
+  distinct %>%
+  arrange(word) %>%
+  mutate(word_stem = purrr::map_chr(.x = word,
+                                    .f = stem_hunspell))
+
+# terms for which the stem differs from the original word
+stems %>%
+  filter(word != word_stem)
+```
+
+```{r stemming}
+d_overview_stem <- d_overview_tidy %>%
+  left_join(stems, by = "word") %>%
+  rename(word_original = word,
+         word = word_stem) %>%
+  filter(!word %in% stop_words$word)
+print(d_overview_stem) # See humanities - humanity
+
+d_description_stem <- d_description_tidy %>%
+  left_join(stems, by = "word") %>%
+  rename(word_original = word,
+         word = word_stem) %>%
+  filter(!word %in% stop_words$word)
+print(d_description_stem) # See starting - start
+```
+
+
 ## Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
-
 manuals_td <- tidy(corpus_manuals)
-
 ```
 
 From `manuals_td` we are only interested in the text, and the Code of the course. However, we don't have the code but we have a document id that includes it. Therefore we select only the `text` and `id` columns of the `manuals_td`. Then, we extract the code from the `id` and save it in under `Code`, We aso extract the concentration from the `id` and save it under `Concentration`. Finally, we unnest the dataframe to have only one word per row, and call this `manuals_tokens`, this creates a variable `word` and adds all of the text from the course manuals under this column.
@@ -256,3 +423,14 @@ manuals_tokens_preprocessed <- manuals_tokens %>%
 
 # Save Data
 
+```{r}
+save(lists, d_course, d_AoD, d_assessment, d_transcript,
+     file = "data_pillar_1.RDATA")
+save(lists, d_course, d_AoD, d_assessment, d_transcript,
+     d_overview_stem, d_description_stem,
+     file = "data_pillar_2.RDATA")
+```
+
+[^1]: We do not include all assessments and all AoDs on the plots in order to keep them readable.
+
+[^2]: We are currently cleaning the dataset containing the transcripts of all the students of the college (alumni and current students) in order to integrate it to the analysis.
