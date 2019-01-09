@@ -472,7 +472,37 @@ d_rename <-d_dirt %>%
 
 ###Identifying usless variables
 Our dataframe contains many variables that are either empty or meaningless for our analysis. We identify this variables and save them to a vector to remove at a later stage
-
+```{r}
+not_keep <- c("Booking Status",
+              "Appraisal Status Description",
+              "Credit Type",
+              "Personnel Number",
+              "Event Object Id",     
+              "Business Event Abbreviation",               
+              "Event Description",                   
+              "Start time",                         
+              "End time",                            
+              "Date",                               
+              "Studyplan",                           
+              "Conditional booking",                 
+              "Wachtlist",                           
+              "Object ID", #? has values e.g. 50236380                        
+              "Object Name",  #?  has values, e.g. "BE-Universitair Ziekenhuis Brussel"
+              "Start Date",   #? has values, e.g.  "12/16/13"                     
+              "End Date",     #? has values, e.g. "5/14/10"                      
+              "Number of Weeks", 
+              "Name (Employee/Applicant)",
+              "Appraiser ID",      #HAS VALUES BUT NOT IMPORTANT, e.g. 70011933
+              "Appraiser Name",    #HAS VALUES BUT NOT IMPORTANT, e.g.  J.J. Briede  
+              "Academic Work ID",  #has values, eg.53EA405080711826E10000008978030A
+              "Attempted Credits", #HAS VALUES BUT NOT IMPORTANT
+              "Earned Credit",
+              "Individual Work",
+              "Appraisal Status",
+              "Booking Reason",
+              "Appraisal Date" #day when grades were put in
+              ) 
+```
 
 # Save Data
 
