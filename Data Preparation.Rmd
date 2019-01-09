@@ -33,7 +33,11 @@ corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
 ```
 ## Student Data
 
+### Transcripts
+
 # Variable Engineering
+
+##Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
 
