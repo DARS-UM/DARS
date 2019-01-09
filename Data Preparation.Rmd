@@ -566,6 +566,112 @@ d_rename <-d_rename %>%
      )
            )
 ```
+###Dropping useless variables:
+Now that our `Period` variable is clean, we can exclude the variables that we will not use, and we will delete newly generated duplicate rows:
+
+```{r}
+d_reduce <- d_rename %>%
+  select(-not_keep,-Session,-`Program Abbreviation`)
+  
+d_reduce <- d_reduce[!duplicated(d_reduce),]
+```
+###Extracting grades
+We notice that there are several values under `Grade` for the same course. We are interested in keeping only the final grades, corresponding to the rows where `Appraisal Title` is marked as "Grade supervisor". 
+So lets extract the grades and add the course concentration by keeping the first three letters of the `Code`:
+
+```{r}
+d_grade <- d_reduce %>%
+  filter(`Appraisal Title` == "Grade supervisor") %>%
+  mutate(`Course concentration` = substr(Code, start = 1, stop = 3))
+
+d_grade <- d_grade[!duplicated(d_grade),]
+```
+
+##Estimating concentrations:
+For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops" 
+
+
+NOTE TO RAPHAEL: we might want o have your course concentrations because they take double concentrations into account!
+
+```{r}
+d_student_concentration <- d_grade %>%
+  group_by(ID, `Course concentration`) %>%
+  summarise(count = n()) %>%
+  arrange(ID,desc(count)) %>% #LONG
+  spread(`Course concentration`,count, fill=0) %>% #WIDE
+  transmute(student_Concentration = case_when(
+    (HUM  >  2    &   SSC >  2   &  SCI <= 2) ~ "HUM/SSC",
+    (HUM  >  2    &   SSC <= 2   &  SCI >  2) ~ "HUM/SCI",
+    (HUM  >  2    &   SSC <= 2   &  SCI <= 2) ~ "HUM",
+    (HUM  <= 2    &   SSC >  2   &  SCI >  2)  ~ "SSC/SCI",
+    (HUM  <= 2    &   SSC >  2   &  SCI <= 2) ~ "SSC",
+    (HUM  <= 2    &   SSC <= 2   &  SCI >  2)  ~ "SCI",
+    (HUM  <  2    &   SSC <  2   &  SCI <  2) ~ "UNDECIDED",
+    (HUM  >  2    &   SSC >  2   &  SCI >  2) ~ "CONFUSED", #normal cases ^
+    (HUM > SCI    &   HUM > SSC)              ~ "HUM",
+    (SSC > SCI    &   SSC > HUM)              ~ "SSC",
+    (SCI > HUM    &   SCI > SSC)              ~ "HUM",
+    TRUE ~ "oops"
+  ))
+```
+
+Since we will need to check each student with an "oops" concentration to see what happened, lets separate this data for later:
+```{r}
+checkup <- filter(d_student_concentration, student_Concentration == "oops") 
+```
+
+###Getting UCM_YEAR
+In order to compare the trajectories of students, we would like to know if the courses were taken in their first, second, third, or whatever year. However, we only have the calendar years. Lets find out to what year of study each calendar year corresponds per student.
+
+First, lets find out, which year was a student's first year and which year was a student's last year (we will also create a variable `Subs_year` that we will substract later to transform from Calendar Year to UCM Year, and a second variable `LengthUCM` that shows us how many years each student stayed at the college):
+```{r}
+
+d_year <- d_grade %>%
+  select(ID, Code, Year, Period, Grade,`Booking Status Description`, `Course concentration`) %>%
+  group_by(ID) %>%
+  summarise(FirstYear=min(Year), LastYear=max(Year)) %>%
+  mutate(LengthUCM = LastYear-FirstYear, Subs_year=FirstYear-1)
+```
+
+Now, lets make a dataframe of students against years, where the year appears in the corresponding cell if a student was in the college at that time:
+
+```{r}
+
+d_year1 <- d_grade %>%
+  select(ID, Code, Year, Period, Grade, `Booking Status Description`, `Course concentration`) %>%  
+  group_by( ID, Year) %>%
+  summarise(Count = n())%>%
+  mutate(Present = case_when(Count > 0 ~ Year))%>%
+  select(-Count) %>%
+  spread(Year,Present, fill = 0)
+
+```
+
+Now we have collected all the years a student has been at the college in a single row (one row per student), and we also know what is the first and last year of each student. Let's join these dataframes:
+
+```{r}
+
+d_time <- left_join(d_year1, d_year)
+
+```
+
+Ideally, we would like to have a dataframe of students against calendar years filled with the corresponding UCM year (e.g. if the year 2017 was the first year of student 45, we would like to see the cell corresponding to student 45 and year 2017 marked with a "1").
+
+```{r}
+var_years <- as.character(2007:2017)
+
+d_time <- d_time %>% 
+  mutate_at(
+    vars(var_years),
+    funs(. - Subs_year)) %>%
+  mutate_at(
+    vars(var_years),
+    funs(case_when(. < 0 ~ 9999999999, #HORRIBLE FIX
+                   T     ~ .)))
+
+d_time[d_time == 9999999999] <- NA
+
+```
 
 
 # Save Data
