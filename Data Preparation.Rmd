@@ -169,7 +169,14 @@ d_AoD_detail <- d_AoD %>%
 print(d_AoD_detail)
 ```
 
-
+```{r}
+d_course <- d_course %>%
+  full_join(d_ILO_detail       , by = "Code") %>%
+  full_join(d_assessment_detail, by = "Code") %>%
+  full_join(d_AoD_detail       , by = "Code") %>%
+  select(Code, `Course Title`, Cluster, n_ILO, n_assessment, `Assessments Covered`, n_AoD, `AoD Covered`, everything())
+print(d_course)
+```
 
 
 ## Course Manual 
