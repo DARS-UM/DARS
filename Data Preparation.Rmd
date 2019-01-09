@@ -146,6 +146,32 @@ d_AoD <- rbind(d_AoD_ILO, d_AoD_assessment) %>%
 print(d_AoD)
 ```
 
+## Course Data
+Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and assessments (`d_assessment`) among the courses, let us add variables to the tibble `d_course` that contain the information at the course level. The tibble `d_ILO_detail` contains two columns indicating the code of the course and the number of ILOs it contains; `d_assessment_detail` contains three columns indicating the code of the course, the number of assessments it covers and a list of the assessments it covers; `d_AoD_detail` contains three columns indicating the code of the course, the number of AoD it covers and a list of the AoD it covers. We use a `full_join` to add these variables to the tibble `d_course`.
+```{r}
+d_ILO_detail <- d_ILO %>% 
+  select(Code, ILO) %>%
+  unique %>%
+  count(Code) %>%
+  rename(n_ILO = n)
+print(d_ILO_detail)
+
+d_assessment_detail <- d_assessment %>%
+  group_by(Code) %>%
+  summarise(n_assessment = n(),
+            `Assessments Covered` = paste(Assessment, collapse = ", "))
+print(d_assessment_detail)
+
+d_AoD_detail <- d_AoD %>%
+  group_by(Code) %>%
+  summarise(n_AoD = n(),
+            `AoD Covered` = paste(AoD, collapse = ", "))
+print(d_AoD_detail)
+```
+
+
+
+
 ## Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
