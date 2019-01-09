@@ -4,8 +4,8 @@ author: "DARS"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
-# Libraries:
-```{r setup, include=FALSE}
+
+```{r setup, message = FALSE}
 library(tidyverse)
 library(tidytext) 
 
@@ -28,6 +28,36 @@ lists <- list(
   AoD             = lists_brut$Aim[!is.na(lists_brut$Aim)],
   AoD_plot        = lists_brut$Aim[lists_brut$`Aim for Plot`[!is.na(lists_brut$Aim)] == 1]
   )
+```
+
+
+
+## Course Data
+We import three spreadsheets from the drive and transform them into the so-called *tidy format*. The tibble `d_course` contains information at the course-level such as in which cluster and concentration(s) they belong and in which period(s) they are offered, the tibble `d_assessment` indicates which type(s) of assessment each course contains with one row per course-assessment and the tibble `d_ILO` indicates which AoD(s) the intended learning objectives (ILOs) of the courses cover with one row per course-ILO-AoD.
+
+```{r import data from drive}
+d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848') %>%
+  mutate(`Missing from ILO File` = as.logical(`Missing from ILO File`))
+print(d_course)
+
+d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
+  select(- `Comment on Assessment`) %>%
+  gather(Assessment, assessment_covered, - Code, factor_key = T) %>%
+  mutate(assessment_covered = as.logical(assessment_covered)) %>%
+  filter(assessment_covered) %>%
+  select(- assessment_covered) %>%
+  arrange(Code)
+print(d_assessment)
+
+d_ILO <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1896457050') %>%
+  select(- c(Comments, Comments_for_Jeroen)) %>%
+  gather(AoD, AoD_covered, -c(Code, Objectives), factor_key = T) %>%
+  mutate(AoD_covered = as.logical(AoD_covered)) %>%
+  rename(ILO = Objectives) %>%
+  filter(AoD_covered) %>%
+  select(- AoD_covered) %>%
+  arrange(Code)
+print(d_ILO)
 ```
 
 
