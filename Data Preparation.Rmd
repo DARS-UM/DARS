@@ -1,7 +1,7 @@
 ---
 title: "Data Preparation"
 author: "DARS"
-date: "1/9/2019"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
 # Libraries:
