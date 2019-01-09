@@ -40,24 +40,12 @@ manuals_td <- tidy(corpus_manuals)
 
 ```
 
-# TEST
-
-```{r}
-print("test")
-```
-
-
-# TEST 2
-```{r}
-test <- "test3"
-
-experiment <- "test5"
-
-experiment2 <- paste(test, experiment, sep=" ")
-
-```
-
-
-
 # Save Data
+
+```{r}
+mistery <- 5
+```
+
+
+
 
