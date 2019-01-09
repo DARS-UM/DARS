@@ -86,6 +86,16 @@ print(transcripts)
 ```
 COMMENT SOFIA: save a_clean_transcript as d_transcript
 
+ALL OTHER STUDENTS:
+The data we will be using was provided in two documents with the same format. We import them, merge them and remove duplicate rows.
+
+```{r Data Import}
+t1 <- read.csv("Raw Grades/grades1.csv",na.strings=c("","NA"))
+t2 <- read.csv("Raw Grades/grades2.csv",na.strings=c("","NA"))
+d_dirt <-rbind(t1, t2)
+d_dirt <- d_dirt[!duplicated(d_dirt),] #could use distinct() from dplyr
+```
+
 # Variable Engineering
 
 ## AoD
