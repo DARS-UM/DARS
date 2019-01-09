@@ -42,12 +42,3 @@ manuals_td <- tidy(corpus_manuals)
 
 # Save Data
 
-ABC
-
-#SOFIA
-```{r}
-hello <- "hello"
-```
-
-
-
