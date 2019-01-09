@@ -39,3 +39,54 @@ scale_y_reordered <- function(..., sep = "___") {
 ```{r}
 load("data_pillar_2.RDATA")
 ```
+
+# TF-IDF
+# TF-IDF
+```{r function make_barplot and make_WC, out.height=8, out.width=16}
+make_barplot <- function(data, facet, n_col = 5){
+  
+  facet <- enquo(facet)
+  
+  g <- data %>%
+    rename(facet = !!facet) %>%
+    ggplot(aes(reorder_within(word, tf_idf, facet), tf_idf)) +
+    geom_col(show.legend = F) +
+    labs(x = NULL, y = "tf-idf") +
+    scale_x_reordered() +
+    facet_wrap(~ facet, scales = "free", ncol = n_col) +
+    coord_flip()
+  
+  ggsave(paste(facet[2], "_BP.jpeg", sep = ""), path = "Plots")
+  return(g)
+  
+}
+
+make_WC <- function(data, facet, n_col = 5){
+  
+  facet <- enquo(facet)
+  
+  g <- data %>%
+    rename(facet = !!facet) %>%
+    group_by(facet) %>%
+    mutate(freq = tf_idf / sum(tf_idf)) %>% # normalization within clusters
+    ungroup() %>%
+    mutate(angle = 10 * sample(-2:2, n(), replace = T, prob = c(1,1,4,1,1))) %>%
+    
+    ggplot(aes(size = freq^0.7, label = word, 
+               angle = angle, color = freq^0.7)) +
+    geom_text_wordcloud_area(area_corr_power = 1,
+                             eccentricity    = 1,
+                             rm_outside      = T) +
+    scale_radius(range = c(2, 10), limits = c(0, NA)) +
+    scale_color_gradient(low = "red", high = "blue") +
+    facet_wrap(~ facet, ncol = n_col) + 
+      theme(
+        strip.text.x     = element_text(),
+        panel.background = element_rect(fill = "white"),
+        plot.title       = element_text(hjust=0.5)
+      )
+
+  ggsave(paste(facet[2], "_WC.jpeg", sep = ""), path = "Plots")
+  return(g)
+}
+```
