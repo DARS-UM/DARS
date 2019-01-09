@@ -45,6 +45,8 @@ test <- "test3"
 
 experiment <- "test5"
 
+experiment2 <- paste(test, experiment, sep=" ")
+
 ```
 
 
