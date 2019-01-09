@@ -420,6 +420,59 @@ manuals_tokens_preprocessed <- manuals_tokens %>%
   anti_join(number_stopwords, by = c("word"="word"))
 
 ```
+##Student Data
+###Renaming Variables
+First we rename the variable names to make them more comprehensible:
+```{r}
+d_rename <-d_dirt %>%
+  rename(
+    ID                     =  "X...Student.Number", 
+    Code                   =  "Module..Abbrev..", 
+    `Course Title`         =  "Module..Desc..",
+    `Program Abbreviation` =  "Program..Abbreviation.", 
+    `Program Description`  =  "Program..Description.",               
+    Year                   =  "Academic.Year",                      
+    Session                =  "Academic.Session",
+    `Appraisal Code`       =  "Appraisal.Type",                     
+    `Appraisal Title`      =  "Appraisal..Description.",             
+    Attempt                =  "Number.rep..attemp",                 
+    Grade                  =  "Grade.symbol",                        
+    `Appraisal Status`     =  "Appraisal.Status",                   
+    `Appraisal Status Description` =  "Appraisal.Status..Desc..",    #is only NA: unique(d4$Appraisal.Status..Desc..)       
+    `Booking Reason`       =  "Module.Booking.Reason..Description.",
+    `Appraisal Date`       =  "Appraisal.date",                      
+    `Attempted Credits`    =  "Attempted.credits",                  
+    `Earned Credit`        =  "Earned.Credits",                      
+    `Credit Type`          =  "Credit.Type",                        
+    `Personnel Number`     =  "Personnel.Number",                  
+    `Name (Employee/Applicant)`=  "Name.of.employee.or.applicant",      
+    `Individual Work`      =  "Individual.Work",                     
+    `Academic Work ID`     =  "Academic.Work.ID",                   
+    `Booking Status`       =  "Booking.Status",                      #empty
+    `Booking Status Description` =  "Booking.Status..Desc..",             
+    `Event Object Id`      =  "Event.Object.Id",                     #empty forwards and including      
+    `Business Event Abbreviation` =  "Business.event.abbr.",               
+    `Event Description`    =  "Event.Description",                   
+    `Start time`           =  "Start.time",                         
+    `End time`             =  "End.time",                            
+    `Date`                 =  "Date",                               
+    `Studyplan`            =  "Studyplan",                           
+    `Conditional booking`  =  "Conditiona.booking",                 
+    `Wachtlist`            =  "Wachtlist",                           
+    `Object ID`            =  "Object.ID",                          
+    `Object Name`          =  "Object.name",                         
+    `Start Date`           =  "Start.date",                         
+    `End Date`             =  "End.Date",                            
+    `Number of Weeks`      =  "Number.of.weeks",                      #until this one next has values              
+    `Appraiser ID`         =  "Appraiser.ID",                        
+    `Appraiser Name`       =  "Appraiser.Name"
+    
+  ) 
+```
+
+###Identifying usless variables
+Our dataframe contains many variables that are either empty or meaningless for our analysis. We identify this variables and save them to a vector to remove at a later stage
+
 
 # Save Data
 
