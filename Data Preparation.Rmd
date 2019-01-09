@@ -137,6 +137,14 @@ d_AoD_assessment <- d_AoD_assessment %>%
 print(d_AoD_assessment)
 ```
 
+### Combining AoD from ILOs and from assessments
+Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_assessment`. We also use `unique` in case a course covers an AoD with both its ILOS and its assessments.
+```{r}
+d_AoD <- rbind(d_AoD_ILO, d_AoD_assessment) %>%
+  unique %>%
+  arrange(Code)
+print(d_AoD)
+```
 
 ## Course Manual 
 We create a dataframe from the Corpus:
