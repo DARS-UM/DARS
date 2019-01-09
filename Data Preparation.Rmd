@@ -178,6 +178,18 @@ d_course <- d_course %>%
 print(d_course)
 ```
 
+The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
+```{r}
+d_course <- d_course %>%
+  rbind(filter(., Code %in% c("UGR3001", "UGR3002", "UGR3003", "UGR3005")) %>%
+          mutate(Code = case_when(Code == "UGR3001" ~ "UGR2001",
+                                  Code == "UGR3002" ~ "UGR2002",
+                                  Code == "UGR3003" ~ "UGR2003",
+                                  Code == "UGR3005" ~ "UGR2005")))
+
+print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
+                                   "UGR3001", "UGR3002", "UGR3003", "UGR3005")))
+```
 
 ## Course Manual 
 We create a dataframe from the Corpus:
