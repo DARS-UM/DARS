@@ -4,8 +4,8 @@ author: "DARS"
 date: "`r Sys.Date()`"
 output: pdf_document
 ---
-# Libraries:
-```{r setup, include=FALSE}
+
+```{r setup, message = FALSE}
 library(tidyverse)
 library(tidytext) 
 
@@ -15,25 +15,70 @@ library(hunspell) # Stemmer
 ```
 
 # Import Data
+The datasets we use are saved as spreadsheet on our google drive *DARS*. We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based.
+
+## Setup
+Before importing the spreadsheets from the drive, let us create two vectors `list_assessment` and `list_AoD` which respectively list the `19` types of assessment and the `18` aims of the degree (AoD) of the degree which we take into consideration in the analysis. The information comes from a spreadsheet from our google drive *DARS* which we save as `lists`. In addition, we also create two additional vectors `list_assessment_plot` and `list_AoD_plot` which contain a selection of prominent assessment types and AoD that we will consider when ploting the data[^1].
+```{r list}
+lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
+
+lists <- list(
+  Assessment      = lists_brut$Assessment,
+  Assessment_plot = lists_brut$Assessment[lists_brut$`Assessment for Plot` == 1],
+  AoD             = lists_brut$Aim[!is.na(lists_brut$Aim)],
+  AoD_plot        = lists_brut$Aim[lists_brut$`Aim for Plot`[!is.na(lists_brut$Aim)] == 1]
+  )
+```
+
+## Course Data
+We import three spreadsheets from the drive and transform them into the so-called *tidy format*. The tibble `d_course` contains information at the course-level such as in which cluster and concentration(s) they belong and in which period(s) they are offered, the tibble `d_assessment` indicates which type(s) of assessment each course contains with one row per course-assessment and the tibble `d_ILO` indicates which AoD(s) the intended learning objectives (ILOs) of the courses cover with one row per course-ILO-AoD.
+
+```{r import data from drive}
+d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848') %>%
+  mutate(`Missing from ILO File` = as.logical(`Missing from ILO File`))
+print(d_course)
+
+d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
+  select(- `Comment on Assessment`) %>%
+  gather(Assessment, assessment_covered, - Code, factor_key = T) %>%
+  mutate(assessment_covered = as.logical(assessment_covered)) %>%
+  filter(assessment_covered) %>%
+  select(- assessment_covered) %>%
+  arrange(Code)
+print(d_assessment)
+
+d_ILO <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1896457050') %>%
+  select(- c(Comments, Comments_for_Jeroen)) %>%
+  gather(AoD, AoD_covered, -c(Code, Objectives), factor_key = T) %>%
+  mutate(AoD_covered = as.logical(AoD_covered)) %>%
+  rename(ILO = Objectives) %>%
+  filter(AoD_covered) %>%
+  select(- AoD_covered) %>%
+  arrange(Code)
+print(d_ILO)
+```
 
 ## Textual Data
 
-## Course Catalogues
+### Course Catalogues
 In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus` contains the pdfs of the `5` most recent course catalogues.
 ```{r corpus, cache = TRUE}
 corpus <- Corpus(x             = DirSource("Catalogues"),
                  readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 
-## Course Manuals
+### Course Manuals
 To expand our topic modeling of course content, we would like to analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
 ```{r}
 corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
                  readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 ## Student Data
-
-### Transcripts
+The tibble `transcripts` contains the transcripts of a selection of `7` alumni students from the college[^2]. `transcripts` contains information on each course taken by each student such as the receives grade, the semester in which teh course was taken as well as the calendar year.
+```{r transcripts}
+transcripts <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1kj7tlfJAoN0F7IdoS3saT-2iC3nuDLwnDItNtCKoZ4k/edit#gid=936718979')
+print(transcripts)
+```
 
 # Variable Engineering
 
