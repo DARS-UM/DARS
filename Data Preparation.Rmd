@@ -41,7 +41,7 @@ manuals_td <- tidy(corpus_manuals)
 ```
 #TEST
 ```{r}
-test <- "test" 
+test <- "test2" 
 ```
 
 # Save Data
