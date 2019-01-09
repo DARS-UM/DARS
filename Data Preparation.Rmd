@@ -45,5 +45,16 @@ manuals_td <- tidy(corpus_manuals)
 
 ```
 
+From `manuals_td` we are only interested in the text, and the Code of the course. However, we don't have the code but we have a document id that includes it. Therefore we select only the `text` and `id` columns of the `manuals_td`. Then, we extract the code from the `id` and save it in under `Code`, We aso extract the concentration from the `id` and save it under `Concentration`. Finally, we unnest the dataframe to have only one word per row, and call this ``manuals_tokens.
+
+```{r}
+manuals_tokens <- manuals_td %>%
+  select(id,text) %>%
+  mutate(Concentration= substring(id, 1, 3), Code= substring(id,1,7))%>%
+  unnest_tokens(word, text)
+```
+
+
+
 # Save Data
 
