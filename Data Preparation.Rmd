@@ -46,7 +46,7 @@ ABC
 
 #SOFIA
 ```{r}
-hello 
+hello <- "hello"
 ```
 
 
