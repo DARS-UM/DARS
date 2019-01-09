@@ -327,6 +327,51 @@ d_description_tidy <- d_description %>%
 print(d_description_tidy)
 ```
 
+### Stemming
+We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We then apply `stem_hunspell` on the words of `d_overview_tidy`. Since, `stem_hunspell` is not a vectorized function and the number of words in `d_overview_tidy` is large, we first use distinct on the `word` variable to find the a list containing *once* each term present in the course overviews and apply the function `stem_hunspell` on this list. We save the terms and their stems in the tibble `stems`. Since the course descriptions can be conceptualized as a subset of the course overviews, the tibble `stems` contains all the terms present in the descriptions and can therefore safely used to stem the words in `d_description_tidy`.
+```{r function stem_hunspell, cache = TRUE}
+stem_hunspell <- function(term) {
+  # look up the term in the dictionary
+  stems <- hunspell_stem(term)[[1]]
+  
+  if (length(stems) == 0) { # if there are no stems, use the original term
+    stem <- term
+  } else { # if there are multiple stems, use the last one
+    stem <- stems[[length(stems)]]
+  }
+  
+  return(stem)
+}
+
+stems <- d_overview_tidy %>% 
+  select(word) %>%
+  distinct %>%
+  arrange(word) %>%
+  mutate(word_stem = purrr::map_chr(.x = word,
+                                    .f = stem_hunspell))
+
+# terms for which the stem differs from the original word
+stems %>%
+  filter(word != word_stem)
+```
+
+```{r stemming}
+d_overview_stem <- d_overview_tidy %>%
+  left_join(stems, by = "word") %>%
+  rename(word_original = word,
+         word = word_stem) %>%
+  filter(!word %in% stop_words$word)
+print(d_overview_stem) # See humanities - humanity
+
+d_description_stem <- d_description_tidy %>%
+  left_join(stems, by = "word") %>%
+  rename(word_original = word,
+         word = word_stem) %>%
+  filter(!word %in% stop_words$word)
+print(d_description_stem) # See starting - start
+```
+
+
 ## Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
