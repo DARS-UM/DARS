@@ -1,0 +1,41 @@
+---
+title: "Pillar 2 - Topic Modeling"
+output: github_document:
+  number_section: TRUE
+---
+
+```{r library, message = F}
+library(tidyverse)
+library(tidytext)
+
+library(ggwordcloud) # Word Clouds
+library(topicmodels)
+library(lemon)
+library(ggthemes)
+```
+
+```{r function reorder_within & co., echo = FALSE}
+
+# Function for ordering within facet:
+# https://github.com/dgrtwo/drlib/blob/master/R/reorder_within.R
+
+reorder_within <- function(x, by, within, fun = mean, sep = "___", ...) {
+  new_x <- paste(x, within, sep = sep)
+  stats::reorder(new_x, by, FUN = fun)
+}
+
+scale_x_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_x_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+
+scale_y_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_y_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+```
+
+# Setup
+```{r}
+load("data_pillar_2.RDATA")
+```
