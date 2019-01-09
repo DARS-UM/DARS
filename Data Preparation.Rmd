@@ -1,25 +1,31 @@
 ---
 title: "Data Preparation"
 author: "DARS"
-date: "1/9/2019"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
-#Libraries:
+# Libraries:
 ```{r setup, include=FALSE}
-
 library(tidyverse)
 library(tidytext) 
 
-library(tm          ) # text mining
-library(topicmodels)  #topic modeling
-
-library(pdftools)
-library(ggplot2)
-
-
+library(gsheet) # import spreadsheets from google drive
+library(tm)
+library(hunspell) # Stemmer
 ```
 
 # Import Data
+
+## Textual Data
+
+## Course Catalogues
+In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus` contains the pdfs of the `5` most recent course catalogues.
+```{r corpus, cache = TRUE}
+corpus <- Corpus(x             = DirSource("Catalogues"),
+                 readerControl = list(reader = readPDF(control = list(text = "-layout"))))
+```
+
+### Course Manuals
 To expand our topic modeling of course content, we would like to analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
 ```{r}
 corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
