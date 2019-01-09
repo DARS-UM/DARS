@@ -620,6 +620,60 @@ Since we will need to check each student with an "oops" concentration to see wha
 checkup <- filter(d_student_concentration, student_Concentration == "oops") 
 ```
 
+###Getting UCM_YEAR
+In order to compare the trajectories of students, we would like to know if the courses were taken in their first, second, third, or whatever year. However, we only have the calendar years. Lets find out to what year of study each calendar year corresponds per student.
+
+First, lets find out, which year was a student's first year and which year was a student's last year (we will also create a variable `Subs_year` that we will substract later to transform from Calendar Year to UCM Year, and a second variable `LengthUCM` that shows us how many years each student stayed at the college):
+```{r}
+
+d_year <- d_grade %>%
+  select(ID, Code, Year, Period, Grade,`Booking Status Description`, `Course concentration`) %>%
+  group_by(ID) %>%
+  summarise(FirstYear=min(Year), LastYear=max(Year)) %>%
+  mutate(LengthUCM = LastYear-FirstYear, Subs_year=FirstYear-1)
+```
+
+Now, lets make a dataframe of students against years, where the year appears in the corresponding cell if a student was in the college at that time:
+
+```{r}
+
+d_year1 <- d_grade %>%
+  select(ID, Code, Year, Period, Grade, `Booking Status Description`, `Course concentration`) %>%  
+  group_by( ID, Year) %>%
+  summarise(Count = n())%>%
+  mutate(Present = case_when(Count > 0 ~ Year))%>%
+  select(-Count) %>%
+  spread(Year,Present, fill = 0)
+
+```
+
+Now we have collected all the years a student has been at the college in a single row (one row per student), and we also know what is the first and last year of each student. Let's join these dataframes:
+
+```{r}
+
+d_time <- left_join(d_year1, d_year)
+
+```
+
+Ideally, we would like to have a dataframe of students against calendar years filled with the corresponding UCM year (e.g. if the year 2017 was the first year of student 45, we would like to see the cell corresponding to student 45 and year 2017 marked with a "1").
+
+```{r}
+var_years <- as.character(2007:2017)
+
+d_time <- d_time %>% 
+  mutate_at(
+    vars(var_years),
+    funs(. - Subs_year)) %>%
+  mutate_at(
+    vars(var_years),
+    funs(case_when(. < 0 ~ 9999999999, #HORRIBLE FIX
+                   T     ~ .)))
+
+d_time[d_time == 9999999999] <- NA
+
+```
+
+
 # Save Data
 
 ```{r}
