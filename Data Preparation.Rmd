@@ -39,7 +39,15 @@ We create a dataframe from the Corpus:
 manuals_td <- tidy(corpus_manuals)
 
 ```
-#TEST
+
+# TEST
+
+```{r}
+print("test")
+```
+
+
+# TEST 2
 ```{r}
 test <- "test3"
 
