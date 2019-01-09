@@ -2,7 +2,8 @@
 title: "Data Preparation"
 author: "DARS"
 date: "`r Sys.Date()`"
-output: pdf_document
+output: pdf_document:
+    number_sections: TRUE
 ---
 
 ```{r setup, message = FALSE}
