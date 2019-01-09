@@ -204,12 +204,77 @@ d_course <- d_course %>%
 print(select(d_course, Code, Letters, Number, Level))
 ```
 
+## Course Catalogue
+In order to conduct a topic analysis of course content, we extract the *overview* and *description* of each course from the course catalogues.
+
+### Extracting Overviews
+We start by extracting the overviews which are 1 or 2 page long and contain important information of a course. To accomplish this, for each catalogue (loop), we first use `grep` to determine which pages should be excluded from the analysis (`pages_to_exclude`). These pages are typically headers. Excluding them before the analysis allows use to keep the code relatively simple. We also make use the fact that the overviews always start with the code of the course, i.e. it starts with one of the elements of `course_code` and use `grep` to identify the first page of each overview. We use grep a 3rd time to identify the page containing the header *Core Coureses (COR)* and which marks the beginning of the overviews in the catalogue, and we loop from this page to the last page of the catalogue.
+
+In the loop, we first determine the content of the current and following page. If the current page is the first page of an overview, then we identify the overview (one or two pages) and save it to the tibble `d_description`. To identify the overview of a course, we check if the following page is either the first page of an overview or a page to exclude. If it is either of these, then the overview correspond to the content of the current page; but if the following page is neiter of these, then the overview correspond to the content of the current page and that of the following page.
+
+```{r overview}
+# Setup
+n_catalogue <- length(corpus)
+calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
+d_description <- tibble(Code            = character(0),
+                        `Calendar Year` = character(0),
+                        Overview        = character(0))
+
+course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP")
+course_code <- paste(course_code, collapse = "|")
+
+content_to_exclude <- c("^Core Courses \\(COR\\)",
+                        "^Humanities \\(HUM\\)",
+                        "^Sciences \\(SCI\\)",
+                        "^Social Sciences \\(SSC\\)",
+                        "^Skills Trainings \\(SKI\\)",
+                        "^Projects \\(PRO\\)",
+                        "^Undergraduate Research \\(UGR\\)",
+                        "Appendix")
+content_to_exclude <- paste(content_to_exclude, collapse = "|")
+
+# Loop
+for(n in 1 : n_catalogue){
+  
+  cat <- content(corpus[[n]])
+  
+  pages_to_exclude     <- grep(pattern = content_to_exclude, x = cat)
+  first_three_letters  <- substr(cat, start = 1, stop = 3)
+  first_pages_overview <- grep(pattern = course_code, x = first_three_letters)
+  
+  page_start_loop <- grep(pattern = "^Core Courses \\(COR\\)", x = cat) + 1
+  page_end_loop   <- length(cat)
+  
+  for(page in page_start_loop : page_end_loop){
+    
+    current_page           <- page
+    following_page         <- page + 1
+    current_page_content   <- cat[page          ]
+    following_page_content <- cat[following_page]
+    
+    if(current_page %in% first_pages_overview){
+      
+      if(following_page %in% c(first_pages_overview, pages_to_exclude)) course_overview <- current_page_content
+      else course_overview <- paste(current_page_content, following_page_content)
+
+      # Save Overview
+      Code <- substring(course_overview, first = 1, last = 7)      
+      year <- calendar_years[n]
+      d_description <- add_row(d_description,
+                               Code            = Code,
+                               `Calendar Year` = year,
+                               Overview        = course_overview)
+    } # close if-statement
+  } # close for-loop (page)
+} # close for-loop (n)
+
+print(d_description)
+```
+
 ## Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
-
 manuals_td <- tidy(corpus_manuals)
-
 ```
 
 From `manuals_td` we are only interested in the text, and the Code of the course. However, we don't have the code but we have a document id that includes it. Therefore we select only the `text` and `id` columns of the `manuals_td`. Then, we extract the code from the `id` and save it in under `Code`, We aso extract the concentration from the `id` and save it under `Concentration`. Finally, we unnest the dataframe to have only one word per row, and call this ``manuals_tokens.
