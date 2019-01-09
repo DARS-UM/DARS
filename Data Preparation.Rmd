@@ -33,6 +33,10 @@ We create a dataframe from the Corpus:
 manuals_td <- tidy(corpus_manuals)
 
 ```
+#TEST
+```{r}
+test <- "test" 
+```
 
 # Save Data
 
