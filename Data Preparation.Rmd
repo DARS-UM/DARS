@@ -191,6 +191,19 @@ print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
                                    "UGR3001", "UGR3002", "UGR3003", "UGR3005")))
 ```
 
+Finally, we add a series of informative variable at the course level.
+```{r}
+d_course <- d_course %>%
+  mutate(
+    `Missing from ILO File` = as.logical(`Missing from ILO File`),
+    Letters = substring(Code, 1, 3),
+    Number  = as.numeric(substring(Code, 4, 7)),
+    Level   = case_when(between(Number, 1000, 1999) ~ "Introductory",
+                        between(Number, 2000, 2999) ~ "Intermediate",
+                        between(Number, 3000, 3999) ~ "Advanced"    ))
+print(select(d_course, Code, Letters, Number, Level))
+```
+
 ## Course Manual 
 We create a dataframe from the Corpus:
 ```{r}
