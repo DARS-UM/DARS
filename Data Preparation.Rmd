@@ -504,6 +504,70 @@ not_keep <- c("Booking Status",
               ) 
 ```
 
+Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes and save it under a variable `Period`:
+```{r}
+d_rename <-d_rename %>%
+  mutate(Period= case_when(
+    (Session==100)~"1",
+    (Session==101)~"1",
+    (Session==102)~"1",
+    #(Session==190)~"1", #is not there
+    (Session==191)~"1",
+    (Session==200)~"2",
+    (Session==201)~"2",
+    (Session==202)~"2",
+    (Session==291)~"2",
+    (Session==300)~"3",
+    (Session==330)~"3",
+    (Session==350)~"3",
+    (Session==400)~"4",
+    (Session==410)~"4",
+    (Session==420)~"4",
+    (Session==430)~"4",
+    (Session==450)~"4",
+    (Session==460)~"4",
+    (Session==481)~"4",
+    (Session==482)~"4",
+    (Session==500)~"5",
+    (Session==520)~"5",
+    (Session==530)~"5",
+    (Session==550)~"5",
+    (Session==551)~"5",
+    (Session==560)~"5",
+    (Session==552)~"5",
+    (Session==580)~"5",
+    (Session==600)~"6",
+    (Session==610)~"6",
+    (Session==620)~"6",
+    (Session==630)~"6",
+    (Session==650)~"6",
+    (Session==660)~"6",
+    (Session==680)~"5",#WHHHHHHHHHHHHHHHHHAAAAAAAAAAATTTTTTTTTTT?????? Why is this period 5
+    (Session==1)~"1,2,3,4,5,6",
+    (Session==2)~"1,2,3",
+    (Session==3)~"4,5,6",
+    #(Session==203)~c("2","3"),#is not there
+    (Session==350)~"3,4,5",
+    (Session==403)~"4,5",
+    (Session==900)~"1,2,3,4,5,6",
+    (Session==910)~"1", #ASK ABOUT THE 900'S
+    (Session==911)~"1",
+    (Session==912)~"1",
+    (Session==913)~"1",
+    (Session==914)~"1",
+    (Session==915)~"1",
+    (Session==916)~"1",
+    (Session==920)~"1",
+    (Session==923)~"1",
+    (Session==930)~"1",
+    (Session==940)~"1",
+    (Session==950)~"1",
+    (Session==960)~"1"
+     )
+           )
+```
+
+
 # Save Data
 
 ```{r}
