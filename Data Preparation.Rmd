@@ -42,7 +42,11 @@ manuals_td <- tidy(corpus_manuals)
 #TEST
 ```{r}
 test <- "test3"
+<<<<<<< HEAD
 test <- "test 4"
+=======
+experiment <- "test5"
+>>>>>>> 4e7011b21ef1b05503b975dc19fa8a7e19f2afd1
 ```
 
 # Save Data
