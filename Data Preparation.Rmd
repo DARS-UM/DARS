@@ -42,5 +42,10 @@ manuals_td <- tidy(corpus_manuals)
 
 # Save Data
 
+#SOFIA
+```{r}
+hello 
+```
+
 
 
