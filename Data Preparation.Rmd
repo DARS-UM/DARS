@@ -576,7 +576,16 @@ d_reduce <- d_rename %>%
 d_reduce <- d_reduce[!duplicated(d_reduce),]
 ```
 ###Extracting grades
+We notice that there are several values under `Grade` for the same course. We are interested in keeping only the final grades, corresponding to the rows where `Appraisal Title` is marked as "Grade supervisor". 
+So lets extract the grades and add the course concentration by keeping the first three letters of the `Code`:
 
+```{r}
+d_grade <- d_reduce %>%
+  filter(`Appraisal Title` == "Grade supervisor") %>%
+  mutate(`Course concentration` = substr(Code, start = 1, stop = 3))
+
+d_grade <- d_grade[!duplicated(d_grade),]
+```
 
 
 # Save Data
