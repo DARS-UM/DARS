@@ -22,7 +22,7 @@ The datasets we use are saved as spreadsheet on our google drive *DARS* (with ex
 
 ## Setup
 Before importing the spreadsheets from the drive, let us create two vectors `list_assessment` and `list_AoD` which respectively list the `19` types of assessment and the `18` aims of the degree (AoD) of the degree which we take into consideration in the analysis. The information comes from a spreadsheet from our google drive *DARS* which we save as `lists`. In addition, we also create two additional vectors `list_assessment_plot` and `list_AoD_plot` which contain a selection of prominent assessment types and AoD that we will consider when ploting the data[^1].
-```{r list}
+```{r import list}
 lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
 
 lists <- list(
@@ -38,7 +38,7 @@ rm(lists_brut)
 ## Course Data
 We import three spreadsheets from the drive and transform them into the so-called *tidy format*. The tibble `d_course` contains information at the course-level such as in which cluster and concentration(s) they belong, and in which period(s) they are offered. The tibble `d_assessment` indicates which type(s) of assessment each course contains with one row per course-assessment; and the tibble `d_ILO` indicates which AoD(s) the intended learning objectives (ILOs) of the courses cover with one row per course-ILO-AoD.
 
-```{r import data from drive}
+```{r import d_course d_assessment and d_ILO, cache = TRUE}
 d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848') %>%
   mutate(`Missing from ILO File` = as.logical(`Missing from ILO File`))
 print(d_course)
@@ -83,8 +83,8 @@ corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
 The tibble `d_transcripts` contains the transcripts information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
 
 ```{r import d_transcript, cache = TRUE}
-d_transcript <-rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
-                     read_csv("Raw Grades/grades2.csv", col_types = cols())) %>%
+d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
+                      read_csv("Raw Grades/grades2.csv", col_types = cols())) %>%
   distinct()
 ```
 
