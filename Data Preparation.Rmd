@@ -392,7 +392,7 @@ d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
 
 ### Stemming
 We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We then apply `stem_hunspell` on the words of `d_overview_tidy`. Since, `stem_hunspell` is not a vectorized function and the number of words in `d_overview_tidy` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews. Then, we apply the function `stem_hunspell` on this list. We save the terms and their stems in the tibble `stems`. Since the course descriptions can be conceptualized as a subset of the course overviews, the tibble `stems` contains all the terms present in the descriptions and can therefore safely used to stem the words in `d_description_tidy`.
-```{r stemming dictionary, cache = TRUE}
+```{r creating dictionary, cache = TRUE}
 stem_hunspell <- function(term) {
   stems   <- hunspell_stem(term)[[1]] # look up the term in the dictionary
   n_stems <- length(stems)            # number of stems
@@ -400,47 +400,48 @@ stem_hunspell <- function(term) {
   else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
 }
 
-dictionary <- select(d_overview, Code, word) %>%
-  rbind(d_manual) %>% 
-  select(word) %>%
+my_dictionary <- rbind(select(d_overview, word),
+                       select(d_manual  , word)) %>%
   distinct %>%
   mutate(word_stem = purrr::map_chr(.x = word,
                                     .f = stem_hunspell))
 
 # terms for which the stem differs from the original word
-filter(dictionary, word != word_stem)
-
-
-my_sw <- c("______________________________________________________________________________")
-
-data("stop_words")  #imports common stopwords
-
-my_stop_words <- data.frame (word = c(1:11, "students", )) #no stemming ("students")
-
-manuals_tokens_preprocessed <- manuals_tokens %>%
-  anti_join(stop_words)     %>%
-  anti_join(my_stop_words) %>%
-  anti_join(number_stopwords, by = c("word"="word"))
-
+filter(my_dictionary, word != word_stem)
 ```
 
-```{r stemming d_description}
-d_overview <- d_overview %>%
-  left_join(dictionary, by = "word") %>%
+```{r stemming}
+stem_with_dictionary <- function(data)  data %>%
+  left_join(my_dictionary, by = "word") %>%
   rename(word_original = word,
-         word = word_stem) %>%
-  filter(!word %in% stop_words$word)
+         word = word_stem)
 
-d_description <- d_description %>%
-  left_join(dictionary, by = "word") %>%
-  rename(word_original = word,
-         word = word_stem) %>%
-  filter(!word %in% stop_words$word)
+d_overview    <- stem_with_dictionary(d_overview)
+d_description <- stem_with_dictionary(d_description)
+d_manual      <- stem_with_dictionary(d_manual)
 
-rm(stems, stem_hunspell)
-print(d_overview_stem) # See humanities - humanity
+rm(stem_hunspell, my_dictionary, stem_with_dictionary)
+print(d_overview) # See humanities - humanity
 ```
+
+
 ### Removing Stopwords
+
+```{r}
+# own stopwords
+sw_own <- c("______________________________________________________________________________") 
+
+remove_sw <- function(data) data %>%
+  filter(! word %in% c(stop_words$word,
+                       sw_own))
+
+d_overview    <- remove_sw(d_overview)
+d_description <- remove_sw(d_description)
+d_manual      <- remove_sw(d_manual)
+
+rm(stem_hunspell, my_dictionary, remove_sw, sw_own)
+```
+
 
 
 ##Student Data
