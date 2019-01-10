@@ -94,7 +94,7 @@ d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
 In this analysis, we conside that a course can cover an AoD in two ways: a course covers an AoD if one of its ILOs covers it, or if one of its assessments cover it. For instance, if one of ILO of a course states that the students will learn to analyze empirical data in the context of academic research, then the course in question covers the AoD `Research Skills`; and if one of the assessment is a group presentation, then the course also covers the AoD `Collaborative Skills` and `Communication Skills`.
 
 #### AoD from ILOs
-In order to determine which AoD each course covers with its ILOs, we first eliminate the AoD that are not covered by the ILOs and then we take the unique combination of course and AoD in case a course had several ILOs covering the same AoD.
+In order to determine which AoD each course covers with its ILOs, we first eliminate the AoD that are not covered by the ILOs, and then we keep only one instance of each combination of course and AoD in case a course had several ILOs covering the same AoD.
 ```{r d_AoD_ILO}
 d_AoD_ILO <- d_ILO %>%
   select(Code, AoD) %>%
