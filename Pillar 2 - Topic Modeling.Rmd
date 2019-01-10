@@ -151,3 +151,19 @@ make_WC(data = tdm_top, facet = Concentration)
 # LDA
 
 ## Fitting Model
+```{r}
+d_overview_cast <- d_overview_stem %>%
+  count(Code, word, sort = T) %>%
+  cast_dtm(Code,word, n)
+```
+
+```{r}
+LDA_10 <- LDA(d_overview_cast, k = 10, control = list(seed = 123))
+LDA_17 <- LDA(d_overview_cast, k = 17, control = list(seed = 123))
+LDA_25 <- LDA(d_overview_cast, k = 25, control = list(seed = 123))
+```
+
+## Results
+
+
+
