@@ -1,0 +1,17 @@
+---
+title: "Pillar 1 - Sequential Pattern Mining"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+---
+
+```{r library, message = F}
+library(tidyverse)
+```
+
+# Setup
+```{r}
+load("data_pillar_1.RDATA")
+```
