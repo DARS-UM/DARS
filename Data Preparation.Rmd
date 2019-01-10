@@ -162,7 +162,13 @@ print(d_AoD)
 ```
 
 ### Courses
-Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and assessments (`d_assessment`) among the courses, let us add variables to the tibble `d_course` that contain the information at the course level. The tibble `d_ILO_detail` contains two columns indicating the code of the course and the number of ILOs it contains; `d_assessment_detail` contains three columns indicating the code of the course, the number of assessments it covers and a list of the assessments it covers; `d_AoD_detail` contains three columns indicating the code of the course, the number of AoD it covers and a list of the AoD it covers. We use a `full_join` to add these variables to the tibble `d_course`.
+(In this section we use: `d_course`- contains information at the course-level such as in which cluster and concentration(s) they belong, and in which period(s) they are offered.)
+
+Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and assessments (`d_assessment`) among the courses, let us add variables to the tibble `d_course` that contain the information at the course level. For this we create the following three tibbles:
+1) `d_ILO_detail` contains two columns indicating the code of the course and the number of ILOs it contains.
+2) `d_assessment_detail` contains three columns indicating the code of the course, the number of assessments it covers and a list of the assessments it covers. 
+3) `d_AoD_detail` contains three columns indicating the code of the course, the number of AoD it covers and a list of the AoD it covers. 
+Then we use a `full_join` to add these variables to the tibble `d_course`.
 ```{r d_course detail}
 d_ILO_detail <- d_ILO %>% 
   select(Code, ILO) %>%
