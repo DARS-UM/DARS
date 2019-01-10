@@ -94,6 +94,8 @@ d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
 In this analysis, we conside that a course can cover an AoD in two ways: a course covers an AoD if one of its ILOs covers it, or if one of its assessments cover it. For instance, if one of ILO of a course states that the students will learn to analyze empirical data in the context of academic research, then the course in question covers the AoD `Research Skills`; and if one of the assessment is a group presentation, then the course also covers the AoD `Collaborative Skills` and `Communication Skills`.
 
 #### AoD from ILOs
+(For this section we use: `d_ILO`-indicates which AoD(s) the intended learning objectives (ILOs) of the courses cover with one row per course-ILO-AoD)
+
 In order to determine which AoD each course covers with its ILOs, we first eliminate the AoD that are not covered by the ILOs, and then we keep only one instance of each combination of course and AoD in case a course had several ILOs covering the same AoD.
 ```{r d_AoD_ILO}
 d_AoD_ILO <- d_ILO %>%
@@ -104,8 +106,10 @@ print(d_AoD_ILO)
 ```
 
 #### AoD from Assessment
+(For this section we use: `d_assessment`-indicates which type(s) of assessment each course contains with one row per course-assessment)
 
 In order to determine which AoD each course covers with its assessments, we need to create a binary matrix which indicates which AoD(s) each assessment type covers. We have created such matrix on our google drive and we save it in the following piece of code as `map_assessment_AoD`. `map_assessment_AoD` indicates that, for instance, the assessment type `Essay` covers the AoD `Critical Thinking Skills`, `Communication Skills` and `Writing Skill`.
+
 ```{r map_assessment_AoD}
 map_assessment_AoD <- as.matrix(gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216')[,lists$AoD] %>%
                                   mutate_all(as.logical))
@@ -113,7 +117,8 @@ rownames(map_assessment_AoD) <- lists$Assessment
 print(map_assessment_AoD[1:5, 8:12])
 ```
 
-Now that we have the matrix `map_assessment_AoD`, we create the tibble `d_assessment_clean` which only contains the assessments that are covered by each course and we loop through its rows to determine which AoD, each assessment covers. In the loop, we first extract the row of `d_assessment_clean` and save it as `observation` and determine the corresponding assessment which we save as `assessment`. Then we use the matrix `map_assessment_AoD` to determine which AoD `assessment` covers and use `cbind` and `rbind` to add the information to the tibble `d_AoD_assessment`.
+Now that we have the matrix `map_assessment_AoD`, we want to find out which AoDs are covered by a course through its assessments. To do this we create an empty tibble `d_AoD_assessment` to store which assessment is covered by each course, and which AoD said assessment covers.Then, we fill in the information with a loop.
+In the loop, we first extract the row of `d_assessment` and save it as `observation`. Then, we determine the corresponding assessment which we save as `assessment`. Then, we use the matrix `map_assessment_AoD` to determine which AoD `assessment` covers and use `cbind` and `rbind` to add the information to the tibble `d_AoD_assessment`.
 ```{r d_AoD_assessment}
 d_AoD_assessment <- tibble(Code        = character(0),
                            Assessment  = character(0),
