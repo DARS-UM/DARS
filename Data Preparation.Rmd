@@ -83,13 +83,10 @@ The tibble `transcripts` contains the transcripts of a selection of `7` alumni s
 
 The data we will be using was provided in two documents with the same format. We import them, merge them and remove duplicate rows.
 
-```{r Data Import}
-
-x <- read_csv("Raw Grades/grades1.csv", col_types = cols())
-t1 <- read.csv("Raw Grades/grades1.csv",na.strings=c("","NA"))
-t2 <- read.csv("Raw Grades/grades2.csv",na.strings=c("","NA"))
-d_dirt <-rbind(t1, t2)
-d_dirt <- d_dirt[!duplicated(d_dirt),] #could use distinct() from dplyr
+```{r import d_transcript}
+d_transcript <-rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
+                     read_csv("Raw Grades/grades2.csv", col_types = cols())) %>%
+  distinct()
 ```
 
 # Variable Engineering
