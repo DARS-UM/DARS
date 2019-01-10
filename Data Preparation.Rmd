@@ -80,7 +80,7 @@ corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
                          readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 ## Student Data
-The tibble `d_transcripts` contains the transcripts information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
+The tibble `d_transcripts` contains the transcript information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
 
 ```{r import d_transcript, cache = TRUE}
 d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
@@ -352,8 +352,9 @@ rm(symbol_to_line, start_descrip, end_descrip,
 print(d_description)
 ```
 
+### Course Manuals
 
-#### Tidy Text Format
+### Tidy Text Format
 
 We first create two tibbles `d_overview_tidy` and `d_description_tidy` that respectively store the overviews and the descriptions in the tidy text format, with one row per course-year-word.
 ```{r tidy d_description}
@@ -368,7 +369,7 @@ d_description_tidy <- d_description %>%
 print(d_description_tidy)
 ```
 
-#### Stemming
+### Stemming
 We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We then apply `stem_hunspell` on the words of `d_overview_tidy`. Since, `stem_hunspell` is not a vectorized function and the number of words in `d_overview_tidy` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews. Then, we apply the function `stem_hunspell` on this list. We save the terms and their stems in the tibble `stems`. Since the course descriptions can be conceptualized as a subset of the course overviews, the tibble `stems` contains all the terms present in the descriptions and can therefore safely used to stem the words in `d_description_tidy`.
 ```{r stemming dictionary, cache = TRUE}
 stem_hunspell <- function(term) {
@@ -439,6 +440,7 @@ manuals_tokens_preprocessed <- manuals_tokens %>%
 ```
 
 ##Student Data
+
 ###Renaming Variables
 First we rename the variable names to make them more comprehensible:
 ```{r}
