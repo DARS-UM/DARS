@@ -1,6 +1,10 @@
 ---
 title: "Pillar 2 - Topic Modeling"
-output: github_document
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
 ---
 
 ```{r library, message = F}
