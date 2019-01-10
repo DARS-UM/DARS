@@ -445,6 +445,7 @@ print(d_overview_stem) # See humanities - humanity
 
 ##Student Data
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
+
 ###Renaming Variables
 First we rename the variable names to make them more comprehensible:
 ```{r}
