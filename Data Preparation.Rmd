@@ -80,7 +80,7 @@ corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
                          readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 ## Student Data
-The tibble `d_transcripts` contains the transcript information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
+The tibble `d_transcript` contains the transcript information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
 
 ```{r import d_transcript, cache = TRUE}
 d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
@@ -376,7 +376,7 @@ d_course <- full_join(d_course, d_manual, by = "Code")
 
 ### Tidy Text Format
 
-We first create two tibbles `d_overview_tidy` and `d_description_tidy` that respectively store the overviews and the descriptions in the tidy text format, with one row per course-year-word.
+To put everything into tidy text format, we first create three tibbles `d_overview_tidy`, `d_description_tidy`, `d_manual` that respectively store the overviews, descriptions and text from manuals in the tidy text format, with one row per course-year-word (and course-word for `d_manual`).
 ```{r tidy d_description}
 d_overview <- d_description %>%
   select(Code, `Calendar Year`, Overview) %>%
@@ -443,24 +443,9 @@ rm(stem_hunspell, my_dictionary, remove_sw, sw_own)
 ```
 
 
-### Course Manual 
-
-
-From `manuals_td` we are only interested in the text, and the Code of the course. However, we don't have the code but we have a document id that includes it. Therefore we select only the `text` and `id` columns of the `manuals_td`. Then, we extract the code from the `id` and save it in under `Code`, We aso extract the concentration from the `id` and save it under `Concentration`. Finally, we unnest the dataframe to have only one word per row, and call this `manuals_tokens`, this creates a variable `word` and adds all of the text from the course manuals under this column.
-
-```{r d_manual tidy}
-
-```
-
-####(Optional) Pre-processing Course Manuals- Removing stopwords
-Some characters appear with sufficient frequency to be relevant but not often enough accross all courses to be deleted when using tf-idf (see sections bellow), it is therefore convenient to add some stopwords and remove numbers. For this we import stop_words from tidytext, and search all our words with grep for stand alone numbers. We save these words in different dataframes and then exclude with an antijoin.
-```{r}
-
-
-
-```
 
 ##Student Data
+(In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
 ###Renaming Variables
 First we rename the variable names to make them more comprehensible:
