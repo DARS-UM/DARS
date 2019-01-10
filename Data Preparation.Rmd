@@ -82,8 +82,6 @@ corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
 ## Student Data
 The tibble `transcripts` contains the transcripts of a selection of `7` alumni students from the college[^2]. `transcripts` contains information on each course taken by each student such as the receives grade, the semester in which teh course was taken as well as the calendar year.
 
-COMMENT SOFIA: save a_clean_transcript as d_transcript
-
 ALL OTHER STUDENTS:
 The data we will be using was provided in two documents with the same format. We import them, merge them and remove duplicate rows.
 
@@ -803,7 +801,7 @@ head(d_transcripts)
 
 ```
 
-One last thing. The variable `Booking Status Description` shows whether a student passed or failed the course. However, some mistakes in the way the data was handled meant that the course status of some students was never confirmed. We need to ASK RICHARD, but for the moment, we will just look at the grades to change into pass and fail.
+One last thing. The variable `Booking Status Description` shows whether a student passed or failed the course. However, some mistakes in the way the data was handled meant that the course status of some students was never confirmed. We need to ASK RICHARD, but for the moment, we will just look at the grades of those courses which were not confirmed to change into pass and fail.
 
 ```{r}
 booked <- filter(d_transcripts, d_transcripts$`Booking Status Description`=="Booked")%>%
@@ -823,8 +821,35 @@ clean_transcripts <- d_transcripts %>%
   )) %>%
   select(-`Booking Status Description-new`,-`Booking Status Description-old`,-"UCM_Year-new")
 ```
+####Ordering in Time
+We would like to have a column `Time` that codes for both year and period (e.g. Year_1 Period_2 should be 1.2), as well as a column `Periods` with the year and period as numbers (e.g. Year_2 Period_1 should be period 7).
 
+CHECK: we still have students who's first record is of their last year. This appears as UCM_Year=1.
 
+```{r}
+
+a_clean_transcripts <- clean_transcripts%>%
+  separate(Period, 
+           c("T1","T2","T3","T4","T5","T6"), 
+           sep="," 
+           ) %>%
+  gather( key = "Time", value = "Period", T1,T2,T3,T4,T5,T6) %>%
+  drop_na(Period) %>%
+  select(-Time) %>%
+  mutate(Periods = (`UCM_Year-old` - 1) * 6 + 
+           as.numeric(Period)
+         )
+  
+a_clean_transcripts$Time= paste(a_clean_transcripts$`UCM_Year-old`,
+                                a_clean_transcripts$Period, 
+                                sep="."
+                                )
+#FINAL DATA:
+d_transcript <-a_clean_transcripts%>%
+  select(-`UCM_Year-old`,-Period)
+```
+NOTES: The data is now arranged so as to respect the order in time for each individual student. However, the comparison is still tricky as people who finished in 2008 will have CAP recorded as taken on their first year since this is all the data we have. 
+COMMENT SOFIA: save a_clean_transcript as d_transcript
 
 # Save Data
 
