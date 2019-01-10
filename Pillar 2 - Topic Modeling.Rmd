@@ -1,7 +1,6 @@
 ---
 title: "Pillar 2 - Topic Modeling"
-output: github_document:
-  number_section: TRUE
+output: github_document
 ---
 
 ```{r library, message = F}
@@ -144,3 +143,7 @@ tdm_top <- d_overview_stem %>%
 make_barplot(data = tdm_top, facet = Concentration)
 make_WC(data = tdm_top, facet = Concentration)
 ```
+
+# LDA
+
+## Fitting Model
