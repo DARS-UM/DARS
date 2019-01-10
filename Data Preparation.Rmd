@@ -231,12 +231,12 @@ print(select(d_course, Code, Letters, Number, Level))
 ##Textual Data
 
 ### Extracting Text
+In order to conduct a topic analysis of course content, we extract the *overview* and *description* of each course from the course catalogues, as well as the  *full text*  from the Course Manuals.
+
+####Course Catalogues
 (For this section we use:`corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.)
 
-In order to conduct a topic analysis of course content, we extract the *overview* and *description* of each course from the course catalogues.
-
-
-#### Extracting Overviews
+##### Extracting Overviews
 
 We start by extracting the overviews which are 1 or 2 page long and contain important information of a course. To accomplish this, for each catalogue (loop), we first use `grep` to determine which pages should be excluded from the analysis (`pages_to_exclude`). These pages are typically headers. Excluding them before the analysis allows use to keep the code relatively simple. We also make use the fact that the overviews always start with the code of the course, i.e. it starts with one of the elements of `course_code`; and we use `grep` to identify the first page of each overview. We use grep a 3rd time to identify the page containing the header *Core Coureses (COR)* and which marks the beginning of the overviews in the catalogue, and we loop from this page to the last page of the catalogue.
 
@@ -307,7 +307,7 @@ print(d_description)
 ```
 
 
-#### Extracting Descriptions
+##### Extracting Descriptions
 
 Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
 
@@ -353,8 +353,11 @@ rm(symbol_to_line, start_descrip, end_descrip,
 print(d_description)
 ```
 
-### Extracting Course Manual Text
-We create a dataframe from the Corpus:
+### Course Manuals
+####Extracting Full Text
+(For this section we use:`corpus_manuals`-contains the pdfs of the course manuals for the year 2017-2018 (most recently, available))
+
+Since we want to use tools from dplyr and tidytext we must first transform our corpus into a dataframe.
 ```{r d_manual}
 d_manual <- tidy(corpus_manuals) %>%
   select(id, text) %>%
@@ -366,6 +369,7 @@ rm(corpus_manuals)
 print(d_manual)
 ```
 
+Separately, we want to add the manual textual information to`d_course`which contains information at the course-level such as in which cluster and concentration(s) they belong, and in which period(s) they are offered.
 ```{r join manuals to d_course}
 d_course <- full_join(d_course, d_manual, by = "Code")
 ```
