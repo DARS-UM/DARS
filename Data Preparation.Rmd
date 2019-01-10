@@ -382,7 +382,8 @@ print(d_overview_tidy)
 d_description <- d_description %>%
   select(Code, `Calendar Year`, Description) %>%
   unnest_tokens(output = word, input = Description)
-print(d_description_tidy)
+
+d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
 ```
 
 ### Stemming
@@ -395,15 +396,28 @@ stem_hunspell <- function(term) {
   else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
 }
 
-dictionary <- d_overview %>% 
+dictionary <- select(d_overview, Code, word) %>%
+  rbind(d_manual) %>% 
   select(word) %>%
   distinct %>%
-  arrange(word) %>%
   mutate(word_stem = purrr::map_chr(.x = word,
                                     .f = stem_hunspell))
 
 # terms for which the stem differs from the original word
 filter(dictionary, word != word_stem)
+
+
+my_sw <- c("______________________________________________________________________________")
+
+data("stop_words")  #imports common stopwords
+
+my_stop_words <- data.frame (word = c(1:11, "students", )) #no stemming ("students")
+
+manuals_tokens_preprocessed <- manuals_tokens %>%
+  anti_join(stop_words)     %>%
+  anti_join(my_stop_words) %>%
+  anti_join(number_stopwords, by = c("word"="word"))
+
 ```
 
 ```{r stemming d_description}
@@ -430,23 +444,14 @@ print(d_overview_stem) # See humanities - humanity
 From `manuals_td` we are only interested in the text, and the Code of the course. However, we don't have the code but we have a document id that includes it. Therefore we select only the `text` and `id` columns of the `manuals_td`. Then, we extract the code from the `id` and save it in under `Code`, We aso extract the concentration from the `id` and save it under `Concentration`. Finally, we unnest the dataframe to have only one word per row, and call this `manuals_tokens`, this creates a variable `word` and adds all of the text from the course manuals under this column.
 
 ```{r d_manual tidy}
-d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
+
 ```
 
 ####(Optional) Pre-processing Course Manuals- Removing stopwords
 Some characters appear with sufficient frequency to be relevant but not often enough accross all courses to be deleted when using tf-idf (see sections bellow), it is therefore convenient to add some stopwords and remove numbers. For this we import stop_words from tidytext, and search all our words with grep for stand alone numbers. We save these words in different dataframes and then exclude with an antijoin.
 ```{r}
 
-my_sw <- c("______________________________________________________________________________")
 
-data("stop_words")  #imports common stopwords
-
-my_stop_words <- data.frame (word = c(1:11, "students", )) #no stemming ("students")
-
-manuals_tokens_preprocessed <- manuals_tokens %>%
-  anti_join(stop_words)     %>%
-  anti_join(my_stop_words) %>%
-  anti_join(number_stopwords, by = c("word"="word"))
 
 ```
 
