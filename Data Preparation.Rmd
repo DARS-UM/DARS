@@ -36,7 +36,7 @@ rm(lists_brut)
 ```
 
 ## Course Data
-We import three spreadsheets from the drive and transform them into the so-called *tidy format*. The tibble `d_course` contains information at the course-level such as in which cluster and concentration(s) they belong and in which period(s) they are offered, the tibble `d_assessment` indicates which type(s) of assessment each course contains with one row per course-assessment and the tibble `d_ILO` indicates which AoD(s) the intended learning objectives (ILOs) of the courses cover with one row per course-ILO-AoD.
+We import three spreadsheets from the drive and transform them into the so-called *tidy format*. The tibble `d_course` contains information at the course-level such as in which cluster and concentration(s) they belong, and in which period(s) they are offered. The tibble `d_assessment` indicates which type(s) of assessment each course contains with one row per course-assessment; and the tibble `d_ILO` indicates which AoD(s) the intended learning objectives (ILOs) of the courses cover with one row per course-ILO-AoD.
 
 ```{r import data from drive}
 d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848') %>%
@@ -67,14 +67,14 @@ print(d_ILO)
 
 ### Course Catalogues
 In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.
-```{r corpus_catalogues, cache = TRUE}
+```{r import corpus_catalogues, cache = TRUE}
 corpus_catalogues <- Corpus(x             = DirSource("Catalogues"),
                             readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 
 ### Course Manuals
 To expand our topic modeling of course content, we would like to analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
-```{r}
+```{r import corpus_manuals, cache = TRUE}
 corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
                          readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
@@ -83,7 +83,7 @@ The tibble `transcripts` contains the transcripts of a selection of `7` alumni s
 
 The data we will be using was provided in two documents with the same format. We import them, merge them and remove duplicate rows.
 
-```{r import d_transcript}
+```{r import d_transcript, cache = TRUE}
 d_transcript <-rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
                      read_csv("Raw Grades/grades2.csv", col_types = cols())) %>%
   distinct()
