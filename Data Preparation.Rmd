@@ -229,10 +229,12 @@ print(select(d_course, Code, Letters, Number, Level))
 ```
 
 ##Textual Data
+
 ### Course Catalogue
 (For this section we use:`corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.)
 
 In order to conduct a topic analysis of course content, we extract the *overview* and *description* of each course from the course catalogues.
+
 
 #### Extracting Overviews
 
@@ -303,8 +305,11 @@ rm(n_catalogue, calendar_years, course_code, content_to_exclude,
 print(d_description)
 ```
 
+
 #### Extracting Descriptions
-Since the overviews contain a lot of information that does not interest us, we extract the description section of the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
+
+Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
+
 ```{r extracting description}
 # Setup
 symbol_to_line <- c("\r\n", "\n") %>%
@@ -347,7 +352,9 @@ rm(symbol_to_line, start_descrip, end_descrip,
 print(d_description)
 ```
 
+
 #### Tidy Text Format
+
 We first create two tibbles `d_overview_tidy` and `d_description_tidy` that respectively store the overviews and the descriptions in the tidy text format, with one row per course-year-word.
 ```{r tidy d_description}
 d_overview_tidy <- d_description %>%
@@ -362,7 +369,7 @@ print(d_description_tidy)
 ```
 
 #### Stemming
-We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We then apply `stem_hunspell` on the words of `d_overview_tidy`. Since, `stem_hunspell` is not a vectorized function and the number of words in `d_overview_tidy` is large, we first use distinct on the `word` variable to find the a list containing *once* each term present in the course overviews and apply the function `stem_hunspell` on this list. We save the terms and their stems in the tibble `stems`. Since the course descriptions can be conceptualized as a subset of the course overviews, the tibble `stems` contains all the terms present in the descriptions and can therefore safely used to stem the words in `d_description_tidy`.
+We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We then apply `stem_hunspell` on the words of `d_overview_tidy`. Since, `stem_hunspell` is not a vectorized function and the number of words in `d_overview_tidy` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews. Then, we apply the function `stem_hunspell` on this list. We save the terms and their stems in the tibble `stems`. Since the course descriptions can be conceptualized as a subset of the course overviews, the tibble `stems` contains all the terms present in the descriptions and can therefore safely used to stem the words in `d_description_tidy`.
 ```{r stemming dictionary, cache = TRUE}
 stem_hunspell <- function(term) {
   stems   <- hunspell_stem(term)[[1]] # look up the term in the dictionary
