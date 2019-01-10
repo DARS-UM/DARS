@@ -701,6 +701,54 @@ d_students <- d_students[!duplicated(d_students),]
 
 ```
 
+###Removing master Program data and Cleaning Capstone Data 
+We noticed that we had the data for people who stayed at this university for their masters. To filter these courses out we find out in which year people took their capstone courses.
+
+For this we keep only the capstones. We expect some people to have repeated capstones:
+```{r}
+capstone_count <- d_students %>%
+  filter(Code=="CAP3000") %>%
+  group_by(ID)%>%
+  summarise(Count=n())
+
+capstone_count
+```
+However, what is surptising is that some people have two different passed capstones:
+
+```{r}
+passed_capstone_count <- d_students %>%
+  filter(Code=="CAP3000", `Booking Status Description`=="Completed with Success") %>%
+  group_by(ID) %>%
+  summarise(Count=n(), Max = max(Grade), Min = min(Grade), Attempts= max(Attempt))
+
+```
+
+We can check the grades for people who had repeated passed capstones (lets just bring them to the top of the list):
+```{r}
+passed_capstone_count %>%
+  arrange(desc(Count), desc(Min), Attempts)
+```
+There are 1712 people who did capstone. We see that most students who have two passed Capstones, have in reality only 1, since the other capstone had a failing grade and the passing grade was on the second attempt (count starts at 0) was indeed failed. However there are two students who indeed have two different passed Capstones: one is student 282995 who has two different passing grades(because of a change in grading system at the collegue during the year 2008-2009), the other is student 544450 who has the same grade passed at two different moment in time.
+
+We can check if there are any students with passing capstone who do not have a grade of at least 5.5. We do this by looking at the lowest Max values:
+```{r}
+passed_capstone_count %>%
+  arrange(Max)
+```
+We see the lowest grade for a passing capstone is 5.6, so this is fine. 
+
+
+Now lets just keep the highest value for each student and correct for student 282995:
+```{r}
+passed_capstone_grades <- passed_capstone_count %>%
+  mutate(`Booking Status Description`= "Completed with Success", Code="CAP3000", Grade= case_when(ID== 282995~7.7,
+                                                                                  T~Max)) %>%
+  select( ID, Code, Grade,`Booking Status Description`)
+passed_capstone_grades
+```
+
+Now we can figure out the Capstone Year,
+
 # Save Data
 
 ```{r}
