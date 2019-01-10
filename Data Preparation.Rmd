@@ -230,7 +230,7 @@ print(select(d_course, Code, Letters, Number, Level))
 
 ##Textual Data
 
-### Course Catalogue
+### Extracting Text
 (For this section we use:`corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.)
 
 In order to conduct a topic analysis of course content, we extract the *overview* and *description* of each course from the course catalogues.
@@ -353,7 +353,22 @@ rm(symbol_to_line, start_descrip, end_descrip,
 print(d_description)
 ```
 
-### Course Manuals
+### Extracting Course Manual Text
+We create a dataframe from the Corpus:
+```{r d_manual}
+d_manual <- tidy(corpus_manuals) %>%
+  select(id, text) %>%
+  mutate(Code = substring(id, 1, 7)) %>%
+  select(-id) %>%
+  rename(Manual = text)
+
+rm(corpus_manuals)
+print(d_manual)
+```
+
+```{r join manuals to d_course}
+d_course <- full_join(d_course, d_manual, by = "Code")
+```
 
 ### Tidy Text Format
 
@@ -410,21 +425,7 @@ print(d_overview_stem) # See humanities - humanity
 
 
 ### Course Manual 
-We create a dataframe from the Corpus:
-```{r d_manual}
-d_manual <- tidy(corpus_manuals) %>%
-  select(id, text) %>%
-  mutate(Code = substring(id, 1, 7)) %>%
-  select(-id) %>%
-  rename(Manual = text)
 
-rm(corpus_manuals)
-print(d_manual)
-```
-
-```{r join manuals to d_course}
-d_course <- full_join(d_course, d_manual, by = "Code")
-```
 
 From `manuals_td` we are only interested in the text, and the Code of the course. However, we don't have the code but we have a document id that includes it. Therefore we select only the `text` and `id` columns of the `manuals_td`. Then, we extract the code from the `id` and save it in under `Code`, We aso extract the concentration from the `id` and save it under `Concentration`. Finally, we unnest the dataframe to have only one word per row, and call this `manuals_tokens`, this creates a variable `word` and adds all of the text from the course manuals under this column.
 
