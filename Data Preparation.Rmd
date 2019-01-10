@@ -353,8 +353,8 @@ rm(symbol_to_line, start_descrip, end_descrip,
 print(d_description)
 ```
 
-### Course Manuals
-####Extracting Full Text
+#### Course Manuals
+#####Extracting Full Text
 (For this section we use:`corpus_manuals`-contains the pdfs of the course manuals for the year 2017-2018 (most recently, available))
 
 Since we want to use tools from dplyr and tidytext we must first transform our corpus into a dataframe.
