@@ -747,7 +747,89 @@ passed_capstone_grades <- passed_capstone_count %>%
 passed_capstone_grades
 ```
 
-Now we can figure out the Capstone Year,
+####Capstone Year
+Now we can figure out the Capstone Year.
+
+First we get the years for which there is a corresponding passing capstone grade, and check for repetition:
+```{r}
+
+capstone_finish_year <- inner_join(passed_capstone_grades, d_students) 
+
+head(capstone_finish_year)
+
+count_before <- passed_capstone_grades %>%
+  group_by(ID) %>%
+  summarise(counts_of_id= n())
+
+count_after <- capstone_finish_year %>%
+  group_by(ID) %>%
+  summarise(counts_of_id= n())%>%
+  filter(counts_of_id > 1)  #these students have repeated capstones.
+
+count_after
+  
+```
+From count_after we see that student 544450 has two passed capstones at different moments in time, we already knew this and we must ask Richard why this is the case. However, since both capstones where passed in 2010, this creates no problem for our current purposes. However, let's remove the later version.
+We will also rename `Year` to `Capstone Year` and keep only the columns `Capstone Year` and `ID`
+```{r}
+to_remove <- capstone_finish_year%>%
+  filter(ID==544450)
+to_remove <- to_remove[duplicated(to_remove$ID),]
+
+capstone_finish_year <- capstone_finish_year%>%
+  anti_join(to_remove) %>%
+  rename(`Capstone Year`= Year)%>%
+  select(ID,`Capstone Year`)
+  
+capstone_finish_year
+```
+
+
+Lets create a dataframe where we include the capstone year. Then, if a course is given later than the capstone year, we want to remove it. Therefore, lets substitute na values with the year 9999 (or will ucm be open in the year 9999?).
+```{r}
+d_transcripts <- d_students %>%
+  group_by(ID) %>%
+  left_join(capstone_finish_year) %>%
+  ungroup() %>%
+  replace_na(list(`Capstone Year`=9999)) %>%
+  mutate(`After Graduation`=`Capstone Year`-`Year`)
+
+d_transcripts
+```
+Now we will remove all courses with negative `After Graduation`:
+```{r}
+master_courses <- d_transcripts%>%
+  filter(`After Graduation`<0)
+
+d_transcripts <- d_transcripts %>%
+  anti_join(master_courses)
+
+head(d_transcripts)
+
+```
+
+One last thing. The variable `Booking Status Description` shows whether a student passed or failed the course. However, some mistakes in the way the data was handled meant that the course status of some students was never confirmed. We need to ASK RICHARD, but for the moment, we will just look at the grades to change into pass and fail.
+
+```{r}
+booked <- filter(d_transcripts, d_transcripts$`Booking Status Description`=="Booked")%>%
+  mutate(`Booking Status Description`= case_when(Grade<5.5~"Completed Unsuccessfully",
+                                                 Grade>5.5~"Completed with Success"))
+
+
+clean_transcripts <- d_transcripts %>% 
+  left_join(booked, by= c("ID", "Code", "Year", "Period", "Grade", "Attempt", "Course concentration", "student_Concentration", "Capstone Year", "After Graduation"), suffix=c("-old", "-new"))%>%
+  select(-`After Graduation`)%>%
+  mutate(Pass= case_when(
+    (`Booking Status Description-new`=="Completed with Success")~"Pass",
+    (`Booking Status Description-new`=="Completed Unsuccessfully")~"Fail",
+    (`Booking Status Description-old`=="Completed with Success")~"Pass",
+    (`Booking Status Description-old`=="Completed Unsuccessfully")~"Fail",
+    T~"error in clean_transcripts"
+  )) %>%
+  select(-`Booking Status Description-new`,-`Booking Status Description-old`,-"UCM_Year-new")
+```
+
+
 
 # Save Data
 
