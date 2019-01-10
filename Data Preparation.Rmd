@@ -157,38 +157,41 @@ print(d_AoD)
 
 ## Course Data
 Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and assessments (`d_assessment`) among the courses, let us add variables to the tibble `d_course` that contain the information at the course level. The tibble `d_ILO_detail` contains two columns indicating the code of the course and the number of ILOs it contains; `d_assessment_detail` contains three columns indicating the code of the course, the number of assessments it covers and a list of the assessments it covers; `d_AoD_detail` contains three columns indicating the code of the course, the number of AoD it covers and a list of the AoD it covers. We use a `full_join` to add these variables to the tibble `d_course`.
-```{r}
+```{r d_course detail}
 d_ILO_detail <- d_ILO %>% 
   select(Code, ILO) %>%
-  unique %>%
+  distinct() %>%
   count(Code) %>%
   rename(n_ILO = n)
-print(d_ILO_detail)
 
 d_assessment_detail <- d_assessment %>%
   group_by(Code) %>%
   summarise(n_assessment = n(),
             `Assessments Covered` = paste(Assessment, collapse = ", "))
-print(d_assessment_detail)
 
 d_AoD_detail <- d_AoD %>%
   group_by(Code) %>%
   summarise(n_AoD = n(),
             `AoD Covered` = paste(AoD, collapse = ", "))
-print(d_AoD_detail)
+
+d_course_detail <- d_ILO_detail %>%
+  full_join(d_assessment_detail, by = "Code") %>%
+  full_join(d_AoD_detail       , by = "Code")
+
+rm(d_ILO_detail, d_assessment_detail, d_AoD_detail)
+print(d_course_detail)
 ```
 
-```{r}
-d_course <- d_course %>%
-  full_join(d_ILO_detail       , by = "Code") %>%
-  full_join(d_assessment_detail, by = "Code") %>%
-  full_join(d_AoD_detail       , by = "Code") %>%
+```{r join d_course_detail}
+d_course <- full_join(d_course, d_course_detail, by = "Code") %>%
   select(Code, `Course Title`, Cluster, n_ILO, n_assessment, `Assessments Covered`, n_AoD, `AoD Covered`, everything())
+
+rm(d_course_detail)
 print(d_course)
 ```
 
 The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
-```{r}
+```{r create UGR2000}
 d_course <- d_course %>%
   rbind(filter(., Code %in% c("UGR3001", "UGR3002", "UGR3003", "UGR3005")) %>%
           mutate(Code = case_when(Code == "UGR3001" ~ "UGR2001",
@@ -201,7 +204,7 @@ print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
 ```
 
 Finally, we add a series of informative variable at the course level.
-```{r}
+```{r d_course additional info}
 d_course <- d_course %>%
   mutate(
     `Missing from ILO File` = as.logical(`Missing from ILO File`),
