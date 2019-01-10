@@ -450,89 +450,32 @@ rm(stem_hunspell, my_dictionary, remove_sw, sw_own)
 ###Renaming Variables
 First we rename the variable names to make them more comprehensible:
 ```{r}
-d_rename <-d_dirt %>%
-  rename(
-    ID                     =  "X...Student.Number", 
-    Code                   =  "Module..Abbrev..", 
-    `Course Title`         =  "Module..Desc..",
-    `Program Abbreviation` =  "Program..Abbreviation.", 
-    `Program Description`  =  "Program..Description.",               
-    Year                   =  "Academic.Year",                      
-    Session                =  "Academic.Session",
-    `Appraisal Code`       =  "Appraisal.Type",                     
-    `Appraisal Title`      =  "Appraisal..Description.",             
-    Attempt                =  "Number.rep..attemp",                 
-    Grade                  =  "Grade.symbol",                        
-    `Appraisal Status`     =  "Appraisal.Status",                   
-    `Appraisal Status Description` =  "Appraisal.Status..Desc..",    #is only NA: unique(d4$Appraisal.Status..Desc..)       
-    `Booking Reason`       =  "Module.Booking.Reason..Description.",
-    `Appraisal Date`       =  "Appraisal.date",                      
-    `Attempted Credits`    =  "Attempted.credits",                  
-    `Earned Credit`        =  "Earned.Credits",                      
-    `Credit Type`          =  "Credit.Type",                        
-    `Personnel Number`     =  "Personnel.Number",                  
-    `Name (Employee/Applicant)`=  "Name.of.employee.or.applicant",      
-    `Individual Work`      =  "Individual.Work",                     
-    `Academic Work ID`     =  "Academic.Work.ID",                   
-    `Booking Status`       =  "Booking.Status",                      #empty
-    `Booking Status Description` =  "Booking.Status..Desc..",             
-    `Event Object Id`      =  "Event.Object.Id",                     #empty forwards and including      
-    `Business Event Abbreviation` =  "Business.event.abbr.",               
-    `Event Description`    =  "Event.Description",                   
-    `Start time`           =  "Start.time",                         
-    `End time`             =  "End.time",                            
-    `Date`                 =  "Date",                               
-    `Studyplan`            =  "Studyplan",                           
-    `Conditional booking`  =  "Conditiona.booking",                 
-    `Wachtlist`            =  "Wachtlist",                           
-    `Object ID`            =  "Object.ID",                          
-    `Object Name`          =  "Object.name",                         
-    `Start Date`           =  "Start.date",                         
-    `End Date`             =  "End.Date",                            
-    `Number of Weeks`      =  "Number.of.weeks",                      #until this one next has values              
-    `Appraiser ID`         =  "Appraiser.ID",                        
-    `Appraiser Name`       =  "Appraiser.Name"
-    
-  ) 
+
 ```
 
 ###Identifying usless variables
 Our dataframe contains many variables that are either empty or meaningless for our analysis. We identify this variables and save them to a vector to remove at a later stage
 ```{r}
-not_keep <- c("Booking Status",
-              "Appraisal Status Description",
-              "Credit Type",
-              "Personnel Number",
-              "Event Object Id",     
-              "Business Event Abbreviation",               
-              "Event Description",                   
-              "Start time",                         
-              "End time",                            
-              "Date",                               
-              "Studyplan",                           
-              "Conditional booking",                 
-              "Wachtlist",                           
-              "Object ID", #? has values e.g. 50236380                        
-              "Object Name",  #?  has values, e.g. "BE-Universitair Ziekenhuis Brussel"
-              "Start Date",   #? has values, e.g.  "12/16/13"                     
-              "End Date",     #? has values, e.g. "5/14/10"                      
-              "Number of Weeks", 
-              "Name (Employee/Applicant)",
-              "Appraiser ID",      #HAS VALUES BUT NOT IMPORTANT, e.g. 70011933
-              "Appraiser Name",    #HAS VALUES BUT NOT IMPORTANT, e.g.  J.J. Briede  
-              "Academic Work ID",  #has values, eg.53EA405080711826E10000008978030A
-              "Attempted Credits", #HAS VALUES BUT NOT IMPORTANT
-              "Earned Credit",
-              "Individual Work",
-              "Appraisal Status",
-              "Booking Reason",
-              "Appraisal Date" #day when grades were put in
-              ) 
+d_transcript <- d_transcript %>%
+  select(`Student Number`, `Module (Abbrev.)`, `Module (Desc.)`,
+         `Program (Description)`, `Academic Year`, `Academic Session`,
+         `Appraisal (Description)`,
+         `Number rep. attemp`, `Grade symbol`, `Booking Status (Desc.)`) %>%
+  rename(`Student ID Number` = `Student Number`,
+         `Course Code` = `Module (Abbrev.)`,
+         `Course Title` = `Module (Desc.)`,
+         `Study Program` = `Program (Description)`,
+         `Civil Year` = `Academic Year`, # double check
+         `Period` = `Academic Session`,
+         `Appraisal` = `Appraisal (Description)`, # is there a better name for the variable?
+         `Number Repeated Attempt` = `Number rep. attemp`,
+         `Grade` = `Grade symbol`,
+         `Status` = `Booking Status (Desc.)`) # is there a better name for the variable?
 ```
 
 Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes and save it under a variable `Period`:
 ```{r}
-d_rename <-d_rename %>%
+d_rename <- d_rename %>%
   mutate(Period= case_when(
     (Session==100)~"1",
     (Session==101)~"1",
