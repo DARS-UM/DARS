@@ -80,9 +80,7 @@ corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
                          readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 ## Student Data
-The tibble `transcripts` contains the transcripts of a selection of `7` alumni students from the college[^2]. `transcripts` contains information on each course taken by each student such as the receives grade, the semester in which the course was taken as well as the calendar year.
-
-The data we will be using was provided in two documents with the same format. We import them, merge them and remove duplicate rows.
+The tibble `d_transcripts` contains the transcripts information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
 
 ```{r import d_transcript, cache = TRUE}
 d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
