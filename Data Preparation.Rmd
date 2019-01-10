@@ -73,7 +73,7 @@ corpus_catalogues <- Corpus(x             = DirSource("Catalogues"),
 ```
 
 ### Course Manuals
-To expand our topic modeling of course content, we would like to analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
+To expand our topic modeling of course content, we analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
 ```{r}
 corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
                          readerControl = list(reader = readPDF(control = list(text = "-layout"))))
