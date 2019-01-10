@@ -39,3 +39,108 @@ scale_y_reordered <- function(..., sep = "___") {
 ```{r}
 load("data_pillar_2.RDATA")
 ```
+
+# TF-IDF
+## Functions for Generating Barplots and Word Clouds
+```{r function make_barplot and make_WC, out.height=8, out.width=16}
+make_barplot <- function(data, facet, n_col = 5){
+  
+  facet <- enquo(facet)
+  
+  g <- data %>%
+    rename(facet = !!facet) %>%
+    ggplot(aes(reorder_within(word, tf_idf, facet), tf_idf)) +
+    geom_col(show.legend = F) +
+    labs(x = NULL, y = "tf-idf") +
+    scale_x_reordered() +
+    facet_wrap(~ facet, scales = "free", ncol = n_col) +
+    coord_flip()
+  
+  ggsave(paste(facet[2], "_BP.jpeg", sep = ""), path = "Plots")
+  return(g)
+  
+}
+
+make_WC <- function(data, facet, n_col = 5){
+  
+  facet <- enquo(facet)
+  
+  g <- data %>%
+    rename(facet = !!facet) %>%
+    group_by(facet) %>%
+    mutate(freq = tf_idf / sum(tf_idf)) %>% # normalization within clusters
+    ungroup() %>%
+    mutate(angle = 10 * sample(-2:2, n(), replace = T, prob = c(1,1,4,1,1))) %>%
+    
+    ggplot(aes(size = freq^0.7, label = word, 
+               angle = angle, color = freq^0.7)) +
+    geom_text_wordcloud_area(area_corr_power = 1,
+                             eccentricity    = 1,
+                             rm_outside      = T) +
+    scale_radius(range = c(2, 10), limits = c(0, NA)) +
+    scale_color_gradient(low = "red", high = "blue") +
+    facet_wrap(~ facet, ncol = n_col) + 
+      theme(
+        strip.text.x     = element_text(),
+        panel.background = element_rect(fill = "white"),
+        plot.title       = element_text(hjust=0.5)
+      )
+
+  ggsave(paste(facet[2], "_WC.jpeg", sep = ""), path = "Plots")
+  return(g)
+}
+```
+
+## Course Level
+```{r tf-idf per course}
+tdm_top <- d_overview_stem %>%
+  filter(`Calendar Year` == "2018-2019") %>%
+  count(Code, `Calendar Year`, word, sort = T) %>%
+  bind_tf_idf(term = word, document = Code, n = n) %>%
+  filter(n >= 2) %>%
+  group_by(Code) %>%
+  top_n(10, tf_idf) %>%
+  ungroup %>%
+  filter(Code %in% sample(unique(.$Code), size = 25, replace = F)) # select 25 courses at random
+
+make_barplot(data = tdm_top, facet = Code)
+make_WC(data = tdm_top, facet = Code)
+```
+
+## Cluster Level
+```{r tf-idf per cluster}
+tdm_top <- d_overview_stem %>%
+  left_join(select(d_course, Code, Cluster), by = "Code") %>%
+  filter(`Calendar Year` == "2018-2019",
+         !is.na(Cluster)) %>%
+  count(Cluster, `Calendar Year`, word, sort = T) %>%
+  bind_tf_idf(term = word, document = Cluster, n = n) %>%
+  filter(n >= 5) %>%
+  group_by(Cluster) %>%
+  top_n(10, tf_idf) %>%
+  ungroup
+
+# Plots
+make_barplot(data = tdm_top, facet = Cluster, n_col = 4)
+make_WC(data = tdm_top, facet = Cluster, n_col = 4)
+```
+
+## Concentration Level
+```{r tf-idf per concentration}
+tdm_top <- d_overview_stem %>%
+  left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
+  gather(key = "key", value = Concentration,
+         c("Concentration", "Concentration (additional)"),
+         na.rm = T) %>%
+  filter(`Calendar Year` == "2018-2019") %>%
+  count(Concentration, `Calendar Year`, word, sort = T) %>%
+  bind_tf_idf(term = word, document = Concentration, n = n) %>%
+  filter(n >= 5) %>%
+  group_by(Concentration) %>%
+  top_n(10, tf_idf) %>%
+  ungroup
+
+# Plots
+make_barplot(data = tdm_top, facet = Concentration)
+make_WC(data = tdm_top, facet = Concentration)
+```
