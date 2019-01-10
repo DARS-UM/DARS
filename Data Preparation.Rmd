@@ -376,7 +376,7 @@ d_course <- full_join(d_course, d_manual, by = "Code")
 
 ### Tidy Text Format
 
-We first create two tibbles `d_overview_tidy` and `d_description_tidy` that respectively store the overviews and the descriptions in the tidy text format, with one row per course-year-word.
+To put everything into tidy text format, we first create three tibbles `d_overview_tidy`, `d_description_tidy`, `d_manual` that respectively store the overviews, descriptions and text from manuals in the tidy text format, with one row per course-year-word (and course-word for `d_manual`).
 ```{r tidy d_description}
 d_overview <- d_description %>%
   select(Code, `Calendar Year`, Overview) %>%
