@@ -163,38 +163,41 @@ print(d_AoD)
 
 ### Courses
 Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and assessments (`d_assessment`) among the courses, let us add variables to the tibble `d_course` that contain the information at the course level. The tibble `d_ILO_detail` contains two columns indicating the code of the course and the number of ILOs it contains; `d_assessment_detail` contains three columns indicating the code of the course, the number of assessments it covers and a list of the assessments it covers; `d_AoD_detail` contains three columns indicating the code of the course, the number of AoD it covers and a list of the AoD it covers. We use a `full_join` to add these variables to the tibble `d_course`.
-```{r}
+```{r d_course detail}
 d_ILO_detail <- d_ILO %>% 
   select(Code, ILO) %>%
-  unique %>%
+  distinct() %>%
   count(Code) %>%
   rename(n_ILO = n)
-print(d_ILO_detail)
 
 d_assessment_detail <- d_assessment %>%
   group_by(Code) %>%
   summarise(n_assessment = n(),
             `Assessments Covered` = paste(Assessment, collapse = ", "))
-print(d_assessment_detail)
 
 d_AoD_detail <- d_AoD %>%
   group_by(Code) %>%
   summarise(n_AoD = n(),
             `AoD Covered` = paste(AoD, collapse = ", "))
-print(d_AoD_detail)
+
+d_course_detail <- d_ILO_detail %>%
+  full_join(d_assessment_detail, by = "Code") %>%
+  full_join(d_AoD_detail       , by = "Code")
+
+rm(d_ILO_detail, d_assessment_detail, d_AoD_detail)
+print(d_course_detail)
 ```
 
-```{r}
-d_course <- d_course %>%
-  full_join(d_ILO_detail       , by = "Code") %>%
-  full_join(d_assessment_detail, by = "Code") %>%
-  full_join(d_AoD_detail       , by = "Code") %>%
+```{r join d_course_detail}
+d_course <- full_join(d_course, d_course_detail, by = "Code") %>%
   select(Code, `Course Title`, Cluster, n_ILO, n_assessment, `Assessments Covered`, n_AoD, `AoD Covered`, everything())
+
+rm(d_course_detail)
 print(d_course)
 ```
 
 The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
-```{r}
+```{r create UGR2000}
 d_course <- d_course %>%
   rbind(filter(., Code %in% c("UGR3001", "UGR3002", "UGR3003", "UGR3005")) %>%
           mutate(Code = case_when(Code == "UGR3001" ~ "UGR2001",
@@ -207,7 +210,7 @@ print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
 ```
 
 Finally, we add a series of informative variable at the course level.
-```{r}
+```{r d_course additional info}
 d_course <- d_course %>%
   mutate(
     `Missing from ILO File` = as.logical(`Missing from ILO File`),
@@ -228,7 +231,7 @@ We start by extracting the overviews which are 1 or 2 page long and contain impo
 
 In the loop, we first determine the content of the current and following page. If the current page is the first page of an overview, then we identify the overview (one or two pages) and save it to the tibble `d_description`. To identify the overview of a course, we check if the following page is either the first page of an overview or a page to exclude. If it is either of these, then the overview correspond to the content of the current page; but if the following page is neiter of these, then the overview correspond to the content of the current page and that of the following page.
 
-```{r overview}
+```{r extracting overview}
 # Setup
 n_catalogue <- length(corpus_catalogues)
 calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
@@ -236,8 +239,8 @@ d_description <- tibble(Code            = character(0),
                         `Calendar Year` = character(0),
                         Overview        = character(0))
 
-course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP")
-course_code <- paste(course_code, collapse = "|")
+course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>%
+  paste(collapse = "|")
 
 content_to_exclude <- c("^Core Courses \\(COR\\)",
                         "^Humanities \\(HUM\\)",
@@ -246,8 +249,8 @@ content_to_exclude <- c("^Core Courses \\(COR\\)",
                         "^Skills Trainings \\(SKI\\)",
                         "^Projects \\(PRO\\)",
                         "^Undergraduate Research \\(UGR\\)",
-                        "Appendix")
-content_to_exclude <- paste(content_to_exclude, collapse = "|")
+                        "Appendix") %>%
+  paste(collapse = "|")
 
 # Loop
 for(n in 1 : n_catalogue){
@@ -284,22 +287,26 @@ for(n in 1 : n_catalogue){
   } # close for-loop (page)
 } # close for-loop (n)
 
+rm(n_catalogue, calendar_years, course_code, content_to_exclude,
+   n, cat, pages_to_exclude, first_three_letters, first_pages_overview, page_start_loop, page_end_loop,
+   page, current_page, following_page, current_page_content, following_page_content,
+   course_overview, Code, year)
 print(d_description)
 ```
 
 #### Extracting Descriptions
 Since the overviews contain a lot of information that does not interest us, we extract the description section of the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
-```{r description}
+```{r extracting description}
 # Setup
-symbol_to_line <- c("\r\n", "\n")
-symbol_to_line <- paste(symbol_to_line, collapse = "|")
+symbol_to_line <- c("\r\n", "\n") %>%
+  paste(collapse = "|")
 
-start_descrip <- c("^Description", "^Course Description")
-start_descrip <- paste(start_descrip, collapse = "|")
+start_descrip <- c("^Description", "^Course Description") %>%
+  paste(collapse = "|")
 
 end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
-                   "^Required Litera", "^ Literature$", "Literature \\(all")
-end_descrip   <- paste(end_descrip, collapse = "|")
+                   "^Required Litera", "^ Literature$", "Literature \\(all") %>%
+  paste(collapse = "|")
 
 d_description <- d_description %>%
   mutate(Description = NA)
@@ -309,23 +316,25 @@ for(course in 1 : nrow(d_description)){
   
   overview <- d_description$Overview[course]
   
-  overview_line <- strsplit(x = toString(overview), split = symbol_to_line)[[1]]
-  line_start    <- grep(pattern = start_descrip, x = overview_line) + 1
-  line_end      <- grep(pattern = end_descrip  , x = overview_line) - 1
+  overview_by_line <- strsplit(x = toString(overview), split = symbol_to_line)[[1]]
+  line_start    <- grep(pattern = start_descrip, x = overview_by_line) + 1
+  line_end      <- grep(pattern = end_descrip  , x = overview_by_line) - 1
 
   # for overviews w/o Literature section, find section Instructional Format.
   if(is_empty(line_end)){
-    line_end <- grep(pattern = "^Instructional format$", x = overview_line) - 1
+    line_end <- grep(pattern = "^Instructional format$", x = overview_by_line) - 1
     print(paste("line_end irregular for", d_description$Code[course],
                 "in catalogue", d_description$`Calendar Year`[course]))
     } # close if-statement
   
-  description <- paste(overview_line[line_start : line_end], collapse = " ")
+  description <- paste(overview_by_line[line_start : line_end], collapse = " ")
   
   d_description$Description[course] <- description
   
 }
 
+rm(symbol_to_line, start_descrip, end_descrip,
+   course, overview, overview_by_line, line_start, line_end, description)
 print(d_description)
 ```
 
