@@ -426,7 +426,7 @@ d_description <- d_description %>%
 rm(stems, stem_hunspell)
 print(d_overview_stem) # See humanities - humanity
 ```
-
+### Removing Stopwords
 
 ### Course Manual 
 
