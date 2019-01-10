@@ -446,17 +446,10 @@ print(d_overview_stem) # See humanities - humanity
 ##Student Data
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
-###Renaming Variables
-First we rename the variable names to make them more comprehensible:
-```{r}
+###Selecting Variables 
 
-```
+Our dataframe contains many variables that are either empty or meaningless for our analysis, thus we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 
-###Identifying usless variables
-Our dataframe contains many variables that are either empty or meaningless for our analysis. We identify this variables and save them to a vector to remove at a later stage.
-
-
-NOTE TO RAPHAEL: This was in case we later wanted to use any of the non-empty variables, but I don't think we need this anymore, so you can safely just cut this section and select fewer variables later. 
 ```{r}
 d_transcript <- d_transcript %>%
   select(`Student Number`, `Module (Abbrev.)`, `Module (Desc.)`,
