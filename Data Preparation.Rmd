@@ -496,7 +496,10 @@ d_rename <-d_dirt %>%
 ```
 
 ###Identifying usless variables
-Our dataframe contains many variables that are either empty or meaningless for our analysis. We identify this variables and save them to a vector to remove at a later stage
+Our dataframe contains many variables that are either empty or meaningless for our analysis. We identify this variables and save them to a vector to remove at a later stage.
+
+
+NOTE TO RAPHAEL: This was in case we later wanted to use any of the non-empty variables, but I don't think we need this anymore, so you can safely just cut this section and select fewer variables later. 
 ```{r}
 not_keep <- c("Booking Status",
               "Appraisal Status Description",
