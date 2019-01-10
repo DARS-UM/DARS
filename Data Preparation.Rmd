@@ -7,14 +7,14 @@ output:
     toc: TRUE
 ---
 
-```{r setup, message = FALSE}
+```{r libraries, message = FALSE}
 library(tidyverse)
 library(tidytext) 
 
 library(gsheet) # import spreadsheets from google drive
 library(tm)
 library(hunspell) # Stemmer
-library(rlist)
+#library(rlist)
 ```
 
 # Import Data
