@@ -246,3 +246,30 @@ visualize_LDA <- function(results, id_plot = "test", facet = F, topic_names = NU
 }
 ```
 
+```{r visualization LDA, eval = F}
+visualize_LDA(LDA_SCI_2 , id_plot = "SCI, k = 2" )
+visualize_LDA(LDA_SCI_5 , id_plot = "SCI, k = 5" )
+visualize_LDA(LDA_SCI_10, id_plot = "SCI, k = 10")
+
+visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10", facet = T)
+visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17", facet = T)
+visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25", facet = T)
+
+visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10 with labelled topics", facet = T,
+              topic_names = c("Psychology & Information", "Economics and Development", "Biology", "Chemistry and Math",
+                              "Sociology", "Law", "Research", "International Politics",
+                              "Philosophy", "Humanities"))
+
+visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17 with labelled topics", facet = T,
+              topic_names = c("Science/Knowledge", "Psycho", "Biology", "Chemistry", "Culture",
+                              "Conflict", "Research", "Foreign Policy", "Arts", "Literature",
+                              "Communication Skills", "Law", "Humanities", "Computer", "Economics", 
+                              "Math", "Management and ?"))
+visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25 with labelled topics", facet = T,
+              topic_names = c(
+                "Information", "Psycho", "Bio", "Chem", "Sociology",
+                "History", "skills", "Europe", "Philosophy", "IR",
+                "Conference", "Law", "Media", "Philosophy", "Economics",
+                "Math", "Management and Literature", "Entrepreneurship", "Conflict", "Research",
+                "Arts", "Computer Science", "Policy?", "Physiology", "Qual. Res."))
+```
