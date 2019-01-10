@@ -7,18 +7,18 @@ output:
     toc: TRUE
 ---
 
-```{r libraries, message = FALSE}
+```{r setup, message = FALSE}
 library(tidyverse)
 library(tidytext) 
 
 library(gsheet) # import spreadsheets from google drive
 library(tm)
 library(hunspell) # Stemmer
-#library(rlist)
+library(rlist)
 ```
 
 # Import Data
-The datasets we use are saved as spreadsheet on our google drive *DARS*. We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based.
+The datasets we use are saved as spreadsheet on our google drive *DARS* (with exeption of grade data saved as csv files on the computer for privacy reasons). We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based.
 
 ## Setup
 Before importing the spreadsheets from the drive, let us create two vectors `list_assessment` and `list_AoD` which respectively list the `19` types of assessment and the `18` aims of the degree (AoD) of the degree which we take into consideration in the analysis. The information comes from a spreadsheet from our google drive *DARS* which we save as `lists`. In addition, we also create two additional vectors `list_assessment_plot` and `list_AoD_plot` which contain a selection of prominent assessment types and AoD that we will consider when ploting the data[^1].
@@ -31,8 +31,6 @@ lists <- list(
   AoD             = lists_brut$Aim[!is.na(lists_brut$Aim)],
   AoD_plot        = lists_brut$Aim[lists_brut$`Aim for Plot`[!is.na(lists_brut$Aim)] == 1]
   )
-
-rm(lists_brut)
 ```
 
 ## Course Data
@@ -66,29 +64,32 @@ print(d_ILO)
 ## Textual Data
 
 ### Course Catalogues
-In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.
-```{r corpus_catalogues, cache = TRUE}
-corpus_catalogues <- Corpus(x             = DirSource("Catalogues"),
-                            readerControl = list(reader = readPDF(control = list(text = "-layout"))))
+In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus` contains the pdfs of the `5` most recent course catalogues.
+```{r corpus, cache = TRUE}
+corpus <- Corpus(x             = DirSource("Catalogues"),
+                 readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 
 ### Course Manuals
 To expand our topic modeling of course content, we would like to analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
-```{r corpus_manuals, cache = TRUE}
+```{r}
 corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
-                         readerControl = list(reader = readPDF(control = list(text = "-layout"))))
+                 readerControl = list(reader = readPDF(control = list(text = "-layout"))))
+```
+## Student Data
+The tibble `transcripts` contains the transcripts of a selection of `7` alumni students from the college[^2]. `transcripts` contains information on each course taken by each student such as the receives grade, the semester in which the course was taken as well as the calendar year.
+```{r transcripts}
+transcripts <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1kj7tlfJAoN0F7IdoS3saT-2iC3nuDLwnDItNtCKoZ4k/edit#gid=936718979')
+print(transcripts)
 ```
 
-## Student Data
-The tibble `transcripts` contains the transcripts of a selection of `7` alumni students from the college[^2]. `transcripts` contains information on each course taken by each student such as the receives grade, the semester in which teh course was taken as well as the calendar year.
-
-ALL OTHER STUDENTS:
 The data we will be using was provided in two documents with the same format. We import them, merge them and remove duplicate rows.
 
 ```{r Data Import}
-d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", na.strings=c("","NA")),
-                      read_csv("Raw Grades/grades2.csv",na.strings=c("","NA"))) 
-d_transcript <- d_transcript[!duplicated(d_transcript),] #could use distinct() from dplyr
+t1 <- read.csv("Raw Grades/grades1.csv",na.strings=c("","NA"))
+t2 <- read.csv("Raw Grades/grades2.csv",na.strings=c("","NA"))
+d_dirt <-rbind(t1, t2)
+d_dirt <- d_dirt[!duplicated(d_dirt),] #could use distinct() from dplyr
 ```
 
 # Variable Engineering
@@ -225,7 +226,7 @@ In the loop, we first determine the content of the current and following page. I
 
 ```{r overview}
 # Setup
-n_catalogue <- length(corpus_catalogues)
+n_catalogue <- length(corpus)
 calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
 d_description <- tibble(Code            = character(0),
                         `Calendar Year` = character(0),
@@ -247,7 +248,7 @@ content_to_exclude <- paste(content_to_exclude, collapse = "|")
 # Loop
 for(n in 1 : n_catalogue){
   
-  cat <- content(corpus_catalogues[[n]])
+  cat <- content(corpus[[n]])
   
   pages_to_exclude     <- grep(pattern = content_to_exclude, x = cat)
   first_three_letters  <- substr(cat, start = 1, stop = 3)
