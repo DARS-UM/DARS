@@ -165,5 +165,111 @@ LDA_25 <- LDA(d_overview_cast, k = 25, control = list(seed = 123))
 
 ## Results
 
+```{r function visualize_LDA, eval = F}
+visualize_LDA <- function(results, id_plot = "test", facet = F, topic_names = NULL){
+  
+  # Setup
+  topic_letter <- tibble(topic_number = 1:26,
+                         topic_letter = c(topic_names,
+                                          paste("Topic", LETTERS[(length(topic_names)+1) : 26])))
+  
+  # Beta Distribution: term-topic
+  term_topic <- tidy(results, matrix = "beta") %>%
+    left_join(topic_letter, by = c("topic" = "topic_number")) %>%
+    mutate(topic = topic_letter) %>%
+    select(-topic_letter)
+  
+  term_topic %>%
+    group_by(topic) %>%
+    top_n(10, beta) %>%
+    ungroup %>%
+    ggplot(aes(x = reorder_within(term, by = beta, within = topic), y = beta, fill = topic)) +
+    geom_col(show.legend = F) +
+    facet_wrap(~ topic, scales = "free") +
+    scale_x_reordered() +
+    labs(x = "Terms", y = "Beta", title = "Main Terms of each Topic") +
+    coord_flip() +
+    theme_light() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste(id_plot, "beta.jpeg"),
+         width = 15, height = 10, path = "Plots")
+  
+  # Gamma Distribution: document-topic
+  doc_topic <- tidy(results, matrix = "gamma") %>%
+    left_join(topic_letter, by = c("topic" = "topic_number")) %>%
+    mutate(topic = topic_letter,
+           facet = document) %>%
+    select(-c(topic_letter, document))
+  
+  if(facet) doc_topic <- separate(doc_topic, facet, c("document", "facet"), sep = "_") %>%
+    add_count(facet) %>%
+    group_by(facet, topic) %>%
+    summarise(gamma = sum(gamma)) %>%
+    ungroup
+  
+  # Plot 1
+  doc_topic %>%
+    filter(gamma > 0.05) %>%
+    ggplot(aes(reorder_within(facet, by = gamma, within = topic), y = gamma, fill = facet)) +
+    geom_col(show.legend = F) +
+    facet_rep_wrap(~ topic, scales = "free",
+                   repeat.tick.labels = "bottom") +
+    scale_x_reordered() +
+    coord_flip() +
+    labs(x = "(Group of) Courses", y = "Gamma", title = "Main Courses/Clusters of each Topic") +
+    theme_light() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 0),
+          plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste(id_plot, "gamma1.jpeg"),
+         width = 15, height = 10, path = "Plots")
+  
+  # Plot 2
+  doc_topic %>%
+    filter(gamma > 0.05) %>%
+    ggplot(aes(reorder_within(topic, by = gamma, within = facet), y = gamma, fill = topic)) +
+    geom_col(show.legend = F) +
+    facet_rep_wrap(~ facet, scales = "free",
+                   repeat.tick.labels = "bottom") +
+    scale_x_reordered() +
+    coord_flip() +
+    labs(x = "Topics", y = "Gamma", title = "Main Topics of each Courses/Cluster") +
+    theme_light() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 0),
+          plot.title = element_text(hjust = 0.5))
 
+  
+  ggsave(paste(id_plot, "gamma2.jpeg"),
+         width = 15, height = 10, path = "Plots")
+  
+}
+```
 
+```{r visualization LDA, eval = F}
+visualize_LDA(LDA_SCI_2 , id_plot = "SCI, k = 2" )
+visualize_LDA(LDA_SCI_5 , id_plot = "SCI, k = 5" )
+visualize_LDA(LDA_SCI_10, id_plot = "SCI, k = 10")
+
+visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10", facet = T)
+visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17", facet = T)
+visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25", facet = T)
+
+visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10 with labelled topics", facet = T,
+              topic_names = c("Psychology & Information", "Economics and Development", "Biology", "Chemistry and Math",
+                              "Sociology", "Law", "Research", "International Politics",
+                              "Philosophy", "Humanities"))
+
+visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17 with labelled topics", facet = T,
+              topic_names = c("Science/Knowledge", "Psycho", "Biology", "Chemistry", "Culture",
+                              "Conflict", "Research", "Foreign Policy", "Arts", "Literature",
+                              "Communication Skills", "Law", "Humanities", "Computer", "Economics", 
+                              "Math", "Management and ?"))
+visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25 with labelled topics", facet = T,
+              topic_names = c(
+                "Information", "Psycho", "Bio", "Chem", "Sociology",
+                "History", "skills", "Europe", "Philosophy", "IR",
+                "Conference", "Law", "Media", "Philosophy", "Economics",
+                "Math", "Management and Literature", "Entrepreneurship", "Conflict", "Research",
+                "Arts", "Computer Science", "Policy?", "Physiology", "Qual. Res."))
+```

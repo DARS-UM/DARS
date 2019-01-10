@@ -14,11 +14,7 @@ library(tidytext)
 library(gsheet) # import spreadsheets from google drive
 library(tm)
 library(hunspell) # Stemmer
-
-
 library(rlist)
-#library(tidyr) #(maybe incuded in tidyverse)
-#library(tibble)
 ```
 
 # Import Data
