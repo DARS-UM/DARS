@@ -673,6 +673,32 @@ d_time[d_time == 9999999999] <- NA
 
 ```
 
+Now, lets get the data as we want it for our analysis. For our analysis we would like to know what course a student took, when, whether they passed or failed, what grade they got, what the concentration of the student is, and what the concentration of the course is (we will convert grades to numeric here). Then, we would like to know on what year of their studies the student took the course.For this we will create a years dictionary and join it with our student data:
+
+```{r}
+d_students <- d_grade %>%
+  select(ID, Code, Year, Period, Grade, Attempt,`Booking Status Description`, `Course concentration`) %>%
+  arrange(ID, Year, Period)%>%
+  left_join(d_student_concentration, by="ID") %>%
+  mutate(Grade = as.numeric( sub(",",".", Grade))) %>%
+  replace_na(list(Grade=-1))
+
+# Years dictionary:
+year_dic <- d_time %>%
+  select(-FirstYear,-LastYear,-LengthUCM,-Subs_year)%>%
+  gather(Cal_Year,UCM_Year,var_years)%>%
+  drop_na(.) %>%
+  mutate(Year=as.integer(Cal_Year))%>%
+  select(-Cal_Year)
+
+#adding the ucm year to transcripts:
+d_students <- d_students %>%
+  left_join(year_dic, by=c("ID","Year"))
+
+#removing repeated values:
+d_students <- d_students[!duplicated(d_students),]
+
+```
 
 # Save Data
 
