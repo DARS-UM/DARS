@@ -19,7 +19,8 @@ library(hunspell) # Stemmer
 The datasets we use are saved as spreadsheet on our google drive *DARS* (with exeption of grade data saved as csv files on the computer for privacy reasons). We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based.
 
 ## Setup
-Before importing the spreadsheets from the drive, let us create two vectors `list_assessment` and `list_AoD` which respectively list the `19` types of assessment and the `18` aims of the degree (AoD) of the degree which we take into consideration in the analysis. The information comes from a spreadsheet from our google drive *DARS* which we save as `lists`. In addition, we also create two additional vectors `list_assessment_plot` and `list_AoD_plot` which contain a selection of prominent assessment types and AoD that we will consider when ploting the data[^1].
+First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. ` lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and  two columns containing binary vectors indicating which assessment types and AoD  we will consider when ploting the data[^1].
+Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
 ```{r import list}
 lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
 lists <- list(
@@ -77,12 +78,22 @@ corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
 The tibble `d_transcript` contains the transcript information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
 
 ```{r import d_transcript, cache = TRUE}
-d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
-                      read_csv("Raw Grades/grades2.csv", col_types = cols()))
+d_transcript <- rbind(
+  read_csv("Raw Grades/grades1.csv", 
+           col_types = cols(`Program (Abbreviation)`=col_character(), `Appraisal Status`= col_character(), `Module Booking Reason (Description)`= col_character(), `Object name` = col_character(), `Start date` = col_character(),`End Date` = col_character()
+                              )
+           ),
+  read_csv("Raw Grades/grades2.csv", 
+           col_types = cols(`Program (Abbreviation)`=col_character(), `Appraisal Status`= col_character(), `Module Booking Reason (Description)`= col_character(), `Object name` = col_character(), `Start date` = col_character(), `End Date` = col_character()
+           )
+           )
+  )
 ```
 
 # Variable Engineering
-##Course Data
+##Program Data
+The analysis performed on the course data is aimed at discoving what the contribution of each course is towards the fullfilment of the AoDs, and comparing different types of curricula, or programs, based on this infromation. 
+
 ### AoD
 In this analysis, we conside that a course can cover an AoD in two ways: a course covers an AoD if one of its ILOs covers it, or if one of its assessments cover it. For instance, if one of ILO of a course states that the students will learn to analyze empirical data in the context of academic research, then the course in question covers the AoD `Research Skills`; and if one of the assessment is a group presentation, then the course also covers the AoD `Collaborative Skills` and `Communication Skills`.
 
@@ -93,14 +104,14 @@ In order to determine which AoD each course covers with its ILOs, we first elimi
 ```{r d_AoD_ILO}
 d_AoD_ILO <- d_ILO %>%
   select(Code, AoD) %>%
-  unique
+  distinct
 print(d_AoD_ILO)
 ```
 
 #### AoD from Assessment
 (For this section we use: `d_assessment`-indicates which type(s) of assessment each course contains with one row per course-assessment)
 
-In order to determine which AoD each course covers with its assessments, we need to create a binary matrix which indicates which AoD(s) each assessment type covers. We have created such matrix on our google drive and we save it in the following piece of code as `map_assessment_AoD`. `map_assessment_AoD` indicates that, for instance, the assessment type `Essay` covers the AoD `Critical Thinking Skills`, `Communication Skills` and `Writing Skill`.
+In order to determine which AoD each course covers with its assessments, we need to create a binary matrix which indicates which AoD(s) each assessment type covers. We have created such matrix on our google drive and we save it in the following piece of code as `map_assessment_AoD`. `map_assessment_AoD` indicates that, for instance, the assessment type `Essay` covers the AoD `Critical Thinking Skills`, `Communication Skills` and `Writing Skill`. Thus, the first step is to import this matrix:
 
 ```{r map_assessment_AoD}
 map_assessment_AoD <- as.matrix(gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216')[,lists$AoD] %>%
@@ -130,7 +141,7 @@ for(i in 1 : nrow(d_assessment)){
 rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 ```
 
-Similarly to what we did with the tibble `d_AoD_ILO`, we first eliminate the AoD that are not covered by the assessments and then we take the unique combination of course and AoD in case a course had several assessments covering the same AoD.
+Next, we keep ony one copy of each distinct combination of course and AoD in case a course had several assessments covering the same AoD (this is analogous to what we did with the tibble `d_AoD_ILO`).
 ```{r d_AoD_assessment distinct}
 d_AoD_assessment <- d_AoD_assessment %>%
   select(Code, AoD) %>%
@@ -139,7 +150,7 @@ print(d_AoD_assessment)
 ```
 
 #### Combining AoD from ILOs and from assessments
-Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_assessment`. We also use `unique` in case a course covers an AoD with both its ILOS and its assessments.
+Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_assessment`. We also use `distinct` in case a course covers an AoD with both its ILOS and its assessments.
 ```{r rbind d_AoD_ILO and d_AoD_assessment}
 d_AoD <- rbind(d_AoD_ILO,
                d_AoD_assessment) %>%
@@ -358,7 +369,9 @@ d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
 ```
 
 ### Stemming
-We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We then apply `stem_hunspell` on the words of `d_overview_tidy`. Since, `stem_hunspell` is not a vectorized function and the number of words in `d_overview_tidy` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews. Then, we apply the function `stem_hunspell` on this list. We save the terms and their stems in the tibble `stems`. Since the course descriptions can be conceptualized as a subset of the course overviews, the tibble `stems` contains all the terms present in the descriptions and can therefore safely used to stem the words in `d_description_tidy`.
+We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. 
+
+We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We would like to apply `stem_hunspell` on the words of `d_overview_tidy` and `d_manual`, since they have similar structures, we row bind them into `dictionary` to ease the application of `stem_hunspell`. However, since, `stem_hunspell` is not a vectorized function and the number of words in `dictionary` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews and manuals. Then, we use `mutate` to apply the function `stem_hunspell` on each word from our dictionary and save its results as a new column `word_stem`.
 ```{r stemming dictionary, cache = TRUE}
 stem_hunspell <- function(term) {
   stems   <- hunspell_stem(term)[[1]] # look up the term in the dictionary
@@ -375,7 +388,8 @@ dictionary <- select(d_overview, Code, word) %>%
 # terms for which the stem differs from the original word
 filter(dictionary, word != word_stem)
 ```
-
+Finally, we create a function `stem_with_dictionary` that performs a left join on the dataframe it takes as input with `dictionary`, thus adding the word stems to the original dataframe.
+Then, we use `stem_with_dictionary` to include the stems of all words in `d_description`, `d_overview`, and `d_manual`.
 ```{r stemming data sets}
 stem_with_dictionary <- function(data) data %>%
                                          left_join(dictionary, by = "word") %>%
@@ -388,7 +402,9 @@ d_manual <- stem_with_dictionary(d_manual)
 rm(stems, stem_hunspell, stem_with_dictionary)
 print(d_overview) # See humanities - humanity
 ```
+
 ### Removing Stopwords
+Finally, we want to filter out some uninformative words from our textual data. For this, we first store all the unwanted words in a vector `sw_owm`. We also create function `remove_sw` which receives a dataframe as input and filters out all words in `sw_own`. Then we apply this function to `d_description`, `d_overview`, and `d_manual`.
 ```{r}
 # Own stop words
 sw_own <- c("______________________________________________________________________________")
