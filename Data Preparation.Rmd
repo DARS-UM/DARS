@@ -9,11 +9,10 @@ output:
 
 ```{r libraries, message = FALSE}
 library(tidyverse)
-library(tidytext) 
+library(tidytext)
 library(gsheet) # import spreadsheets from google drive
 library(tm)
 library(hunspell) # Stemmer
-#library(rlist)
 ```
 
 # Import Data
