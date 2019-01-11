@@ -84,8 +84,7 @@ The tibble `d_transcript` contains the transcript information of students as was
 
 ```{r import d_transcript, cache = TRUE}
 d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
-                      read_csv("Raw Grades/grades2.csv", col_types = cols())) %>%
-  distinct
+                      read_csv("Raw Grades/grades2.csv", col_types = cols()))
 ```
 
 # Variable Engineering
@@ -242,7 +241,7 @@ We start by extracting the overviews which are 1 or 2 page long and contain impo
 
 In the loop, we first determine the content of the current and following page. If the current page is the first page of an overview, then we identify the overview (one or two pages) and save it to the tibble `d_description`. To identify the overview of a course, we check if the following page is either the first page of an overview or a page to exclude. If it is either of these, then the overview correspond to the content of the current page; but if the following page is neiter of these, then the overview correspond to the content of the current page and that of the following page.
 
-```{r extracting overview}
+```{r extracting overview, cache = TRUE}
 # Setup
 n_catalogue <- length(corpus_catalogues)
 calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
@@ -311,7 +310,7 @@ print(d_description)
 
 Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
 
-```{r extracting description}
+```{r extracting description, cache = TRUE}
 # Setup
 symbol_to_line <- c("\r\n", "\n") %>%
   paste(collapse = "|")
@@ -381,7 +380,6 @@ To put everything into tidy text format, we first create three tibbles `d_overvi
 d_overview <- d_description %>%
   select(Code, `Calendar Year`, Overview) %>%
   unnest_tokens(output = word, input = Overview)
-print(d_overview_tidy)
 
 d_description <- d_description %>%
   select(Code, `Calendar Year`, Description) %>%
@@ -409,39 +407,35 @@ dictionary <- select(d_overview, Code, word) %>%
 
 # terms for which the stem differs from the original word
 filter(dictionary, word != word_stem)
-
-
-my_sw <- c("______________________________________________________________________________")
-
-data("stop_words")  #imports common stopwords
-
-my_stop_words <- data.frame (word = c(1:11, "students", )) #no stemming ("students")
-
-manuals_tokens_preprocessed <- manuals_tokens %>%
-  anti_join(stop_words)     %>%
-  anti_join(my_stop_words) %>%
-  anti_join(number_stopwords, by = c("word"="word"))
-
 ```
 
 ```{r stemming d_description}
-d_overview <- d_overview %>%
-  left_join(dictionary, by = "word") %>%
-  rename(word_original = word,
-         word = word_stem) %>%
-  filter(!word %in% stop_words$word)
+stem_with_dictionary <- function(data) data %>%
+                                         left_join(dictionary, by = "word") %>%
+                                         rename(word_original = word,
+                                                word = word_stem)
+  
 
-d_description <- d_description %>%
-  left_join(dictionary, by = "word") %>%
-  rename(word_original = word,
-         word = word_stem) %>%
-  filter(!word %in% stop_words$word)
+d_description <- stem_with_dictionary(d_description)
+d_overview <- stem_with_dictionary(d_overview)
+d_manual <- stem_with_dictionary(d_manual)
 
 rm(stems, stem_hunspell)
 print(d_overview_stem) # See humanities - humanity
 ```
 ### Removing Stopwords
+```{r}
 
+# Own stop words
+sw_own <- c("______________________________________________________________________________")
+
+remove_sw <- function(data) data %>%
+  filter(! word %in% c(stop_words$word, sw_own))
+
+d_description <- remove_sw(d_description)
+d_overview <- remove_sw(d_overview)
+d_manual <- remove_sw(d_manual)
+```
 
 ##Student Data
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
@@ -452,11 +446,10 @@ Our dataframe contains many variables that are either empty or meaningless for o
 
 ```{r}
 d_transcript <- d_transcript %>%
-  filter(`Appraisal (Description)` == "Grade supervisor")
+  filter(`Appraisal (Description)` == "Grade supervisor") %>%
   select(`Student Number`, `Module (Abbrev.)`, `Module (Desc.)`,
          `Program (Description)`, `Academic Year`, `Academic Session`,
          `Number rep. attemp`, `Grade symbol`, `Booking Status (Desc.)`) %>%
-  distinct %>%
   rename(`Student ID Number` = `Student Number`,
          `Course Code` = `Module (Abbrev.)`,
          `Course Title` = `Module (Desc.)`,
@@ -464,8 +457,9 @@ d_transcript <- d_transcript %>%
          `Civil Year` = `Academic Year`, # double check
          `Period` = `Academic Session`,
          `Number Repeated Attempt` = `Number rep. attemp`,
-         `Grade` = `Grade symbol`,
-         `Status` = `Booking Status (Desc.)`) # is there a better name for the variable?
+         Grade = `Grade symbol`,
+         `Status` = `Booking Status (Desc.)`) %>% # is there a better name for the variable?
+  distinct
 ```
 
 Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes and save it under a variable `Period`:
@@ -507,12 +501,27 @@ For our analysis we would also like to know what the concentration of each stude
 
 NOTE TO RAPHAEL: we might want o have your course concentrations because they take double concentrations into account!
 
-```{r}
-d_student_concentration <- d_grade %>%
-  group_by(ID, `Course concentration`) %>%
-  summarise(count = n()) %>%
-  arrange(ID,desc(count)) %>% #LONG
-  spread(`Course concentration`,count, fill=0) %>% #WIDE
+```{r, eval = FALSE}
+d_concentration <- d_course %>%
+  select(Code, Concentration, `Concentration (additional)`) %>%
+  gather(key = X, value = Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
+  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
+  select(Concentration, `Student ID Number`) %>%
+  count(Concentration, `Student ID Number`) %>%
+  spread(key = Concentration, value = n, fill = 0) %>%
+  mutate(n_course = HUM + SCI + SSC,
+         `Student Concentration` = case_when(
+           n_course < 20 ~ "not enough courses",
+           HUM > 5 & SSC > 5 & SCI > 5 ~ "confused",
+           HUM > 5 & SSC > 5           ~ "HUM/SCI",
+           HUM > 5                     ~ "HUM",
+                     SSC > 5 & SCI > 5 ~ "SSC/SCI",
+                     SSC > 5           ~ "SSC",
+                               SCI > 5 ~ "SCI"
+  ))
+
+ 
+
   transmute(student_Concentration = case_when(
     (HUM  >  2    &   SSC >  2   &  SCI <= 2) ~ "HUM/SSC",
     (HUM  >  2    &   SSC <= 2   &  SCI >  2) ~ "HUM/SCI",
@@ -530,7 +539,7 @@ d_student_concentration <- d_grade %>%
 ```
 
 Since we will need to check each student with an "oops" concentration to see what happened, lets separate this data for later:
-```{r}
+```{r, eval = FALSE}
 checkup <- filter(d_student_concentration, student_Concentration == "oops") 
 ```
 
@@ -538,7 +547,7 @@ checkup <- filter(d_student_concentration, student_Concentration == "oops")
 In order to compare the trajectories of students, we would like to know if the courses were taken in their first, second, third, or whatever year. However, we only have the calendar years. Lets find out to what year of study each calendar year corresponds per student.
 
 First, lets find out, which year was a student's first year and which year was a student's last year (we will also create a variable `Subs_year` that we will substract later to transform from Calendar Year to UCM Year, and a second variable `LengthUCM` that shows us how many years each student stayed at the college):
-```{r}
+```{r, eval = FALSE}
 
 d_year <- d_grade %>%
   select(ID, Code, Year, Period, Grade,`Booking Status Description`, `Course concentration`) %>%
@@ -549,7 +558,7 @@ d_year <- d_grade %>%
 
 Now, lets make a dataframe of students against years, where the year appears in the corresponding cell if a student was in the college at that time:
 
-```{r}
+```{r, eval = FALSE}
 
 d_year1 <- d_grade %>%
   select(ID, Code, Year, Period, Grade, `Booking Status Description`, `Course concentration`) %>%  
@@ -571,7 +580,7 @@ d_time <- left_join(d_year1, d_year)
 
 Ideally, we would like to have a dataframe of students against calendar years filled with the corresponding UCM year (e.g. if the year 2017 was the first year of student 45, we would like to see the cell corresponding to student 45 and year 2017 marked with a "1").
 
-```{r}
+```{r, eval = FALSE}
 var_years <- as.character(2007:2017)
 
 d_time <- d_time %>% 
@@ -589,7 +598,7 @@ d_time[d_time == 9999999999] <- NA
 
 Now, lets get the data as we want it for our analysis. For our analysis we would like to know what course a student took, when, whether they passed or failed, what grade they got, what the concentration of the student is, and what the concentration of the course is (we will convert grades to numeric here). Then, we would like to know on what year of their studies the student took the course.For this we will create a years dictionary and join it with our student data:
 
-```{r}
+```{r, eval = FALSE}
 d_students <- d_grade %>%
   select(ID, Code, Year, Period, Grade, Attempt,`Booking Status Description`, `Course concentration`) %>%
   arrange(ID, Year, Period)%>%
@@ -618,7 +627,7 @@ d_students <- d_students[!duplicated(d_students),]
 We noticed that we had the data for people who stayed at this university for their masters. To filter these courses out we find out in which year people took their capstone courses.
 
 For this we keep only the capstones. We expect some people to have repeated capstones:
-```{r}
+```{r, eval = FALSE}
 capstone_count <- d_students %>%
   filter(Code=="CAP3000") %>%
   group_by(ID)%>%
@@ -628,7 +637,7 @@ capstone_count
 ```
 However, what is surptising is that some people have two different passed capstones:
 
-```{r}
+```{r, eval = FALSE}
 passed_capstone_count <- d_students %>%
   filter(Code=="CAP3000", `Booking Status Description`=="Completed with Success") %>%
   group_by(ID) %>%
@@ -637,14 +646,14 @@ passed_capstone_count <- d_students %>%
 ```
 
 We can check the grades for people who had repeated passed capstones (lets just bring them to the top of the list):
-```{r}
+```{r, eval = FALSE}
 passed_capstone_count %>%
   arrange(desc(Count), desc(Min), Attempts)
 ```
 There are 1712 people who did capstone. We see that most students who have two passed Capstones, have in reality only 1, since the other capstone had a failing grade and the passing grade was on the second attempt (count starts at 0) was indeed failed. However there are two students who indeed have two different passed Capstones: one is student 282995 who has two different passing grades(because of a change in grading system at the collegue during the year 2008-2009), the other is student 544450 who has the same grade passed at two different moment in time.
 
 We can check if there are any students with passing capstone who do not have a grade of at least 5.5. We do this by looking at the lowest Max values:
-```{r}
+```{r, eval = FALSE}
 passed_capstone_count %>%
   arrange(Max)
 ```
@@ -652,7 +661,7 @@ We see the lowest grade for a passing capstone is 5.6, so this is fine.
 
 
 Now lets just keep the highest value for each student and correct for student 282995:
-```{r}
+```{r, eval = FALSE}
 passed_capstone_grades <- passed_capstone_count %>%
   mutate(`Booking Status Description`= "Completed with Success", Code="CAP3000", Grade= case_when(ID== 282995~7.7,
                                                                                   T~Max)) %>%
@@ -664,7 +673,7 @@ passed_capstone_grades
 Now we can figure out the Capstone Year.
 
 First we get the years for which there is a corresponding passing capstone grade, and check for repetition:
-```{r}
+```{r, eval = FALSE}
 
 capstone_finish_year <- inner_join(passed_capstone_grades, d_students) 
 
@@ -699,7 +708,7 @@ capstone_finish_year
 
 
 Lets create a dataframe where we include the capstone year. Then, if a course is given later than the capstone year, we want to remove it. Therefore, lets substitute na values with the year 9999 (or will ucm be open in the year 9999?).
-```{r}
+```{r, eval = FALSE}
 d_transcripts <- d_students %>%
   group_by(ID) %>%
   left_join(capstone_finish_year) %>%
@@ -710,7 +719,7 @@ d_transcripts <- d_students %>%
 d_transcripts
 ```
 Now we will remove all courses with negative `After Graduation`:
-```{r}
+```{r, eval = FALSE}
 master_courses <- d_transcripts%>%
   filter(`After Graduation`<0)
 
@@ -723,7 +732,7 @@ head(d_transcripts)
 
 One last thing. The variable `Booking Status Description` shows whether a student passed or failed the course. However, some mistakes in the way the data was handled meant that the course status of some students was never confirmed. We need to ASK RICHARD, but for the moment, we will just look at the grades of those courses which were not confirmed to change into pass and fail.
 
-```{r}
+```{r, eval = FALSE}
 booked <- filter(d_transcripts, d_transcripts$`Booking Status Description`=="Booked")%>%
   mutate(`Booking Status Description`= case_when(Grade<5.5~"Completed Unsuccessfully",
                                                  Grade>5.5~"Completed with Success"))
@@ -746,7 +755,7 @@ We would like to have a column `Time` that codes for both year and period (e.g. 
 
 CHECK: we still have students who's first record is of their last year. This appears as UCM_Year=1.
 
-```{r}
+```{r, eval = FALSE}
 
 a_clean_transcripts <- clean_transcripts%>%
   separate(Period, 
@@ -777,7 +786,7 @@ COMMENT SOFIA: save a_clean_transcript as d_transcript
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
      file = "data_pillar_1.RDATA")
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
-     d_overview_stem, d_description_stem,
+     d_overview, d_description, d_manual,
      file = "data_pillar_2.RDATA")
 ```
 
