@@ -395,8 +395,9 @@ d_manual <- stem_with_dictionary(d_manual)
 rm(stems, stem_hunspell, stem_with_dictionary)
 print(d_overview) # See humanities - humanity
 ```
-### Removing Stopwords
 
+### Removing Stopwords
+Finally, we want to filter out some uninformative words from our textual data. For this, we first store all the unwanted words in a vector `sw_owm`. We also create function `remove_sw` which receives a dataframe as input and filters out all words in `sw_own`. Then we apply this function to `d_description`, `d_overview`, and `d_manual`.
 ```{r}
 # Own stop words
 sw_own <- c("______________________________________________________________________________")
