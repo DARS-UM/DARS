@@ -20,7 +20,8 @@ library(hunspell) # Stemmer
 The datasets we use are saved as spreadsheet on our google drive *DARS* (with exeption of grade data saved as csv files on the computer for privacy reasons). We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based.
 
 ## Setup
-Before importing the spreadsheets from the drive, let us create two vectors `list_assessment` and `list_AoD` which respectively list the `19` types of assessment and the `18` aims of the degree (AoD) of the degree which we take into consideration in the analysis. The information comes from a spreadsheet from our google drive *DARS* which we save as `lists`. In addition, we also create two additional vectors `list_assessment_plot` and `list_AoD_plot` which contain a selection of prominent assessment types and AoD that we will consider when ploting the data[^1].
+First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. ` lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and  two columns containing binary vectors indicating which assessment types and AoD  we will consider when ploting the data[^1].
+Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
 ```{r import list}
 lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
 lists <- list(
@@ -84,6 +85,8 @@ d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
 
 # Variable Engineering
 ##Course Data
+The analysis performed on the course data is aimed at discoving what the contribution of each course is towards the fullfilment of the AoDs, and comparing different types of curricula, or programs, based on this infromation. 
+
 ### AoD
 In this analysis, we conside that a course can cover an AoD in two ways: a course covers an AoD if one of its ILOs covers it, or if one of its assessments cover it. For instance, if one of ILO of a course states that the students will learn to analyze empirical data in the context of academic research, then the course in question covers the AoD `Research Skills`; and if one of the assessment is a group presentation, then the course also covers the AoD `Collaborative Skills` and `Communication Skills`.
 
@@ -94,14 +97,14 @@ In order to determine which AoD each course covers with its ILOs, we first elimi
 ```{r d_AoD_ILO}
 d_AoD_ILO <- d_ILO %>%
   select(Code, AoD) %>%
-  unique
+  distinct
 print(d_AoD_ILO)
 ```
 
 #### AoD from Assessment
 (For this section we use: `d_assessment`-indicates which type(s) of assessment each course contains with one row per course-assessment)
 
-In order to determine which AoD each course covers with its assessments, we need to create a binary matrix which indicates which AoD(s) each assessment type covers. We have created such matrix on our google drive and we save it in the following piece of code as `map_assessment_AoD`. `map_assessment_AoD` indicates that, for instance, the assessment type `Essay` covers the AoD `Critical Thinking Skills`, `Communication Skills` and `Writing Skill`.
+In order to determine which AoD each course covers with its assessments, we need to create a binary matrix which indicates which AoD(s) each assessment type covers. We have created such matrix on our google drive and we save it in the following piece of code as `map_assessment_AoD`. `map_assessment_AoD` indicates that, for instance, the assessment type `Essay` covers the AoD `Critical Thinking Skills`, `Communication Skills` and `Writing Skill`. Thus, the first step is to import this matrix:
 
 ```{r map_assessment_AoD}
 map_assessment_AoD <- as.matrix(gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216')[,lists$AoD] %>%
@@ -131,7 +134,7 @@ for(i in 1 : nrow(d_assessment)){
 rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 ```
 
-Similarly to what we did with the tibble `d_AoD_ILO`, we first eliminate the AoD that are not covered by the assessments and then we take the unique combination of course and AoD in case a course had several assessments covering the same AoD.
+Next, we keep ony one copy of each distinct combination of course and AoD in case a course had several assessments covering the same AoD (this is analogous to what we did with the tibble `d_AoD_ILO`).
 ```{r d_AoD_assessment distinct}
 d_AoD_assessment <- d_AoD_assessment %>%
   select(Code, AoD) %>%
@@ -140,7 +143,7 @@ print(d_AoD_assessment)
 ```
 
 #### Combining AoD from ILOs and from assessments
-Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_assessment`. We also use `unique` in case a course covers an AoD with both its ILOS and its assessments.
+Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_assessment`. We also use `distinct` in case a course covers an AoD with both its ILOS and its assessments.
 ```{r rbind d_AoD_ILO and d_AoD_assessment}
 d_AoD <- rbind(d_AoD_ILO,
                d_AoD_assessment) %>%
@@ -390,6 +393,7 @@ rm(stems, stem_hunspell, stem_with_dictionary)
 print(d_overview) # See humanities - humanity
 ```
 ### Removing Stopwords
+
 ```{r}
 # Own stop words
 sw_own <- c("______________________________________________________________________________")
