@@ -420,8 +420,8 @@ d_description <- stem_with_dictionary(d_description)
 d_overview <- stem_with_dictionary(d_overview)
 d_manual <- stem_with_dictionary(d_manual)
 
-rm(stems, stem_hunspell)
-print(d_overview_stem) # See humanities - humanity
+rm(stems, stem_hunspell, stem_with_dictionary)
+print(d_overview) # See humanities - humanity
 ```
 ### Removing Stopwords
 ```{r}
@@ -435,6 +435,8 @@ remove_sw <- function(data) data %>%
 d_description <- remove_sw(d_description)
 d_overview <- remove_sw(d_overview)
 d_manual <- remove_sw(d_manual)
+
+rm(sw_own, remove_sw)
 ```
 
 ##Student Data
@@ -558,7 +560,7 @@ d_year1 <- d_grade %>%
 
 Now we have collected all the years a student has been at the college in a single row (one row per student), and we also know what is the first and last year of each student. Let's join these dataframes:
 
-```{r}
+```{r, eval = FALSE}
 
 d_time <- left_join(d_year1, d_year)
 
@@ -679,7 +681,7 @@ count_after
 ```
 From count_after we see that student 544450 has two passed capstones at different moments in time, we already knew this and we must ask Richard why this is the case. However, since both capstones where passed in 2010, this creates no problem for our current purposes. However, let's remove the later version.
 We will also rename `Year` to `Capstone Year` and keep only the columns `Capstone Year` and `ID`
-```{r}
+```{r, eval = FALSE}
 to_remove <- capstone_finish_year%>%
   filter(ID==544450)
 to_remove <- to_remove[duplicated(to_remove$ID),]
