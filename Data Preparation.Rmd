@@ -84,7 +84,7 @@ d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
 ```
 
 # Variable Engineering
-##Course Data
+##Program Data
 The analysis performed on the course data is aimed at discoving what the contribution of each course is towards the fullfilment of the AoDs, and comparing different types of curricula, or programs, based on this infromation. 
 
 ### AoD
