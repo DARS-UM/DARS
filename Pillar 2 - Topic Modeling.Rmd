@@ -61,34 +61,8 @@ tf_idf_manual <- compute_tf_idf(d_manual)
 
 
 ```{r function make_barplot and make_WC, out.height=8, out.width=16}
-plot_tf_idf <- function(data, facet = Course, top = 10, n_col = 5, plot_id = NULL){
-  
-  # Setup
-  facet_enquo <- enquo(facet)
-  facet_ensym <- ensym(facet)
-  
-  # Data
-  
-  data <- 
-    if(facet_ensym == sym("Course")) data %>%
-      filter(Code %in% sample(unique(.$Code), size = n_col^2, replace = F)) %>% # random selection of courses
-      rename(facet = Code) %>%
-      group_by(facet) %>%
-      filter(n >= 2) %>%
-      top_n(top, tf_idf) %>%
-      ungroup
-  
-    else if(facet_ensym == sym("Cluster")) data %>%
-      left_join(data, select(d_course, Code, Cluster), by = "Code") %>%
-      rename(facet = !!facet_enquo) %>%
-      group_by(facet) %>%
-      summarise(tf_idf = sum(tf_idf))
-      filter(n >= 10) %>%
-      top_n(top, tf_idf) %>%
-      ungroup
-      
-      return(data)
-  
+plot_tf_idf <- function(data, top = 10, n_col = 5, plot_id = NULL){
+
   # Barplot
   g <- data %>%
     ggplot(aes(reorder_within(word, tf_idf, facet), tf_idf)) +
@@ -98,8 +72,8 @@ plot_tf_idf <- function(data, facet = Course, top = 10, n_col = 5, plot_id = NUL
     facet_wrap(~ facet, scales = "free", ncol = n_col) +
     coord_flip()
   
-    ggsave(paste(plot_id, facet_ensym, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
-    print(g)
+  ggsave(paste(plot_id, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  print(g)
     
   # Word Cloud
   g <- data %>%
@@ -118,7 +92,7 @@ plot_tf_idf <- function(data, facet = Course, top = 10, n_col = 5, plot_id = NUL
       plot.title       = element_text(hjust=0.5)
     )
   
-  ggsave(paste(plot_id, facet_ensym, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(plot_id, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
   print(g)
 
 }
@@ -126,33 +100,54 @@ plot_tf_idf <- function(data, facet = Course, top = 10, n_col = 5, plot_id = NUL
 
 ## Course Level
 ```{r tf-idf per course, out.height=8, out.width=16}
+prepare_tf_idf_course <- function(data) data %>%
+                                          filter(Code %in% sample(unique(.$Code), size = 25, replace = F)) %>% # random selection of courses
+                                          rename(facet = Code) %>%
+                                          group_by(facet) %>%
+                                          filter(n >= 2) %>%
+                                          top_n(10, tf_idf) %>%
+                                          ungroup
+
 set.seed(123)
-plot_tf_idf(tf_idf_description, plot_id = "description_")
+tf_idf_description %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(plot_id = "Course_description")
+
 set.seed(123)
-plot_tf_idf(tf_idf_overview, plot_id = "overview_")
+tf_idf_overview %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(plot_id = "Course_overview")
+
 set.seed(123)
-plot_tf_idf(tf_idf_manual, plot_id = "manual_")
+tf_idf_manual %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(plot_id = "Course_manual")
 ```
 
 ## Cluster Level
 ```{r tf-idf per cluster}
+prepare_tf_idf_cluster <- function(data) data %>%
+                                           left_join(select(d_course, Code, Cluster), by = "Code") %>%
+                                           filter(!is.na(Cluster)) %>%
+                                           rename(facet = Cluster) %>%
+                                           group_by(facet, word) %>%
+                                             summarise(tf_idf = sum(tf_idf),
+                                                       n = sum(n)) %>%
+                                             filter(n >= 10) %>%
+                                             top_n(10, tf_idf) %>%
+                                           ungroup
 
+tf_idf_description %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(plot_id = "Cluster_description")
 
+tf_idf_overview %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(plot_id = "Cluster_overview")
 
-tdm_top <- d_overview_stem %>%
-  left_join(select(d_course, Code, Cluster), by = "Code") %>%
-  filter(`Calendar Year` == "2018-2019",
-         !is.na(Cluster)) %>%
-  count(Cluster, `Calendar Year`, word, sort = T) %>%
-  bind_tf_idf(term = word, document = Cluster, n = n) %>%
-  filter(n >= 5) %>%
-  group_by(Cluster) %>%
-  top_n(10, tf_idf) %>%
-  ungroup
-
-# Plots
-make_barplot(data = tdm_top, facet = Cluster, n_col = 4)
-make_WC(data = tdm_top, facet = Cluster, n_col = 4)
+tf_idf_manual %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(plot_id = "Cluster_manual")
 ```
 
 ## Concentration Level
