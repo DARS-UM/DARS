@@ -10,7 +10,6 @@ output:
 ```{r libraries, message = FALSE}
 library(tidyverse)
 library(tidytext) 
-
 library(gsheet) # import spreadsheets from google drive
 library(tm)
 library(hunspell) # Stemmer
@@ -24,14 +23,12 @@ The datasets we use are saved as spreadsheet on our google drive *DARS* (with ex
 Before importing the spreadsheets from the drive, let us create two vectors `list_assessment` and `list_AoD` which respectively list the `19` types of assessment and the `18` aims of the degree (AoD) of the degree which we take into consideration in the analysis. The information comes from a spreadsheet from our google drive *DARS* which we save as `lists`. In addition, we also create two additional vectors `list_assessment_plot` and `list_AoD_plot` which contain a selection of prominent assessment types and AoD that we will consider when ploting the data[^1].
 ```{r import list}
 lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
-
 lists <- list(
   Assessment      = lists_brut$Assessment,
   Assessment_plot = lists_brut$Assessment[lists_brut$`Assessment for Plot` == 1],
   AoD             = lists_brut$Aim[!is.na(lists_brut$Aim)],
   AoD_plot        = lists_brut$Aim[lists_brut$`Aim for Plot`[!is.na(lists_brut$Aim)] == 1]
   )
-
 rm(lists_brut)
 ```
 
@@ -42,7 +39,6 @@ We import three spreadsheets from the drive and transform them into the so-calle
 d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848') %>%
   mutate(`Missing from ILO File` = as.logical(`Missing from ILO File`))
 print(d_course)
-
 d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
   select(- `Comment on Assessment`) %>%
   gather(Assessment, assessment_covered, - Code, factor_key = T) %>%
@@ -51,7 +47,6 @@ d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oL
   select(- assessment_covered) %>%
   arrange(Code)
 print(d_assessment)
-
 d_ILO <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1896457050') %>%
   select(- c(Comments, Comments_for_Jeroen)) %>%
   gather(AoD, AoD_covered, -c(Code, Objectives), factor_key = T) %>%
@@ -100,7 +95,6 @@ In order to determine which AoD each course covers with its ILOs, we first elimi
 d_AoD_ILO <- d_ILO %>%
   select(Code, AoD) %>%
   unique
-
 print(d_AoD_ILO)
 ```
 
@@ -122,7 +116,6 @@ In the loop, we first extract a row of `d_assessment` and save it as `observatio
 d_AoD_assessment <- tibble(Code        = character(0),
                            Assessment  = character(0),
                            AoD         = character(0))
-
 for(i in 1 : nrow(d_assessment)){
   
   observation <- d_assessment[i, ]
@@ -134,9 +127,7 @@ for(i in 1 : nrow(d_assessment)){
   if(length(AoD) >= 1) d_AoD_assessment <- rbind(d_AoD_assessment,
                                                  as.tibble(cbind(observation,
                                                                  AoD)))
-
 }
-
 rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 ```
 
@@ -155,7 +146,6 @@ d_AoD <- rbind(d_AoD_ILO,
                d_AoD_assessment) %>%
   distinct %>%
   arrange(Code)
-
 rm(d_AoD_ILO, d_AoD_assessment)
 print(d_AoD)
 ```
@@ -174,21 +164,17 @@ d_ILO_detail <- d_ILO %>%
   distinct() %>%
   count(Code) %>%
   rename(n_ILO = n)
-
 d_assessment_detail <- d_assessment %>%
   group_by(Code) %>%
   summarise(n_assessment = n(),
             `Assessments Covered` = paste(Assessment, collapse = ", "))
-
 d_AoD_detail <- d_AoD %>%
   group_by(Code) %>%
   summarise(n_AoD = n(),
             `AoD Covered` = paste(AoD, collapse = ", "))
-
 d_course_detail <- d_ILO_detail %>%
   full_join(d_assessment_detail, by = "Code") %>%
   full_join(d_AoD_detail       , by = "Code")
-
 rm(d_ILO_detail, d_assessment_detail, d_AoD_detail)
 print(d_course_detail)
 ```
@@ -196,7 +182,6 @@ print(d_course_detail)
 ```{r join d_course_detail}
 d_course <- full_join(d_course, d_course_detail, by = "Code") %>%
   select(Code, `Course Title`, Cluster, n_ILO, n_assessment, `Assessments Covered`, n_AoD, `AoD Covered`, everything())
-
 rm(d_course_detail)
 print(d_course)
 ```
@@ -209,7 +194,6 @@ d_course <- d_course %>%
                                   Code == "UGR3002" ~ "UGR2002",
                                   Code == "UGR3003" ~ "UGR2003",
                                   Code == "UGR3005" ~ "UGR2005")))
-
 print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
                                    "UGR3001", "UGR3002", "UGR3003", "UGR3005")))
 ```
@@ -248,10 +232,8 @@ calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-20
 d_description <- tibble(Code            = character(0),
                         `Calendar Year` = character(0),
                         Overview        = character(0))
-
 course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>%
   paste(collapse = "|")
-
 content_to_exclude <- c("^Core Courses \\(COR\\)",
                         "^Humanities \\(HUM\\)",
                         "^Sciences \\(SCI\\)",
@@ -261,7 +243,6 @@ content_to_exclude <- c("^Core Courses \\(COR\\)",
                         "^Undergraduate Research \\(UGR\\)",
                         "Appendix") %>%
   paste(collapse = "|")
-
 # Loop
 for(n in 1 : n_catalogue){
   
@@ -285,7 +266,6 @@ for(n in 1 : n_catalogue){
       
       if(following_page %in% c(first_pages_overview, pages_to_exclude)) course_overview <- current_page_content
       else course_overview <- paste(current_page_content, following_page_content)
-
       # Save Overview
       Code <- substring(course_overview, first = 1, last = 7)      
       year <- calendar_years[n]
@@ -296,7 +276,6 @@ for(n in 1 : n_catalogue){
     } # close if-statement
   } # close for-loop (page)
 } # close for-loop (n)
-
 rm(corpus_catalogues,
    n_catalogue, calendar_years, course_code, content_to_exclude,
    n, cat, pages_to_exclude, first_three_letters, first_pages_overview, page_start_loop, page_end_loop,
@@ -314,17 +293,13 @@ Since the overviews contain a lot of information that does not interest us, we e
 # Setup
 symbol_to_line <- c("\r\n", "\n") %>%
   paste(collapse = "|")
-
 start_descrip <- c("^Description", "^Course Description") %>%
   paste(collapse = "|")
-
 end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
                    "^Required Litera", "^ Literature$", "Literature \\(all") %>%
   paste(collapse = "|")
-
 d_description <- d_description %>%
   mutate(Description = NA)
-
 # Loop
 for(course in 1 : nrow(d_description)){
   
@@ -333,7 +308,6 @@ for(course in 1 : nrow(d_description)){
   overview_by_line <- strsplit(x = toString(overview), split = symbol_to_line)[[1]]
   line_start    <- grep(pattern = start_descrip, x = overview_by_line) + 1
   line_end      <- grep(pattern = end_descrip  , x = overview_by_line) - 1
-
   # for overviews w/o Literature section, find section Instructional Format.
   if(is_empty(line_end)){
     line_end <- grep(pattern = "^Instructional format$", x = overview_by_line) - 1
@@ -346,7 +320,6 @@ for(course in 1 : nrow(d_description)){
   d_description$Description[course] <- description
   
 }
-
 rm(symbol_to_line, start_descrip, end_descrip,
    course, overview, overview_by_line, line_start, line_end, description)
 print(d_description)
@@ -363,7 +336,6 @@ d_manual <- tidy(corpus_manuals) %>%
   mutate(Code = substring(id, 1, 7)) %>%
   select(-id) %>%
   rename(Manual = text)
-
 rm(corpus_manuals)
 print(d_manual)
 ```
@@ -380,11 +352,9 @@ To put everything into tidy text format, we first create three tibbles `d_overvi
 d_overview <- d_description %>%
   select(Code, `Calendar Year`, Overview) %>%
   unnest_tokens(output = word, input = Overview)
-
 d_description <- d_description %>%
   select(Code, `Calendar Year`, Description) %>%
   unnest_tokens(output = word, input = Description)
-
 d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
 ```
 
@@ -397,14 +367,12 @@ stem_hunspell <- function(term) {
   if (n_stems == 0) term              # if no stems, return original term
   else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
 }
-
 dictionary <- select(d_overview, Code, word) %>%
   rbind(d_manual) %>% 
   select(word) %>%
   distinct %>%
   mutate(word_stem = purrr::map_chr(.x = word,
                                     .f = stem_hunspell))
-
 # terms for which the stem differs from the original word
 filter(dictionary, word != word_stem)
 ```
@@ -415,27 +383,21 @@ stem_with_dictionary <- function(data) data %>%
                                          rename(word_original = word,
                                                 word = word_stem)
   
-
 d_description <- stem_with_dictionary(d_description)
 d_overview <- stem_with_dictionary(d_overview)
 d_manual <- stem_with_dictionary(d_manual)
-
 rm(stems, stem_hunspell, stem_with_dictionary)
 print(d_overview) # See humanities - humanity
 ```
 ### Removing Stopwords
 ```{r}
-
 # Own stop words
 sw_own <- c("______________________________________________________________________________")
-
 remove_sw <- function(data) data %>%
   filter(! word %in% c(stop_words$word, sw_own))
-
 d_description <- remove_sw(d_description)
 d_overview <- remove_sw(d_overview)
 d_manual <- remove_sw(d_manual)
-
 rm(sw_own, remove_sw)
 ```
 
@@ -480,7 +442,6 @@ d_transcript <- d_transcript %>%
                             between(Period, 500, 599) ~ "5",
                             between(Period, 600, 660) ~ "6",
                             between(Period, 901, 999) ~ "1"))
-
 ```
 
 ##Estimating concentrations:
@@ -507,9 +468,7 @@ d_concentration <- d_course %>%
                      SSC > 5           ~ "SSC",
                                SCI > 5 ~ "SCI"
   ))
-
  
-
   transmute(student_Concentration = case_when(
     (HUM  >  2    &   SSC >  2   &  SCI <= 2) ~ "HUM/SSC",
     (HUM  >  2    &   SSC <= 2   &  SCI >  2) ~ "HUM/SCI",
@@ -536,7 +495,6 @@ In order to compare the trajectories of students, we would like to know if the c
 
 First, lets find out, which year was a student's first year and which year was a student's last year (we will also create a variable `Subs_year` that we will substract later to transform from Calendar Year to UCM Year, and a second variable `LengthUCM` that shows us how many years each student stayed at the college):
 ```{r, eval = FALSE}
-
 d_year <- d_grade %>%
   select(ID, Code, Year, Period, Grade,`Booking Status Description`, `Course concentration`) %>%
   group_by(ID) %>%
@@ -547,7 +505,6 @@ d_year <- d_grade %>%
 Now, lets make a dataframe of students against years, where the year appears in the corresponding cell if a student was in the college at that time:
 
 ```{r, eval = FALSE}
-
 d_year1 <- d_grade %>%
   select(ID, Code, Year, Period, Grade, `Booking Status Description`, `Course concentration`) %>%  
   group_by( ID, Year) %>%
@@ -555,22 +512,18 @@ d_year1 <- d_grade %>%
   mutate(Present = case_when(Count > 0 ~ Year))%>%
   select(-Count) %>%
   spread(Year,Present, fill = 0)
-
 ```
 
 Now we have collected all the years a student has been at the college in a single row (one row per student), and we also know what is the first and last year of each student. Let's join these dataframes:
 
 ```{r, eval = FALSE}
-
 d_time <- left_join(d_year1, d_year)
-
 ```
 
 Ideally, we would like to have a dataframe of students against calendar years filled with the corresponding UCM year (e.g. if the year 2017 was the first year of student 45, we would like to see the cell corresponding to student 45 and year 2017 marked with a "1").
 
 ```{r, eval = FALSE}
 var_years <- as.character(2007:2017)
-
 d_time <- d_time %>% 
   mutate_at(
     vars(var_years),
@@ -579,9 +532,7 @@ d_time <- d_time %>%
     vars(var_years),
     funs(case_when(. < 0 ~ 9999999999, #HORRIBLE FIX
                    T     ~ .)))
-
 d_time[d_time == 9999999999] <- NA
-
 ```
 
 Now, lets get the data as we want it for our analysis. For our analysis we would like to know what course a student took, when, whether they passed or failed, what grade they got, what the concentration of the student is, and what the concentration of the course is (we will convert grades to numeric here). Then, we would like to know on what year of their studies the student took the course.For this we will create a years dictionary and join it with our student data:
@@ -593,7 +544,6 @@ d_students <- d_grade %>%
   left_join(d_student_concentration, by="ID") %>%
   mutate(Grade = as.numeric( sub(",",".", Grade))) %>%
   replace_na(list(Grade=-1))
-
 # Years dictionary:
 year_dic <- d_time %>%
   select(-FirstYear,-LastYear,-LengthUCM,-Subs_year)%>%
@@ -601,14 +551,11 @@ year_dic <- d_time %>%
   drop_na(.) %>%
   mutate(Year=as.integer(Cal_Year))%>%
   select(-Cal_Year)
-
 #adding the ucm year to transcripts:
 d_students <- d_students %>%
   left_join(year_dic, by=c("ID","Year"))
-
 #removing repeated values:
 d_students <- d_students[!duplicated(d_students),]
-
 ```
 
 ###Removing master Program data and Cleaning Capstone Data 
@@ -620,7 +567,6 @@ capstone_count <- d_students %>%
   filter(Code=="CAP3000") %>%
   group_by(ID)%>%
   summarise(Count=n())
-
 capstone_count
 ```
 However, what is surptising is that some people have two different passed capstones:
@@ -630,7 +576,6 @@ passed_capstone_count <- d_students %>%
   filter(Code=="CAP3000", `Booking Status Description`=="Completed with Success") %>%
   group_by(ID) %>%
   summarise(Count=n(), Max = max(Grade), Min = min(Grade), Attempts= max(Attempt))
-
 ```
 
 We can check the grades for people who had repeated passed capstones (lets just bring them to the top of the list):
@@ -662,20 +607,15 @@ Now we can figure out the Capstone Year.
 
 First we get the years for which there is a corresponding passing capstone grade, and check for repetition:
 ```{r, eval = FALSE}
-
 capstone_finish_year <- inner_join(passed_capstone_grades, d_students) 
-
 head(capstone_finish_year)
-
 count_before <- passed_capstone_grades %>%
   group_by(ID) %>%
   summarise(counts_of_id= n())
-
 count_after <- capstone_finish_year %>%
   group_by(ID) %>%
   summarise(counts_of_id= n())%>%
   filter(counts_of_id > 1)  #these students have repeated capstones.
-
 count_after
   
 ```
@@ -685,7 +625,6 @@ We will also rename `Year` to `Capstone Year` and keep only the columns `Capston
 to_remove <- capstone_finish_year%>%
   filter(ID==544450)
 to_remove <- to_remove[duplicated(to_remove$ID),]
-
 capstone_finish_year <- capstone_finish_year%>%
   anti_join(to_remove) %>%
   rename(`Capstone Year`= Year)%>%
@@ -703,19 +642,15 @@ d_transcripts <- d_students %>%
   ungroup() %>%
   replace_na(list(`Capstone Year`=9999)) %>%
   mutate(`After Graduation`=`Capstone Year`-`Year`)
-
 d_transcripts
 ```
 Now we will remove all courses with negative `After Graduation`:
 ```{r, eval = FALSE}
 master_courses <- d_transcripts%>%
   filter(`After Graduation`<0)
-
 d_transcripts <- d_transcripts %>%
   anti_join(master_courses)
-
 head(d_transcripts)
-
 ```
 
 One last thing. The variable `Booking Status Description` shows whether a student passed or failed the course. However, some mistakes in the way the data was handled meant that the course status of some students was never confirmed. We need to ASK RICHARD, but for the moment, we will just look at the grades of those courses which were not confirmed to change into pass and fail.
@@ -724,8 +659,6 @@ One last thing. The variable `Booking Status Description` shows whether a studen
 booked <- filter(d_transcripts, d_transcripts$`Booking Status Description`=="Booked")%>%
   mutate(`Booking Status Description`= case_when(Grade<5.5~"Completed Unsuccessfully",
                                                  Grade>5.5~"Completed with Success"))
-
-
 clean_transcripts <- d_transcripts %>% 
   left_join(booked, by= c("ID", "Code", "Year", "Period", "Grade", "Attempt", "Course concentration", "student_Concentration", "Capstone Year", "After Graduation"), suffix=c("-old", "-new"))%>%
   select(-`After Graduation`)%>%
@@ -744,7 +677,6 @@ We would like to have a column `Time` that codes for both year and period (e.g. 
 CHECK: we still have students who's first record is of their last year. This appears as UCM_Year=1.
 
 ```{r, eval = FALSE}
-
 a_clean_transcripts <- clean_transcripts%>%
   separate(Period, 
            c("T1","T2","T3","T4","T5","T6"), 
