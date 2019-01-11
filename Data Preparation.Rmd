@@ -448,8 +448,7 @@ print(d_overview_stem) # See humanities - humanity
 
 ###Selecting Variables 
 
-Our dataframe contains many variables that are either empty or meaningless for our analysis, thus we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
-
+Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 ```{r}
 d_transcript <- d_transcript %>%
   filter(`Appraisal (Description)` == "Grade supervisor")
