@@ -442,8 +442,7 @@ d_manual <- remove_sw(d_manual)
 
 ###Selecting Variables 
 
-Our dataframe contains many variables that are either empty or meaningless for our analysis, thus we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
-
+Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 ```{r}
 d_transcript <- d_transcript %>%
   filter(`Appraisal (Description)` == "Grade supervisor") %>%
@@ -462,7 +461,7 @@ d_transcript <- d_transcript %>%
   distinct
 ```
 
-Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes and save it under a variable `Period`:
+Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes (the correspondance between calendars was given to us by R. Vos) and save it under a variable `Period`:
 ```{r}
 d_transcript <- d_transcript %>%
   mutate(Period = case_when(Period == 1 ~ "1 to 6"  ,
@@ -479,19 +478,6 @@ d_transcript <- d_transcript %>%
                             between(Period, 500, 599) ~ "5",
                             between(Period, 600, 660) ~ "6",
                             between(Period, 901, 999) ~ "1"))
-
-```
-###Dropping useless variables:
-Now that our `Period` variable is clean, we can exclude the variables that we will not use, and we will delete newly generated duplicate rows:
-
-```{r}
-
-```
-###Extracting grades
-We notice that there are several values under `Grade` for the same course. We are interested in keeping only the final grades, corresponding to the rows where `Appraisal Title` is marked as "Grade supervisor". 
-So lets extract the grades and add the course concentration by keeping the first three letters of the `Code`:
-
-```{r}
 
 ```
 
@@ -781,7 +767,6 @@ NOTES: The data is now arranged so as to respect the order in time for each indi
 COMMENT SOFIA: save a_clean_transcript as d_transcript
 
 # Save Data
-
 ```{r}
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
      file = "data_pillar_1.RDATA")
