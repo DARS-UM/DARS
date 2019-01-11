@@ -409,7 +409,7 @@ dictionary <- select(d_overview, Code, word) %>%
 filter(dictionary, word != word_stem)
 ```
 
-```{r stemming d_description}
+```{r stemming data sets}
 stem_with_dictionary <- function(data) data %>%
                                          left_join(dictionary, by = "word") %>%
                                          rename(word_original = word,
