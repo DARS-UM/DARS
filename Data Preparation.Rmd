@@ -468,7 +468,7 @@ d_transcript <- d_transcript %>%
          `Status` = `Booking Status (Desc.)`) # is there a better name for the variable?
 ```
 
-Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes and save it under a variable `Period`:
+Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes (the correspondance between calendars was given to us by R. Vos) and save it under a variable `Period`:
 ```{r}
 d_transcript <- d_transcript %>%
   mutate(Period = case_when(Period == 1 ~ "1 to 6"  ,
@@ -487,12 +487,7 @@ d_transcript <- d_transcript %>%
                             between(Period, 901, 999) ~ "1"))
 
 ```
-###Dropping useless variables:
-Now that our `Period` variable is clean, we can exclude the variables that we will not use, and we will delete newly generated duplicate rows:
 
-```{r}
-
-```
 ###Extracting grades
 We notice that there are several values under `Grade` for the same course. We are interested in keeping only the final grades, corresponding to the rows where `Appraisal Title` is marked as "Grade supervisor". 
 So lets extract the grades and add the course concentration by keeping the first three letters of the `Code`:
