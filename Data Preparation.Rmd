@@ -767,7 +767,6 @@ NOTES: The data is now arranged so as to respect the order in time for each indi
 COMMENT SOFIA: save a_clean_transcript as d_transcript
 
 # Save Data
-
 ```{r}
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
      file = "data_pillar_1.RDATA")
