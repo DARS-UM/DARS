@@ -487,14 +487,6 @@ d_transcript <- d_transcript %>%
 
 ```
 
-###Extracting grades
-We notice that there are several values under `Grade` for the same course. We are interested in keeping only the final grades, corresponding to the rows where `Appraisal Title` is marked as "Grade supervisor". 
-So lets extract the grades and add the course concentration by keeping the first three letters of the `Code`:
-
-```{r}
-
-```
-
 ##Estimating concentrations:
 For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops" 
 
