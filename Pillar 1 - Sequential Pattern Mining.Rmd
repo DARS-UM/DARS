@@ -19,26 +19,36 @@ load("data_pillar_1.RDATA")
 
 #Getting dates
 For a first exploration of arules, we conceptualise our framework like this:
-
 transaction = student
 item = course
 
+##Data preparation
+First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
+
 ```{r}
-t_transactions <- d_transcript %>%
-  select(`Student ID Number`, `Course Code`) %>%
-  transmute(transaction = paste(`Student ID Number`, `Course Code`)) %>%
-  summarise(transactions = paste(transaction, collapse = "\n"))
+d_transactions <- d_course %>%
+  select(Type, Code, Letters) %>%
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  select(Code) %>%
+  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
+  select(`Student ID Number`, Code) %>%
+  group_by(`Student ID Number`) %>%
+  summarize(list_course = list(Code)) %>%
+  group_by()
 
-write(t_transactions$transactions, file = "demo_single")
-tr <- read.transactions("demo_single", format = "single", cols = c(1,2))
-#inspect(tr)
+transactions <- as(d_transactions$list_course, "transactions")
+```
 
+We apply Apriori algorithm:
+```{r}
 results <- apriori(
-  data = tr, 
+  data = transactions, 
   parameter = list(
-    supp = 0.21,
-    smax = 0.5, # max support
-    conf = 0.51,
+    supp = 0.02,
+    smax = 1, # max support
+    conf = 0.4,
     minlen = 2,
     maxlen = 2
     ),
@@ -50,8 +60,27 @@ results <- apriori(
 colnames(results)[2] <- "association"
 
 results %>%
-  arrange(confidence)
+  arrange(desc(confidence))
+```
 
+```{r}
+d_transcript %>% filter(`Course Code`=="SSC3016")
+```
 
-summary(rules)
-inspect(head(rules, n = length(rules[1])))
+Now we include data for pass and fail
+
+```{r}
+d_transactions <- d_course %>%
+  select(Type, Code, Letters) %>%
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  select(Code) %>%
+  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
+  select(`Student ID Number`, Code) %>%
+  group_by(`Student ID Number`) %>%
+  summarize(list_course = list(Code)) %>%
+  group_by()
+
+transactions <- as(d_transactions$list_course, "transactions")
+```
