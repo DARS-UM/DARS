@@ -436,7 +436,7 @@ d_description <- stem_with_dictionary(d_description)
 d_overview <- stem_with_dictionary(d_overview)
 d_manual <- stem_with_dictionary(d_manual)
 rm(stem_hunspell, stem_with_dictionary)
-print(d_overview) # See humanities - humanity
+print(d_description) # See starting - start
 ```
 
 ### Removing Stopwords
@@ -449,7 +449,9 @@ remove_sw <- function(data) data %>%
 d_description <- remove_sw(d_description)
 d_overview <- remove_sw(d_overview)
 d_manual <- remove_sw(d_manual)
+
 rm(sw_own, remove_sw)
+print(d_description) # stop words (on, the, of, etc, are excluded)
 ```
 
 ##Student Data

@@ -680,9 +680,9 @@ d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
 
 ### Stemming
 
-We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`.
+We then use the function `hunspell_stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`.
 
-We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We would like to apply `stem_hunspell` on the words of `d_overview_tidy` and `d_manual`, since they have similar structures, we row bind them into `dictionary` to ease the application of `stem_hunspell`. However, since, `stem_hunspell` is not a vectorized function and the number of words in `dictionary` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews and manuals. Then, we use `mutate` to apply the function `stem_hunspell` on each word from our dictionary and save its results as a new column `word_stem`.
+We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell_stem`). We would like to apply `stem_hunspell` on the words of `d_overview_tidy` and `d_manual`, since they have similar structures, we row bind them into `dictionary` to ease the application of `stem_hunspell`. However, since, `stem_hunspell` is not a vectorized function and the number of words in `dictionary` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews and manuals. Then, we use `mutate` to apply the function `stem_hunspell` on each word from our dictionary and save its results as a new column `word_stem`.
 
 ``` r
 stem_hunspell <- function(term) {
@@ -731,23 +731,23 @@ d_description <- stem_with_dictionary(d_description)
 d_overview <- stem_with_dictionary(d_overview)
 d_manual <- stem_with_dictionary(d_manual)
 rm(stem_hunspell, stem_with_dictionary)
-print(d_overview) # See humanities - humanity
+print(d_description) # See starting - start
 ```
 
-    ## # A tibble: 340,594 x 4
+    ## # A tibble: 185,054 x 4
     ##    Code    `Calendar Year` word_original word       
     ##    <chr>   <chr>           <chr>         <chr>      
-    ##  1 COR1002 2014-2015       cor1002       cor1002    
-    ##  2 COR1002 2014-2015       philosophy    philosophy 
-    ##  3 COR1002 2014-2015       of            of         
-    ##  4 COR1002 2014-2015       science       science    
-    ##  5 COR1002 2014-2015       course        course     
-    ##  6 COR1002 2014-2015       coordinator   coordinator
-    ##  7 COR1002 2014-2015       prof          prof       
-    ##  8 COR1002 2014-2015       dr            dr         
-    ##  9 COR1002 2014-2015       l             l          
-    ## 10 COR1002 2014-2015       boon          boon       
-    ## # ... with 340,584 more rows
+    ##  1 COR1002 2014-2015       starting      start      
+    ##  2 COR1002 2014-2015       from          from       
+    ##  3 COR1002 2014-2015       classical     classical  
+    ##  4 COR1002 2014-2015       positions     position   
+    ##  5 COR1002 2014-2015       on            on         
+    ##  6 COR1002 2014-2015       the           the        
+    ##  7 COR1002 2014-2015       objectivity   objectivity
+    ##  8 COR1002 2014-2015       and           and        
+    ##  9 COR1002 2014-2015       methodology   methodology
+    ## 10 COR1002 2014-2015       of            of         
+    ## # ... with 185,044 more rows
 
 ### Removing Stopwords
 
@@ -761,8 +761,25 @@ remove_sw <- function(data) data %>%
 d_description <- remove_sw(d_description)
 d_overview <- remove_sw(d_overview)
 d_manual <- remove_sw(d_manual)
+
 rm(sw_own, remove_sw)
+print(d_description) # stop words (on, the, of, etc, are excluded)
 ```
+
+    ## # A tibble: 84,299 x 4
+    ##    Code    `Calendar Year` word_original word       
+    ##    <chr>   <chr>           <chr>         <chr>      
+    ##  1 COR1002 2014-2015       starting      start      
+    ##  2 COR1002 2014-2015       classical     classical  
+    ##  3 COR1002 2014-2015       positions     position   
+    ##  4 COR1002 2014-2015       objectivity   objectivity
+    ##  5 COR1002 2014-2015       methodology   methodology
+    ##  6 COR1002 2014-2015       science       science    
+    ##  7 COR1002 2014-2015       logical       logical    
+    ##  8 COR1002 2014-2015       empiricism    empiricism 
+    ##  9 COR1002 2014-2015       critical      critical   
+    ## 10 COR1002 2014-2015       rationalism   rationalism
+    ## # ... with 84,289 more rows
 
 Student Data
 ------------
