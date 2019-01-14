@@ -483,7 +483,8 @@ n_catalogue <- length(corpus_catalogues)
 calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
 d_description <- tibble(Code            = character(0),
                         `Calendar Year` = character(0),
-                        Overview        = character(0))
+                        Overview        = character(0),
+                        Description     = NA)
 
 course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>%
   paste(collapse = "|")
@@ -504,7 +505,7 @@ content_to_exclude <- c(
 for(n in 1 : n_catalogue){
   
   cat <- content(corpus_catalogues[[n]])
-  
+
   # Overview section in catalogue
   page_overview_start <- grep(pattern = "^Core Courses \\(COR\\)", x = cat) + 1
   page_overview_end   <- grep(pattern = "Appendix", x = cat) - 1
@@ -523,8 +524,8 @@ for(n in 1 : n_catalogue){
   for(page in first_pages_overview){
     
     # Extract description
-    overview <- if(page + 1 %in% first_pages_overview) cat_overview[page]
-                else paste(cat_overview[page : (page + 1)], collapese = " ")
+    overview <- if((page + 1) %in% first_pages_overview) cat_overview[page]
+                else paste(cat_overview[page : (page + 1)], collapse = " ")
     
     # Save overview
     Code <- substr(overview, start = 1, stop = 7)
@@ -533,7 +534,8 @@ for(n in 1 : n_catalogue){
       add_row(
         Code = Code,
         `Calendar Year` = year,
-        Overview = overview
+        Overview = overview,
+        Description = NA
       )
     
   } # close for-loop (page)
@@ -550,19 +552,19 @@ rm(corpus_catalogues,
 print(d_description)
 ```
 
-    ## # A tibble: 831 x 3
-    ##    Code    `Calendar Year` Overview                                       
-    ##    <chr>   <chr>           <chr>                                          
-    ##  1 COR1002 2014-2015       "COR1002 - Philosophy of Science\r\nCourse coo~
-    ##  2 COR1003 2014-2015       "COR1003 - Contemporary World History\r\nCours~
-    ##  3 COR1004 2014-2015       "COR1004 - Political Philosophy\r\nCourse coor~
-    ##  4 COR1005 2014-2015       "COR1005 - Modeling Nature\r\nCourse coordinat~
-    ##  5 HUM1003 2014-2015       "HUM1003 - Cultural Studies I: Doing Cultural ~
-    ##  6 HUM1007 2014-2015       "HUM1007 - Introduction to Philosophy\r\nCours~
-    ##  7 HUM1010 2014-2015       "HUM1010 - Common Foundations of Law in Europe~
-    ##  8 HUM1011 2014-2015       "HUM1011 - Introduction to Art; Representation~
-    ##  9 HUM1012 2014-2015       "HUM1012 - Pop Songs and Poetry: Theory and An~
-    ## 10 HUM1013 2014-2015       "HUM1013 - The Idea of Europe: The Intellectua~
+    ## # A tibble: 831 x 4
+    ##    Code   `Calendar Year` Overview                             Description
+    ##    <chr>  <chr>           <chr>                                <lgl>      
+    ##  1 COR10~ 2014-2015       "COR1002 - Philosophy of Science\r\~ NA         
+    ##  2 COR10~ 2014-2015       "COR1003 - Contemporary World Histo~ NA         
+    ##  3 COR10~ 2014-2015       "COR1004 - Political Philosophy\r\n~ NA         
+    ##  4 COR10~ 2014-2015       "COR1005 - Modeling Nature\r\nCours~ NA         
+    ##  5 HUM10~ 2014-2015       "HUM1003 - Cultural Studies I: Doin~ NA         
+    ##  6 HUM10~ 2014-2015       "HUM1007 - Introduction to Philosop~ NA         
+    ##  7 HUM10~ 2014-2015       "HUM1010 - Common Foundations of La~ NA         
+    ##  8 HUM10~ 2014-2015       "HUM1011 - Introduction to Art; Rep~ NA         
+    ##  9 HUM10~ 2014-2015       "HUM1012 - Pop Songs and Poetry: Th~ NA         
+    ## 10 HUM10~ 2014-2015       "HUM1013 - The Idea of Europe: The ~ NA         
     ## # ... with 821 more rows
 
 ##### Extracting Descriptions
@@ -578,8 +580,7 @@ start_descrip <- c("^Description", "^Course Description") %>%
 end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
                    "^Required Litera", "^ Literature$", "Literature \\(all") %>%
   paste(collapse = "|")
-d_description <- d_description %>%
-  mutate(Description = NA)
+
 # Loop
 for(course in 1 : nrow(d_description)){
   
@@ -661,12 +662,6 @@ print(d_manual)
     ## 10 "\n              The Idea of Europe:\r\nThe Intellectual Histor~ HUM10~
     ## # ... with 143 more rows
 
-Separately, we want to add the manual textual information to`d_course`which contains information at the course-level such as in which cluster and concentration(s) they belong, and in which period(s) they are offered.
-
-``` r
-d_course <- full_join(d_course, d_manual, by = "Code")
-```
-
 ### Tidy Text Format
 
 To put everything into tidy text format, we first create three tibbles `d_overview_tidy`, `d_description_tidy`, `d_manual` that respectively store the overviews, descriptions and text from manuals in the tidy text format, with one row per course-year-word (and course-word for `d_manual`).
@@ -675,9 +670,11 @@ To put everything into tidy text format, we first create three tibbles `d_overvi
 d_overview <- d_description %>%
   select(Code, `Calendar Year`, Overview) %>%
   unnest_tokens(output = word, input = Overview)
+
 d_description <- d_description %>%
   select(Code, `Calendar Year`, Description) %>%
   unnest_tokens(output = word, input = Description)
+
 d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
 ```
 
@@ -694,6 +691,7 @@ stem_hunspell <- function(term) {
   if (n_stems == 0) term              # if no stems, return original term
   else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
 }
+
 dictionary <- select(d_overview, Code, word) %>%
   rbind(d_manual) %>% 
   select(word) %>%
@@ -719,7 +717,9 @@ filter(dictionary, word != word_stem)
     ## 10 positions   position  
     ## # ... with 11,115 more rows
 
-Finally, we create a function `stem_with_dictionary` that performs a left join on the dataframe it takes as input with `dictionary`, thus adding the word stems to the original dataframe. Then, we use `stem_with_dictionary` to include the stems of all words in `d_description`, `d_overview`, and `d_manual`.
+Finally, we create a function `stem_with_dictionary` that performs a left join on the dataframe it takes as input with `dictionary`, thus adding the word stems to the original dataframe.
+
+Then, we use `stem_with_dictionary` to include the stems of all words in `d_description`, `d_overview`, and `d_manual`.
 
 ``` r
 stem_with_dictionary <- function(data) data %>%
@@ -730,17 +730,11 @@ stem_with_dictionary <- function(data) data %>%
 d_description <- stem_with_dictionary(d_description)
 d_overview <- stem_with_dictionary(d_overview)
 d_manual <- stem_with_dictionary(d_manual)
-rm(stems, stem_hunspell, stem_with_dictionary)
-```
-
-    ## Warning in rm(stems, stem_hunspell, stem_with_dictionary): object 'stems'
-    ## not found
-
-``` r
+rm(stem_hunspell, stem_with_dictionary)
 print(d_overview) # See humanities - humanity
 ```
 
-    ## # A tibble: 340,609 x 4
+    ## # A tibble: 340,594 x 4
     ##    Code    `Calendar Year` word_original word       
     ##    <chr>   <chr>           <chr>         <chr>      
     ##  1 COR1002 2014-2015       cor1002       cor1002    
@@ -753,7 +747,7 @@ print(d_overview) # See humanities - humanity
     ##  8 COR1002 2014-2015       dr            dr         
     ##  9 COR1002 2014-2015       l             l          
     ## 10 COR1002 2014-2015       boon          boon       
-    ## # ... with 340,599 more rows
+    ## # ... with 340,584 more rows
 
 ### Removing Stopwords
 

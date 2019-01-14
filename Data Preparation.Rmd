@@ -106,7 +106,7 @@ d_transcript <- rbind(
 ```
 
 # Variable Engineering
-##Program Data
+## Program Data
 The analysis performed on the course data is aimed at discoving what the contribution of each course is towards the fullfilment of the AoDs, and comparing different types of curricula, or programs, based on this infromation. 
 
 ### AoD
@@ -263,7 +263,8 @@ n_catalogue <- length(corpus_catalogues)
 calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
 d_description <- tibble(Code            = character(0),
                         `Calendar Year` = character(0),
-                        Overview        = character(0))
+                        Overview        = character(0),
+                        Description     = NA)
 
 course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>%
   paste(collapse = "|")
@@ -284,7 +285,7 @@ content_to_exclude <- c(
 for(n in 1 : n_catalogue){
   
   cat <- content(corpus_catalogues[[n]])
-  
+
   # Overview section in catalogue
   page_overview_start <- grep(pattern = "^Core Courses \\(COR\\)", x = cat) + 1
   page_overview_end   <- grep(pattern = "Appendix", x = cat) - 1
@@ -303,8 +304,8 @@ for(n in 1 : n_catalogue){
   for(page in first_pages_overview){
     
     # Extract description
-    overview <- if(page + 1 %in% first_pages_overview) cat_overview[page]
-                else paste(cat_overview[page : (page + 1)], collapese = " ")
+    overview <- if((page + 1) %in% first_pages_overview) cat_overview[page]
+                else paste(cat_overview[page : (page + 1)], collapse = " ")
     
     # Save overview
     Code <- substr(overview, start = 1, stop = 7)
@@ -313,7 +314,8 @@ for(n in 1 : n_catalogue){
       add_row(
         Code = Code,
         `Calendar Year` = year,
-        Overview = overview
+        Overview = overview,
+        Description = NA
       )
     
   } # close for-loop (page)
@@ -336,6 +338,7 @@ print(d_description)
 Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
 
 ```{r extracting description, cache = TRUE}
+
 # Setup
 symbol_to_line <- c("\r\n", "\n") %>%
   paste(collapse = "|")
@@ -344,8 +347,7 @@ start_descrip <- c("^Description", "^Course Description") %>%
 end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
                    "^Required Litera", "^ Literature$", "Literature \\(all") %>%
   paste(collapse = "|")
-d_description <- d_description %>%
-  mutate(Description = NA)
+
 # Loop
 for(course in 1 : nrow(d_description)){
   
@@ -385,11 +387,6 @@ rm(corpus_manuals)
 print(d_manual)
 ```
 
-Separately, we want to add the manual textual information to`d_course`which contains information at the course-level such as in which cluster and concentration(s) they belong, and in which period(s) they are offered.
-```{r join manuals to d_course}
-d_course <- full_join(d_course, d_manual, by = "Code")
-```
-
 ### Tidy Text Format
 
 To put everything into tidy text format, we first create three tibbles `d_overview_tidy`, `d_description_tidy`, `d_manual` that respectively store the overviews, descriptions and text from manuals in the tidy text format, with one row per course-year-word (and course-word for `d_manual`).
@@ -397,16 +394,18 @@ To put everything into tidy text format, we first create three tibbles `d_overvi
 d_overview <- d_description %>%
   select(Code, `Calendar Year`, Overview) %>%
   unnest_tokens(output = word, input = Overview)
+
 d_description <- d_description %>%
   select(Code, `Calendar Year`, Description) %>%
   unnest_tokens(output = word, input = Description)
+
 d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
 ```
 
 ### Stemming
-We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. 
+We then use the function `hunspell_stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. 
 
-We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We would like to apply `stem_hunspell` on the words of `d_overview_tidy` and `d_manual`, since they have similar structures, we row bind them into `dictionary` to ease the application of `stem_hunspell`. However, since, `stem_hunspell` is not a vectorized function and the number of words in `dictionary` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews and manuals. Then, we use `mutate` to apply the function `stem_hunspell` on each word from our dictionary and save its results as a new column `word_stem`.
+We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell_stem`). We would like to apply `stem_hunspell` on the words of `d_overview_tidy` and `d_manual`, since they have similar structures, we row bind them into `dictionary` to ease the application of `stem_hunspell`. However, since, `stem_hunspell` is not a vectorized function and the number of words in `dictionary` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews and manuals. Then, we use `mutate` to apply the function `stem_hunspell` on each word from our dictionary and save its results as a new column `word_stem`.
 ```{r stemming dictionary, cache = TRUE}
 stem_hunspell <- function(term) {
   stems   <- hunspell_stem(term)[[1]] # look up the term in the dictionary
@@ -414,6 +413,7 @@ stem_hunspell <- function(term) {
   if (n_stems == 0) term              # if no stems, return original term
   else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
 }
+
 dictionary <- select(d_overview, Code, word) %>%
   rbind(d_manual) %>% 
   select(word) %>%
@@ -424,6 +424,7 @@ dictionary <- select(d_overview, Code, word) %>%
 filter(dictionary, word != word_stem)
 ```
 Finally, we create a function `stem_with_dictionary` that performs a left join on the dataframe it takes as input with `dictionary`, thus adding the word stems to the original dataframe.
+
 Then, we use `stem_with_dictionary` to include the stems of all words in `d_description`, `d_overview`, and `d_manual`.
 ```{r stemming data sets}
 stem_with_dictionary <- function(data) data %>%
@@ -434,7 +435,7 @@ stem_with_dictionary <- function(data) data %>%
 d_description <- stem_with_dictionary(d_description)
 d_overview <- stem_with_dictionary(d_overview)
 d_manual <- stem_with_dictionary(d_manual)
-rm(stems, stem_hunspell, stem_with_dictionary)
+rm(stem_hunspell, stem_with_dictionary)
 print(d_overview) # See humanities - humanity
 ```
 
