@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-01-11
+2019-01-14
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -11,7 +11,7 @@ DARS
         -   [Course Manuals](#course-manuals)
     -   [Student Data](#student-data)
 -   [Variable Engineering](#variable-engineering)
-    -   [Course Data](#course-data-1)
+    -   [Program Data](#program-data)
         -   [AoD](#aod)
         -   [Courses](#courses)
     -   [Textual Data](#textual-data-1)
@@ -28,12 +28,10 @@ DARS
 
 ``` r
 library(tidyverse)
-library(tidytext) 
-
+library(tidytext)
 library(gsheet) # import spreadsheets from google drive
 library(tm)
 library(hunspell) # Stemmer
-#library(rlist)
 ```
 
 Import Data
@@ -44,18 +42,16 @@ The datasets we use are saved as spreadsheet on our google drive *DARS* (with ex
 Setup
 -----
 
-Before importing the spreadsheets from the drive, let us create two vectors `list_assessment` and `list_AoD` which respectively list the `19` types of assessment and the `18` aims of the degree (AoD) of the degree which we take into consideration in the analysis. The information comes from a spreadsheet from our google drive *DARS* which we save as `lists`. In addition, we also create two additional vectors `list_assessment_plot` and `list_AoD_plot` which contain a selection of prominent assessment types and AoD that we will consider when ploting the data[1].
+First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. `lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and two columns containing binary vectors indicating which assessment types and AoD we will consider when ploting the data[1]. Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
 
 ``` r
 lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
-
 lists <- list(
   Assessment      = lists_brut$Assessment,
   Assessment_plot = lists_brut$Assessment[lists_brut$`Assessment for Plot` == 1],
   AoD             = lists_brut$Aim[!is.na(lists_brut$Aim)],
   AoD_plot        = lists_brut$Aim[lists_brut$`Aim for Plot`[!is.na(lists_brut$Aim)] == 1]
   )
-
 rm(lists_brut)
 ```
 
@@ -65,8 +61,7 @@ Course Data
 We import three spreadsheets from the drive and transform them into the so-called *tidy format*. The tibble `d_course` contains information at the course-level such as in which cluster and concentration(s) they belong, and in which period(s) they are offered. The tibble `d_assessment` indicates which type(s) of assessment each course contains with one row per course-assessment; and the tibble `d_ILO` indicates which AoD(s) the intended learning objectives (ILOs) of the courses cover with one row per course-ILO-AoD.
 
 ``` r
-d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848') %>%
-  mutate(`Missing from ILO File` = as.logical(`Missing from ILO File`))
+d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848')
 print(d_course)
 ```
 
@@ -85,7 +80,7 @@ print(d_course)
     ## 10 COR1~ Contemporary ~ Perio~ Period 4         <NA>            
     ## # ... with 270 more rows, and 6 more variables: Concentration <chr>,
     ## #   `Concentration (additional)` <chr>, Cluster <chr>, `Missing from ILO
-    ## #   File` <lgl>, `Most Recent Catalogue` <chr>, Type <chr>
+    ## #   File` <int>, `Most Recent Catalogue` <chr>, Type <chr>
 
 ``` r
 d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
@@ -167,31 +162,39 @@ Student Data
 The tibble `d_transcript` contains the transcript information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
 
 ``` r
-d_transcript <- rbind(read_csv("Raw Grades/grades1.csv", col_types = cols()),
-                      read_csv("Raw Grades/grades2.csv", col_types = cols()))
+d_transcript <- rbind(
+  read_csv(
+    "Raw Grades/grades1.csv",
+    col_types = cols(
+      `Program (Abbreviation)` = col_character(),
+      `Appraisal Status` = col_character(),
+      `Module Booking Reason (Description)` = col_character(),
+      `Object name` = col_character(),
+      `Start date` = col_character(),
+      `End Date` = col_character()
+      )
+    ),
+  read_csv(
+    "Raw Grades/grades2.csv",
+    col_types = cols(
+      `Program (Abbreviation)` = col_character(),
+      `Appraisal Status` = col_character(), 
+      `Module Booking Reason (Description)` = col_character(), 
+      `Object name` = col_character(), 
+      `Start date` = col_character(), 
+      `End Date` = col_character()
+      )
+    )
+  )
 ```
-
-    ## Warning in rbind(names(probs), probs_f): number of columns of result is not
-    ## a multiple of vector length (arg 1)
-
-    ## Warning: 3629 parsing failures.
-    ## row # A tibble: 5 x 5 col     row col                 expected            actual file                expected   <int> <chr>               <chr>               <chr>  <chr>               actual 1  4766 Program (Abbreviat~ no trailing charac~ _T2    'Raw Grades/grades~ file 2  4767 Program (Abbreviat~ no trailing charac~ _T2    'Raw Grades/grades~ row 3  4768 Program (Abbreviat~ no trailing charac~ _T2    'Raw Grades/grades~ col 4  4769 Program (Abbreviat~ no trailing charac~ _T2    'Raw Grades/grades~ expected 5  4770 Program (Abbreviat~ no trailing charac~ _T2    'Raw Grades/grades~
-    ## ... ................. ... .......................................................................... ........ .......................................................................... ...... .......................................................................... .... .......................................................................... ... .......................................................................... ... .......................................................................... ........ ..........................................................................
-    ## See problems(...) for more details.
-
-    ## Warning in rbind(names(probs), probs_f): number of columns of result is not
-    ## a multiple of vector length (arg 1)
-
-    ## Warning: 12851 parsing failures.
-    ## row # A tibble: 5 x 5 col     row col                 expected            actual file                expected   <int> <chr>               <chr>               <chr>  <chr>               actual 1 18519 Program (Abbreviat~ no trailing charac~ _T1    'Raw Grades/grades~ file 2 18520 Program (Abbreviat~ no trailing charac~ _T1    'Raw Grades/grades~ row 3 18521 Program (Abbreviat~ no trailing charac~ _T1    'Raw Grades/grades~ col 4 18522 Program (Abbreviat~ no trailing charac~ _T1    'Raw Grades/grades~ expected 5 18523 Program (Abbreviat~ no trailing charac~ _T1    'Raw Grades/grades~
-    ## ... ................. ... .......................................................................... ........ .......................................................................... ...... .......................................................................... .... .......................................................................... ... .......................................................................... ... .......................................................................... ........ ..........................................................................
-    ## See problems(...) for more details.
 
 Variable Engineering
 ====================
 
-Course Data
------------
+Program Data
+------------
+
+The analysis performed on the course data is aimed at discoving what the contribution of each course is towards the fullfilment of the AoDs, and comparing different types of curricula, or programs, based on this infromation.
 
 ### AoD
 
@@ -205,9 +208,7 @@ In order to determine which AoD each course covers with its ILOs, we first elimi
 
 ``` r
 d_AoD_ILO <- d_ILO %>%
-  select(Code, AoD) %>%
-  unique
-
+  distinct(Code, AoD)
 print(d_AoD_ILO)
 ```
 
@@ -230,7 +231,7 @@ print(d_AoD_ILO)
 
 (For this section we use: `d_assessment`-indicates which type(s) of assessment each course contains with one row per course-assessment)
 
-In order to determine which AoD each course covers with its assessments, we need to create a binary matrix which indicates which AoD(s) each assessment type covers. We have created such matrix on our google drive and we save it in the following piece of code as `map_assessment_AoD`. `map_assessment_AoD` indicates that, for instance, the assessment type `Essay` covers the AoD `Critical Thinking Skills`, `Communication Skills` and `Writing Skill`.
+In order to determine which AoD each course covers with its assessments, we need to create a binary matrix which indicates which AoD(s) each assessment type covers. We have created such matrix on our google drive and we save it in the following piece of code as `map_assessment_AoD`. `map_assessment_AoD` indicates that, for instance, the assessment type `Essay` covers the AoD `Critical Thinking Skills`, `Communication Skills` and `Writing Skill`. Thus, the first step is to import this matrix:
 
 ``` r
 map_assessment_AoD <- as.matrix(gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216')[,lists$AoD] %>%
@@ -258,7 +259,6 @@ Now that we have the matrix `map_assessment_AoD`, we want to find out which AoDs
 d_AoD_assessment <- tibble(Code        = character(0),
                            Assessment  = character(0),
                            AoD         = character(0))
-
 for(i in 1 : nrow(d_assessment)){
   
   observation <- d_assessment[i, ]
@@ -270,18 +270,15 @@ for(i in 1 : nrow(d_assessment)){
   if(length(AoD) >= 1) d_AoD_assessment <- rbind(d_AoD_assessment,
                                                  as.tibble(cbind(observation,
                                                                  AoD)))
-
 }
-
 rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 ```
 
-Similarly to what we did with the tibble `d_AoD_ILO`, we first eliminate the AoD that are not covered by the assessments and then we take the unique combination of course and AoD in case a course had several assessments covering the same AoD.
+Next, we keep ony one copy of each distinct combination of course and AoD in case a course had several assessments covering the same AoD (this is analogous to what we did with the tibble `d_AoD_ILO`).
 
 ``` r
 d_AoD_assessment <- d_AoD_assessment %>%
-  select(Code, AoD) %>%
-  distinct
+  distinct(Code, AoD)
 print(d_AoD_assessment)
 ```
 
@@ -302,14 +299,13 @@ print(d_AoD_assessment)
 
 #### Combining AoD from ILOs and from assessments
 
-Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_assessment`. We also use `unique` in case a course covers an AoD with both its ILOS and its assessments.
+Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_assessment`. We also use `distinct` in case a course covers an AoD with both its ILOS and its assessments.
 
 ``` r
 d_AoD <- rbind(d_AoD_ILO,
                d_AoD_assessment) %>%
   distinct %>%
   arrange(Code)
-
 rm(d_AoD_ILO, d_AoD_assessment)
 print(d_AoD)
 ```
@@ -337,8 +333,7 @@ Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and asse
 
 ``` r
 d_ILO_detail <- d_ILO %>% 
-  select(Code, ILO) %>%
-  distinct() %>%
+  distinct(Code, ILO) %>%
   count(Code) %>%
   rename(n_ILO = n)
 
@@ -376,8 +371,13 @@ print(d_course_detail)
     ## # ... with 270 more rows
 
 ``` r
-d_course <- full_join(d_course, d_course_detail, by = "Code") %>%
-  select(Code, `Course Title`, Cluster, n_ILO, n_assessment, `Assessments Covered`, n_AoD, `AoD Covered`, everything())
+d_course <- d_course %>%
+  full_join(d_course_detail, by = "Code") %>%
+  select(Code, `Course Title`, Cluster,
+         n_ILO,
+         n_assessment, `Assessments Covered`,
+         n_AoD, `AoD Covered`, 
+         everything())
 
 rm(d_course_detail)
 print(d_course)
@@ -399,7 +399,7 @@ print(d_course)
     ## # ... with 270 more rows, and 9 more variables: `AoD Covered` <chr>,
     ## #   Period <chr>, `Period (additional)` <chr>, `Period (additional
     ## #   bis)` <chr>, Concentration <chr>, `Concentration (additional)` <chr>,
-    ## #   `Missing from ILO File` <lgl>, `Most Recent Catalogue` <chr>,
+    ## #   `Missing from ILO File` <int>, `Most Recent Catalogue` <chr>,
     ## #   Type <chr>
 
 The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
@@ -411,7 +411,6 @@ d_course <- d_course %>%
                                   Code == "UGR3002" ~ "UGR2002",
                                   Code == "UGR3003" ~ "UGR2003",
                                   Code == "UGR3005" ~ "UGR2005")))
-
 print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
                                    "UGR3001", "UGR3002", "UGR3003", "UGR3005")))
 ```
@@ -430,19 +429,19 @@ print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
     ## # ... with 9 more variables: `AoD Covered` <chr>, Period <chr>, `Period
     ## #   (additional)` <chr>, `Period (additional bis)` <chr>,
     ## #   Concentration <chr>, `Concentration (additional)` <chr>, `Missing from
-    ## #   ILO File` <lgl>, `Most Recent Catalogue` <chr>, Type <chr>
+    ## #   ILO File` <int>, `Most Recent Catalogue` <chr>, Type <chr>
 
 Finally, we add a series of informative variable at the course level.
 
 ``` r
 d_course <- d_course %>%
   mutate(
-    `Missing from ILO File` = as.logical(`Missing from ILO File`),
     Letters = substring(Code, 1, 3),
     Number  = as.numeric(substring(Code, 4, 7)),
     Level   = case_when(between(Number, 1000, 1999) ~ "Introductory",
                         between(Number, 2000, 2999) ~ "Intermediate",
                         between(Number, 3000, 3999) ~ "Advanced"    ))
+
 print(select(d_course, Code, Letters, Number, Level))
 ```
 
@@ -468,7 +467,7 @@ Textual Data
 
 In order to conduct a topic analysis of course content, we extract the *overview* and *description* of each course from the course catalogues, as well as the *full text* from the Course Manuals.
 
-#### Course Catalogues
+#### Extractin Text: Course Catalogues
 
 (For this section we use:`corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.)
 
@@ -489,56 +488,65 @@ d_description <- tibble(Code            = character(0),
 course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>%
   paste(collapse = "|")
 
-content_to_exclude <- c("^Core Courses \\(COR\\)",
-                        "^Humanities \\(HUM\\)",
-                        "^Sciences \\(SCI\\)",
-                        "^Social Sciences \\(SSC\\)",
-                        "^Skills Trainings \\(SKI\\)",
-                        "^Projects \\(PRO\\)",
-                        "^Undergraduate Research \\(UGR\\)",
-                        "Appendix") %>%
+content_to_exclude <- c(
+  "^Core Courses \\(COR\\)",
+  "^Humanities \\(HUM\\)",
+  "^Sciences \\(SCI\\)",
+  "^Social Sciences \\(SSC\\)",
+  "^Skills Trainings \\(SKI\\)", "^Skills Training \\(SKI\\)",
+  "^Project \\(PRO\\)", "^Projects \\(PRO\\)",
+  "^Undergraduate Research \\(UGR\\)",
+  " UCM Undergraduate\r\nResearch", "UCM Undergraduate\r\n  Research"
+  ) %>%
   paste(collapse = "|")
 
-# Loop
+# Loop 1
 for(n in 1 : n_catalogue){
   
   cat <- content(corpus_catalogues[[n]])
   
-  pages_to_exclude     <- grep(pattern = content_to_exclude, x = cat)
-  first_three_letters  <- substr(cat, start = 1, stop = 3)
+  # Overview section in catalogue
+  page_overview_start <- grep(pattern = "^Core Courses \\(COR\\)", x = cat) + 1
+  page_overview_end   <- grep(pattern = "Appendix", x = cat) - 1
+    if(length(page_overview_end) == 0) page_overview_end <- length(cat)
+  cat_overview <- cat[page_overview_start : page_overview_end]
+  
+  # Course description only
+  pages_to_exclude <- grep(pattern = content_to_exclude, x = cat_overview)
+  cat_overview <- cat_overview[! 1 : length(cat_overview) %in% pages_to_exclude]
+  
+  # First pages of course overviews
+  first_three_letters <- substr(cat_overview, start = 1, stop = 3)
   first_pages_overview <- grep(pattern = course_code, x = first_three_letters)
   
-  page_start_loop <- grep(pattern = "^Core Courses \\(COR\\)", x = cat) + 1
-  page_end_loop   <- length(cat)
-  
-  for(page in page_start_loop : page_end_loop){
+  # Loop 2
+  for(page in first_pages_overview){
     
-    current_page           <- page
-    following_page         <- page + 1
-    current_page_content   <- cat[page          ]
-    following_page_content <- cat[following_page]
+    # Extract description
+    overview <- if(page + 1 %in% first_pages_overview) cat_overview[page]
+                else paste(cat_overview[page : (page + 1)], collapese = " ")
     
-    if(current_page %in% first_pages_overview){
-      
-      if(following_page %in% c(first_pages_overview, pages_to_exclude)) course_overview <- current_page_content
-      else course_overview <- paste(current_page_content, following_page_content)
-
-      # Save Overview
-      Code <- substring(course_overview, first = 1, last = 7)      
-      year <- calendar_years[n]
-      d_description <- add_row(d_description,
-                               Code            = Code,
-                               `Calendar Year` = year,
-                               Overview        = course_overview)
-    } # close if-statement
+    # Save overview
+    Code <- substr(overview, start = 1, stop = 7)
+    year <- calendar_years[n]
+    d_description <- d_description %>%
+      add_row(
+        Code = Code,
+        `Calendar Year` = year,
+        Overview = overview
+      )
+    
   } # close for-loop (page)
+  
 } # close for-loop (n)
 
 rm(corpus_catalogues,
    n_catalogue, calendar_years, course_code, content_to_exclude,
-   n, cat, pages_to_exclude, first_three_letters, first_pages_overview, page_start_loop, page_end_loop,
-   page, current_page, following_page, current_page_content, following_page_content,
-   course_overview, Code, year)
+   n, cat,
+   page_overview_start, page_overview_end,
+   pages_to_exclude, cat_overview,
+   first_three_letters, first_pages_overview,
+   page, overview, Code, year)
 print(d_description)
 ```
 
@@ -565,17 +573,13 @@ Since the overviews contain a lot of information that does not interest us, we e
 # Setup
 symbol_to_line <- c("\r\n", "\n") %>%
   paste(collapse = "|")
-
 start_descrip <- c("^Description", "^Course Description") %>%
   paste(collapse = "|")
-
 end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
                    "^Required Litera", "^ Literature$", "Literature \\(all") %>%
   paste(collapse = "|")
-
 d_description <- d_description %>%
   mutate(Description = NA)
-
 # Loop
 for(course in 1 : nrow(d_description)){
   
@@ -584,7 +588,6 @@ for(course in 1 : nrow(d_description)){
   overview_by_line <- strsplit(x = toString(overview), split = symbol_to_line)[[1]]
   line_start    <- grep(pattern = start_descrip, x = overview_by_line) + 1
   line_end      <- grep(pattern = end_descrip  , x = overview_by_line) - 1
-
   # for overviews w/o Literature section, find section Instructional Format.
   if(is_empty(line_end)){
     line_end <- grep(pattern = "^Instructional format$", x = overview_by_line) - 1
@@ -627,9 +630,7 @@ print(d_description)
     ## 10 HUM10~ 2014-2015       "HUM1013 - The Idea of~ This course deals with ~
     ## # ... with 821 more rows
 
-#### Course Manuals
-
-##### Extracting Full Text
+#### Extracting Text: Course Manuals
 
 (For this section we use:`corpus_manuals`-contains the pdfs of the course manuals for the year 2017-2018 (most recently, available))
 
@@ -641,7 +642,6 @@ d_manual <- tidy(corpus_manuals) %>%
   mutate(Code = substring(id, 1, 7)) %>%
   select(-id) %>%
   rename(Manual = text)
-
 rm(corpus_manuals)
 print(d_manual)
 ```
@@ -675,17 +675,17 @@ To put everything into tidy text format, we first create three tibbles `d_overvi
 d_overview <- d_description %>%
   select(Code, `Calendar Year`, Overview) %>%
   unnest_tokens(output = word, input = Overview)
-
 d_description <- d_description %>%
   select(Code, `Calendar Year`, Description) %>%
   unnest_tokens(output = word, input = Description)
-
 d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
 ```
 
 ### Stemming
 
-We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`. We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We then apply `stem_hunspell` on the words of `d_overview_tidy`. Since, `stem_hunspell` is not a vectorized function and the number of words in `d_overview_tidy` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews. Then, we apply the function `stem_hunspell` on this list. We save the terms and their stems in the tibble `stems`. Since the course descriptions can be conceptualized as a subset of the course overviews, the tibble `stems` contains all the terms present in the descriptions and can therefore safely used to stem the words in `d_description_tidy`.
+We then use the function `hunspell__stem`, which returns valid stems for a given word, to stem the words in the tibbles `d_overview_tidy` and `d_description_tidy`.
+
+We first create a function `stem_hunspell` which, given a term, returns its most basic stem (the last one from the list of stem returned by `hunspell__stem`). We would like to apply `stem_hunspell` on the words of `d_overview_tidy` and `d_manual`, since they have similar structures, we row bind them into `dictionary` to ease the application of `stem_hunspell`. However, since, `stem_hunspell` is not a vectorized function and the number of words in `dictionary` is large, we first use distinct on the `word` variable to find a list containing *once* each term present in the course overviews and manuals. Then, we use `mutate` to apply the function `stem_hunspell` on each word from our dictionary and save its results as a new column `word_stem`.
 
 ``` r
 stem_hunspell <- function(term) {
@@ -694,14 +694,12 @@ stem_hunspell <- function(term) {
   if (n_stems == 0) term              # if no stems, return original term
   else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
 }
-
 dictionary <- select(d_overview, Code, word) %>%
   rbind(d_manual) %>% 
   select(word) %>%
   distinct %>%
   mutate(word_stem = purrr::map_chr(.x = word,
                                     .f = stem_hunspell))
-
 # terms for which the stem differs from the original word
 filter(dictionary, word != word_stem)
 ```
@@ -721,17 +719,17 @@ filter(dictionary, word != word_stem)
     ## 10 positions   position  
     ## # ... with 11,115 more rows
 
+Finally, we create a function `stem_with_dictionary` that performs a left join on the dataframe it takes as input with `dictionary`, thus adding the word stems to the original dataframe. Then, we use `stem_with_dictionary` to include the stems of all words in `d_description`, `d_overview`, and `d_manual`.
+
 ``` r
 stem_with_dictionary <- function(data) data %>%
                                          left_join(dictionary, by = "word") %>%
                                          rename(word_original = word,
                                                 word = word_stem)
   
-
 d_description <- stem_with_dictionary(d_description)
 d_overview <- stem_with_dictionary(d_overview)
 d_manual <- stem_with_dictionary(d_manual)
-
 rm(stems, stem_hunspell, stem_with_dictionary)
 ```
 
@@ -759,17 +757,16 @@ print(d_overview) # See humanities - humanity
 
 ### Removing Stopwords
 
+Finally, we want to filter out some uninformative words from our textual data. For this, we first store all the unwanted words in a vector `sw_owm`. We also create function `remove_sw` which receives a dataframe as input and filters out all words in `sw_own`. Then we apply this function to `d_description`, `d_overview`, and `d_manual`.
+
 ``` r
 # Own stop words
 sw_own <- c("______________________________________________________________________________")
-
 remove_sw <- function(data) data %>%
   filter(! word %in% c(stop_words$word, sw_own))
-
 d_description <- remove_sw(d_description)
 d_overview <- remove_sw(d_overview)
 d_manual <- remove_sw(d_manual)
-
 rm(sw_own, remove_sw)
 ```
 
@@ -845,9 +842,7 @@ d_concentration <- d_course %>%
                      SSC > 5           ~ "SSC",
                                SCI > 5 ~ "SCI"
   ))
-
  
-
   transmute(student_Concentration = case_when(
     (HUM  >  2    &   SSC >  2   &  SCI <= 2) ~ "HUM/SSC",
     (HUM  >  2    &   SSC <= 2   &  SCI >  2) ~ "HUM/SCI",
@@ -906,7 +901,6 @@ Ideally, we would like to have a dataframe of students against calendar years fi
 
 ``` r
 var_years <- as.character(2007:2017)
-
 d_time <- d_time %>% 
   mutate_at(
     vars(var_years),
@@ -915,7 +909,6 @@ d_time <- d_time %>%
     vars(var_years),
     funs(case_when(. < 0 ~ 9999999999, #HORRIBLE FIX
                    T     ~ .)))
-
 d_time[d_time == 9999999999] <- NA
 ```
 
@@ -928,7 +921,6 @@ d_students <- d_grade %>%
   left_join(d_student_concentration, by="ID") %>%
   mutate(Grade = as.numeric( sub(",",".", Grade))) %>%
   replace_na(list(Grade=-1))
-
 # Years dictionary:
 year_dic <- d_time %>%
   select(-FirstYear,-LastYear,-LengthUCM,-Subs_year)%>%
@@ -936,11 +928,9 @@ year_dic <- d_time %>%
   drop_na(.) %>%
   mutate(Year=as.integer(Cal_Year))%>%
   select(-Cal_Year)
-
 #adding the ucm year to transcripts:
 d_students <- d_students %>%
   left_join(year_dic, by=c("ID","Year"))
-
 #removing repeated values:
 d_students <- d_students[!duplicated(d_students),]
 ```
@@ -956,7 +946,6 @@ capstone_count <- d_students %>%
   filter(Code=="CAP3000") %>%
   group_by(ID)%>%
   summarise(Count=n())
-
 capstone_count
 ```
 
@@ -1005,18 +994,14 @@ First we get the years for which there is a corresponding passing capstone grade
 
 ``` r
 capstone_finish_year <- inner_join(passed_capstone_grades, d_students) 
-
 head(capstone_finish_year)
-
 count_before <- passed_capstone_grades %>%
   group_by(ID) %>%
   summarise(counts_of_id= n())
-
 count_after <- capstone_finish_year %>%
   group_by(ID) %>%
   summarise(counts_of_id= n())%>%
   filter(counts_of_id > 1)  #these students have repeated capstones.
-
 count_after
 ```
 
@@ -1026,7 +1011,6 @@ From count\_after we see that student 544450 has two passed capstones at differe
 to_remove <- capstone_finish_year%>%
   filter(ID==544450)
 to_remove <- to_remove[duplicated(to_remove$ID),]
-
 capstone_finish_year <- capstone_finish_year%>%
   anti_join(to_remove) %>%
   rename(`Capstone Year`= Year)%>%
@@ -1044,7 +1028,6 @@ d_transcripts <- d_students %>%
   ungroup() %>%
   replace_na(list(`Capstone Year`=9999)) %>%
   mutate(`After Graduation`=`Capstone Year`-`Year`)
-
 d_transcripts
 ```
 
@@ -1053,10 +1036,8 @@ Now we will remove all courses with negative `After Graduation`:
 ``` r
 master_courses <- d_transcripts%>%
   filter(`After Graduation`<0)
-
 d_transcripts <- d_transcripts %>%
   anti_join(master_courses)
-
 head(d_transcripts)
 ```
 
@@ -1066,8 +1047,6 @@ One last thing. The variable `Booking Status Description` shows whether a studen
 booked <- filter(d_transcripts, d_transcripts$`Booking Status Description`=="Booked")%>%
   mutate(`Booking Status Description`= case_when(Grade<5.5~"Completed Unsuccessfully",
                                                  Grade>5.5~"Completed with Success"))
-
-
 clean_transcripts <- d_transcripts %>% 
   left_join(booked, by= c("ID", "Code", "Year", "Period", "Grade", "Attempt", "Course concentration", "student_Concentration", "Capstone Year", "After Graduation"), suffix=c("-old", "-new"))%>%
   select(-`After Graduation`)%>%

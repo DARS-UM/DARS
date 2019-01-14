@@ -264,55 +264,69 @@ calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-20
 d_description <- tibble(Code            = character(0),
                         `Calendar Year` = character(0),
                         Overview        = character(0))
+
 course_code <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>%
   paste(collapse = "|")
-content_to_exclude <- c("^Core Courses \\(COR\\)",
-                        "^Humanities \\(HUM\\)",
-                        "^Sciences \\(SCI\\)",
-                        "^Social Sciences \\(SSC\\)",
-                        "^Skills Trainings \\(SKI\\)",
-                        "^Projects \\(PRO\\)",
-                        "^Undergraduate Research \\(UGR\\)",
-                        "Appendix") %>%
+
+content_to_exclude <- c(
+  "^Core Courses \\(COR\\)",
+  "^Humanities \\(HUM\\)",
+  "^Sciences \\(SCI\\)",
+  "^Social Sciences \\(SSC\\)",
+  "^Skills Trainings \\(SKI\\)", "^Skills Training \\(SKI\\)",
+  "^Project \\(PRO\\)", "^Projects \\(PRO\\)",
+  "^Undergraduate Research \\(UGR\\)",
+  " UCM Undergraduate\r\nResearch", "UCM Undergraduate\r\n  Research"
+  ) %>%
   paste(collapse = "|")
-# Loop
+
+# Loop 1
 for(n in 1 : n_catalogue){
   
   cat <- content(corpus_catalogues[[n]])
   
-  pages_to_exclude     <- grep(pattern = content_to_exclude, x = cat)
-  first_three_letters  <- substr(cat, start = 1, stop = 3)
+  # Overview section in catalogue
+  page_overview_start <- grep(pattern = "^Core Courses \\(COR\\)", x = cat) + 1
+  page_overview_end   <- grep(pattern = "Appendix", x = cat) - 1
+    if(length(page_overview_end) == 0) page_overview_end <- length(cat)
+  cat_overview <- cat[page_overview_start : page_overview_end]
+  
+  # Course description only
+  pages_to_exclude <- grep(pattern = content_to_exclude, x = cat_overview)
+  cat_overview <- cat_overview[! 1 : length(cat_overview) %in% pages_to_exclude]
+  
+  # First pages of course overviews
+  first_three_letters <- substr(cat_overview, start = 1, stop = 3)
   first_pages_overview <- grep(pattern = course_code, x = first_three_letters)
   
-  page_start_loop <- grep(pattern = "^Core Courses \\(COR\\)", x = cat) + 1
-  page_end_loop   <- length(cat)
-  
-  for(page in page_start_loop : page_end_loop){
+  # Loop 2
+  for(page in first_pages_overview){
     
-    current_page           <- page
-    following_page         <- page + 1
-    current_page_content   <- cat[page          ]
-    following_page_content <- cat[following_page]
+    # Extract description
+    overview <- if(page + 1 %in% first_pages_overview) cat_overview[page]
+                else paste(cat_overview[page : (page + 1)], collapese = " ")
     
-    if(current_page %in% first_pages_overview){
-      
-      if(following_page %in% c(first_pages_overview, pages_to_exclude)) course_overview <- current_page_content
-      else course_overview <- paste(current_page_content, following_page_content)
-      # Save Overview
-      Code <- substring(course_overview, first = 1, last = 7)      
-      year <- calendar_years[n]
-      d_description <- add_row(d_description,
-                               Code            = Code,
-                               `Calendar Year` = year,
-                               Overview        = course_overview)
-    } # close if-statement
+    # Save overview
+    Code <- substr(overview, start = 1, stop = 7)
+    year <- calendar_years[n]
+    d_description <- d_description %>%
+      add_row(
+        Code = Code,
+        `Calendar Year` = year,
+        Overview = overview
+      )
+    
   } # close for-loop (page)
+  
 } # close for-loop (n)
+
 rm(corpus_catalogues,
    n_catalogue, calendar_years, course_code, content_to_exclude,
-   n, cat, pages_to_exclude, first_three_letters, first_pages_overview, page_start_loop, page_end_loop,
-   page, current_page, following_page, current_page_content, following_page_content,
-   course_overview, Code, year)
+   n, cat,
+   page_overview_start, page_overview_end,
+   pages_to_exclude, cat_overview,
+   first_three_letters, first_pages_overview,
+   page, overview, Code, year)
 print(d_description)
 ```
 
