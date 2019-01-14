@@ -9,9 +9,49 @@ output:
 
 ```{r library, message = F}
 library(tidyverse)
+library(arules)
 ```
 
 # Setup
 ```{r}
 load("data_pillar_1.RDATA")
 ```
+
+#Getting dates
+For a first exploration of arules, we conceptualise our framework like this:
+
+transaction = student
+item = course
+
+```{r}
+t_transactions <- d_transcript %>%
+  select(`Student ID Number`, `Course Code`) %>%
+  transmute(transaction = paste(`Student ID Number`, `Course Code`)) %>%
+  summarise(transactions = paste(transaction, collapse = "\n"))
+
+write(t_transactions$transactions, file = "demo_single")
+tr <- read.transactions("demo_single", format = "single", cols = c(1,2))
+#inspect(tr)
+
+results <- apriori(
+  data = tr, 
+  parameter = list(
+    supp = 0.21,
+    smax = 0.5, # max support
+    conf = 0.51,
+    minlen = 2,
+    maxlen = 2
+    ),
+  appearance = NULL,
+  control = NULL
+  ) %>%
+  inspect
+
+colnames(results)[2] <- "association"
+
+results %>%
+  arrange(confidence)
+
+
+summary(rules)
+inspect(head(rules, n = length(rules[1])))
