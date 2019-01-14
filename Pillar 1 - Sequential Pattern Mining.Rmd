@@ -9,9 +9,78 @@ output:
 
 ```{r library, message = F}
 library(tidyverse)
+library(arules)
 ```
 
 # Setup
 ```{r}
 load("data_pillar_1.RDATA")
+```
+
+#Getting dates
+For a first exploration of arules, we conceptualise our framework like this:
+transaction = student
+item = course
+
+##Data preparation
+First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
+
+```{r}
+d_transactions <- d_course %>%
+  select(Type, Code, Letters) %>%
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  select(Code) %>%
+  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
+  select(`Student ID Number`, Code) %>%
+  group_by(`Student ID Number`) %>%
+  summarize(list_course = list(Code)) %>%
+  group_by()
+
+transactions <- as(d_transactions$list_course, "transactions")
+```
+
+We apply Apriori algorithm:
+```{r}
+results <- apriori(
+  data = transactions, 
+  parameter = list(
+    supp = 0.02,
+    smax = 1, # max support
+    conf = 0.4,
+    minlen = 2,
+    maxlen = 2
+    ),
+  appearance = NULL,
+  control = NULL
+  ) %>%
+  inspect
+
+colnames(results)[2] <- "association"
+
+results %>%
+  arrange(desc(confidence))
+```
+
+```{r}
+d_transcript %>% filter(`Course Code`=="SSC3016")
+```
+
+Now we include data for pass and fail
+
+```{r}
+d_transactions <- d_course %>%
+  select(Type, Code, Letters) %>%
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  select(Code) %>%
+  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
+  select(`Student ID Number`, Code) %>%
+  group_by(`Student ID Number`) %>%
+  summarize(list_course = list(Code)) %>%
+  group_by()
+
+transactions <- as(d_transactions$list_course, "transactions")
 ```
