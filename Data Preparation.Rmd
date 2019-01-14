@@ -36,9 +36,9 @@ rm(lists_brut)
 We import three spreadsheets from the drive and transform them into the so-called *tidy format*. The tibble `d_course` contains information at the course-level such as in which cluster and concentration(s) they belong, and in which period(s) they are offered. The tibble `d_assessment` indicates which type(s) of assessment each course contains with one row per course-assessment; and the tibble `d_ILO` indicates which AoD(s) the intended learning objectives (ILOs) of the courses cover with one row per course-ILO-AoD.
 
 ```{r import d_course d_assessment and d_ILO, cache = TRUE}
-d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848') %>%
-  mutate(`Missing from ILO File` = as.logical(`Missing from ILO File`))
+d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1655700848')
 print(d_course)
+
 d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
   select(- `Comment on Assessment`) %>%
   gather(Assessment, assessment_covered, - Code, factor_key = T) %>%
@@ -47,6 +47,7 @@ d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oL
   select(- assessment_covered) %>%
   arrange(Code)
 print(d_assessment)
+
 d_ILO <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1896457050') %>%
   select(- c(Comments, Comments_for_Jeroen)) %>%
   gather(AoD, AoD_covered, -c(Code, Objectives), factor_key = T) %>%
@@ -79,14 +80,28 @@ The tibble `d_transcript` contains the transcript information of students as was
 
 ```{r import d_transcript, cache = TRUE}
 d_transcript <- rbind(
-  read_csv("Raw Grades/grades1.csv", 
-           col_types = cols(`Program (Abbreviation)`=col_character(), `Appraisal Status`= col_character(), `Module Booking Reason (Description)`= col_character(), `Object name` = col_character(), `Start date` = col_character(),`End Date` = col_character()
-                              )
-           ),
-  read_csv("Raw Grades/grades2.csv", 
-           col_types = cols(`Program (Abbreviation)`=col_character(), `Appraisal Status`= col_character(), `Module Booking Reason (Description)`= col_character(), `Object name` = col_character(), `Start date` = col_character(), `End Date` = col_character()
-           )
-           )
+  read_csv(
+    "Raw Grades/grades1.csv",
+    col_types = cols(
+      `Program (Abbreviation)` = col_character(),
+      `Appraisal Status` = col_character(),
+      `Module Booking Reason (Description)` = col_character(),
+      `Object name` = col_character(),
+      `Start date` = col_character(),
+      `End Date` = col_character()
+      )
+    ),
+  read_csv(
+    "Raw Grades/grades2.csv",
+    col_types = cols(
+      `Program (Abbreviation)` = col_character(),
+      `Appraisal Status` = col_character(), 
+      `Module Booking Reason (Description)` = col_character(), 
+      `Object name` = col_character(), 
+      `Start date` = col_character(), 
+      `End Date` = col_character()
+      )
+    )
   )
 ```
 
@@ -103,8 +118,7 @@ In this analysis, we conside that a course can cover an AoD in two ways: a cours
 In order to determine which AoD each course covers with its ILOs, we first eliminate the AoD that are not covered by the ILOs, and then we keep only one instance of each combination of course and AoD in case a course had several ILOs covering the same AoD.
 ```{r d_AoD_ILO}
 d_AoD_ILO <- d_ILO %>%
-  select(Code, AoD) %>%
-  distinct
+  distinct(Code, AoD)
 print(d_AoD_ILO)
 ```
 
@@ -144,8 +158,7 @@ rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 Next, we keep ony one copy of each distinct combination of course and AoD in case a course had several assessments covering the same AoD (this is analogous to what we did with the tibble `d_AoD_ILO`).
 ```{r d_AoD_assessment distinct}
 d_AoD_assessment <- d_AoD_assessment %>%
-  select(Code, AoD) %>%
-  distinct
+  distinct(Code, AoD)
 print(d_AoD_assessment)
 ```
 
@@ -170,28 +183,37 @@ Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and asse
 Then we use a `full_join` to add these variables to the tibble `d_course`.
 ```{r d_course detail}
 d_ILO_detail <- d_ILO %>% 
-  select(Code, ILO) %>%
-  distinct() %>%
+  distinct(Code, ILO) %>%
   count(Code) %>%
   rename(n_ILO = n)
+
 d_assessment_detail <- d_assessment %>%
   group_by(Code) %>%
   summarise(n_assessment = n(),
             `Assessments Covered` = paste(Assessment, collapse = ", "))
+
 d_AoD_detail <- d_AoD %>%
   group_by(Code) %>%
   summarise(n_AoD = n(),
             `AoD Covered` = paste(AoD, collapse = ", "))
+
 d_course_detail <- d_ILO_detail %>%
   full_join(d_assessment_detail, by = "Code") %>%
   full_join(d_AoD_detail       , by = "Code")
+
 rm(d_ILO_detail, d_assessment_detail, d_AoD_detail)
 print(d_course_detail)
 ```
 
 ```{r join d_course_detail}
-d_course <- full_join(d_course, d_course_detail, by = "Code") %>%
-  select(Code, `Course Title`, Cluster, n_ILO, n_assessment, `Assessments Covered`, n_AoD, `AoD Covered`, everything())
+d_course <- d_course %>%
+  full_join(d_course_detail, by = "Code") %>%
+  select(Code, `Course Title`, Cluster,
+         n_ILO,
+         n_assessment, `Assessments Covered`,
+         n_AoD, `AoD Covered`, 
+         everything())
+
 rm(d_course_detail)
 print(d_course)
 ```
@@ -212,21 +234,21 @@ Finally, we add a series of informative variable at the course level.
 ```{r d_course additional info}
 d_course <- d_course %>%
   mutate(
-    `Missing from ILO File` = as.logical(`Missing from ILO File`),
     Letters = substring(Code, 1, 3),
     Number  = as.numeric(substring(Code, 4, 7)),
     Level   = case_when(between(Number, 1000, 1999) ~ "Introductory",
                         between(Number, 2000, 2999) ~ "Intermediate",
                         between(Number, 3000, 3999) ~ "Advanced"    ))
+
 print(select(d_course, Code, Letters, Number, Level))
 ```
 
-##Textual Data
+## Textual Data
 
 ### Extracting Text
 In order to conduct a topic analysis of course content, we extract the *overview* and *description* of each course from the course catalogues, as well as the  *full text*  from the Course Manuals.
 
-####Course Catalogues
+#### Extractin Text: Course Catalogues
 (For this section we use:`corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.)
 
 ##### Extracting Overviews
@@ -335,8 +357,7 @@ rm(symbol_to_line, start_descrip, end_descrip,
 print(d_description)
 ```
 
-#### Course Manuals
-#####Extracting Full Text
+#### Extracting Text: Course Manuals
 (For this section we use:`corpus_manuals`-contains the pdfs of the course manuals for the year 2017-2018 (most recently, available))
 
 Since we want to use tools from dplyr and tidytext we must first transform our corpus into a dataframe.
