@@ -5,8 +5,6 @@ date: "`r Sys.Date()`"
 output: 
   github_document:
     toc: TRUE
-    fig_heigt: 8
-    fig_width: 16
 ---
 
 ```{r library, message = F}
@@ -58,7 +56,7 @@ tf_idf_description <- compute_tf_idf(filter(d_description, `Calendar Year` == "2
 tf_idf_overview    <- compute_tf_idf(filter(d_overview, `Calendar Year` == "2018-2019"))
 tf_idf_manual      <- compute_tf_idf(d_manual)
 
-rm(compute_tf_idf())
+rm(compute_tf_idf)
 ```
 
 ```{r plot_tf_idf}
