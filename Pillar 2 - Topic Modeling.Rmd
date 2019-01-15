@@ -126,7 +126,7 @@ rm(prepare_tf_idf_course)
 ```
 
 ## Cluster Level
-```{r tf-idf per cluster, cache = TRUE}
+```{r tf-idf cluster, cache = TRUE}
 prepare_tf_idf_cluster <- function(data) data %>%
                                            left_join(select(d_course, Code, Cluster), by = "Code") %>%
                                            filter(!is.na(Cluster)) %>%
@@ -154,7 +154,7 @@ rm(prepare_tf_idf_cluster)
 ```
 
 ## Concentration Level
-```{r, cache = TRUE}
+```{r tf-idf concentration, cache = TRUE}
 prepare_tf_idf_concentration <- function(data) data %>%
                                                  left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
                                                  filter(!is.na(Concentration)) %>%
@@ -185,16 +185,28 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 
 # LDA
 ## Fitting Model
-```{r, eval = FALSE}
-d_overview_cast <- d_overview %>%
-  count(Code, word, sort = T) %>%
-  cast_dtm(Code,word, n)
+```{r}
+my_cast_tdm <- function(data, level) data %>%
+  count(Code, word) %>%
+  cast_dtm(Code, word, n)
+
+d_description_cast <- my_cast_tdm(d_description)
+d_overview_cast <- my_cast_tdm(d_overview)
+d_manual_cast <- my_cast_tdm(d_manual)
 ```
 
 ```{r, eval = FALSE}
-LDA_10 <- LDA(d_overview, k = 10, control = list(seed = 123))
-LDA_17 <- LDA(d_overview, k = 17, control = list(seed = 123))
-LDA_25 <- LDA(d_overview, k = 25, control = list(seed = 123))
+LDA_description_10 <- LDA(d_description_cast, k = 10, control = list(seed = 123))
+LDA_description_17 <- LDA(d_description_cast, k = 17, control = list(seed = 123))
+LDA_description_25 <- LDA(d_description_cast, k = 25, control = list(seed = 123))
+
+LDA_overview_10 <- LDA(d_overview_cast, k = 10, control = list(seed = 123))
+LDA_overview_17 <- LDA(d_overview_cast, k = 17, control = list(seed = 123))
+LDA_overview_25 <- LDA(d_overview_cast, k = 25, control = list(seed = 123))
+
+LDA_manual_10 <- LDA(d_manual_cast, k = 10, control = list(seed = 123))
+LDA_manual_17 <- LDA(d_manual_cast, k = 17, control = list(seed = 123))
+LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
 ```
 
 ## Results
