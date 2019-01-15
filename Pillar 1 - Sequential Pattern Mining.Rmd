@@ -10,6 +10,7 @@ output:
 ```{r library, message = F}
 library(tidyverse)
 library(arules)
+library(arulesSequences)
 ```
 
 # Setup
@@ -112,10 +113,47 @@ results_passed %>%
   filter(RHS_pass == "Fail}") %>%
   arrange(desc(count))
 ```
+#Mining-sequences
+Let I = {I1, I2,..., Ip} be the set of all items. An itemset is a nonempty set of items. A sequence is an ordered list of events. A sequence s is denoted <e1e2e3 ···el>, where event e1 occurs before e2, which occurs before e3, and so on. Event ej is also called an element of s. In the case of customer purchase data, an event refers to a shopping trip in which a customer bought items at a certain store. The event is thus an itemset, that is, an unordered list of items that the customer purchased during the trip. The itemset (or event) is denoted (x1x2 ···xq), where xk is an item. For brevity, the brackets are omitted if an element has only one item, that is, element (x) is written as x. 
+
+SequenceID = `Student ID Number`
+Event ID   =  UCM_YEAR_Period OR Year_period. 
+Items      =  Course
+```{r}
+d_sequence_transactions <- d_course %>%
+  select(Type, Code, Letters) %>%
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  select(Code) %>%
+  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
+  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
+  mutate(Time= paste(`Civil Year`,Period, sep="")) %>%
+  select(Code,`Student ID Number`, Time) %>%
+  group_by(`Student ID Number`, Time) %>%
+  arrange(Time,`Student ID Number`) #%>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
+  #summarize(list_course = list(Code)) %>%
+  #group_by()   #if we run the code until here maybe its possible to use sequence_transactions <- as(sequence_transaction$list_course, "transactions")
+
+sequence_transcript_data <- data.frame(item=d_sequence_transactions$Code)
+
+transcripts.tran <- as(sequence_transcript_data, "transactions")
+
+ transactionInfo(transcripts.tran)$sequenceID <- d_sequence_transactions$`Student ID Number`
+ 
+ transactionInfo(transcripts.tran)$eventID <- d_sequence_transactions$Time
+ 
+inspect(head(transcripts.tran))
+
+```
+now we find frequent sequential patterns
+```{r}
+frequent_trajectories <- cspade(transcripts.tran, parameter = list(support = 0.50))
+```
 
 
-
-
+#Visualisation
+It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
 
 
 
