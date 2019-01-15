@@ -1,10 +1,9 @@
 Data Preparation
 ================
 DARS
-2019-01-14
+2019-01-15
 
 -   [Import Data](#import-data)
-    -   [Setup](#setup)
     -   [Course Data](#course-data)
     -   [Textual Data](#textual-data)
         -   [Course Catalogues](#course-catalogues)
@@ -37,12 +36,7 @@ library(hunspell) # Stemmer
 Import Data
 ===========
 
-The datasets we use are saved as spreadsheet on our google drive *DARS* (with exeption of grade data saved as csv files on the computer for privacy reasons). We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based.
-
-Setup
------
-
-First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. `lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and two columns containing binary vectors indicating which assessment types and AoD we will consider when ploting the data[1]. Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
+The datasets we use are saved as spreadsheet on our google drive *DARS* (with exeption of grade data saved as csv files on the computer for privacy reasons). We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based. \#\# Setup First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. `lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and two columns containing binary vectors indicating which assessment types and AoD we will consider when ploting the data[1]. Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
 
 ``` r
 lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
@@ -694,10 +688,10 @@ stem_hunspell <- function(term) {
 
 dictionary <- select(d_overview, Code, word) %>%
   rbind(d_manual) %>% 
-  select(word) %>%
-  distinct %>%
+  distinct(word) %>%
   mutate(word_stem = purrr::map_chr(.x = word,
                                     .f = stem_hunspell))
+
 # terms for which the stem differs from the original word
 filter(dictionary, word != word_stem)
 ```
@@ -730,6 +724,7 @@ stem_with_dictionary <- function(data) data %>%
 d_description <- stem_with_dictionary(d_description)
 d_overview <- stem_with_dictionary(d_overview)
 d_manual <- stem_with_dictionary(d_manual)
+
 rm(stem_hunspell, stem_with_dictionary)
 print(d_description) # See starting - start
 ```
@@ -756,8 +751,10 @@ Finally, we want to filter out some uninformative words from our textual data. F
 ``` r
 # Own stop words
 sw_own <- c("______________________________________________________________________________")
+
 remove_sw <- function(data) data %>%
   filter(! word %in% c(stop_words$word, sw_own))
+
 d_description <- remove_sw(d_description)
 d_overview <- remove_sw(d_overview)
 d_manual <- remove_sw(d_manual)
