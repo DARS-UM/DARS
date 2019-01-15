@@ -49,16 +49,17 @@ load("data_pillar_2.RDATA")
 # TF-IDF
 ## Functions for Generating Barplots and Word Clouds
 
-```{r compute_tf_idf}
+```{r compute_tf_idf, cache = TRUE}
 compute_tf_idf <- function(data) data %>%
                                    count(Code, word) %>%
                                    bind_tf_idf(term = word, document = Code, n = n)
 
 tf_idf_description <- compute_tf_idf(filter(d_description, `Calendar Year` == "2018-2019"))
-tf_idf_overview <- compute_tf_idf(filter(d_overview, `Calendar Year` == "2018-2019"))
-tf_idf_manual <- compute_tf_idf(d_manual)
-```
+tf_idf_overview    <- compute_tf_idf(filter(d_overview, `Calendar Year` == "2018-2019"))
+tf_idf_manual      <- compute_tf_idf(d_manual)
 
+rm(compute_tf_idf())
+```
 
 ```{r plot_tf_idf}
 plot_tf_idf <- function(data, top = 10, n_col = 5, plot_id = NULL){
@@ -78,7 +79,7 @@ plot_tf_idf <- function(data, top = 10, n_col = 5, plot_id = NULL){
   # Word Cloud
   g <- data %>%
     group_by(facet) %>%
-    mutate(freq = tf_idf / sum(tf_idf)) %>% # normalization within clusters
+      mutate(freq = tf_idf / sum(tf_idf)) %>% # normalization within clusters
     ggplot(aes(size = freq^0.7, label = word, color = freq^0.7)) +
     geom_text_wordcloud_area(area_corr_power = 1,
                              eccentricity    = 1,
@@ -104,8 +105,8 @@ prepare_tf_idf_course <- function(data) data %>%
                                           filter(Code %in% sample(unique(.$Code), size = 25, replace = F)) %>% # random selection of courses
                                           rename(facet = Code) %>%
                                           group_by(facet) %>%
-                                          filter(n >= 2) %>%
-                                          top_n(10, tf_idf) %>%
+                                            filter(n >= 2) %>%
+                                            top_n(10, tf_idf) %>%
                                           ungroup
 
 set.seed(123)
@@ -122,10 +123,12 @@ set.seed(123)
 tf_idf_manual %>%
   prepare_tf_idf_course %>%
   plot_tf_idf(plot_id = "Course_manual")
+
+rm(prepare_tf_idf_course)
 ```
 
 ## Cluster Level
-```{r tf-idf per cluster}
+```{r tf-idf per cluster, cache = TRUE}
 prepare_tf_idf_cluster <- function(data) data %>%
                                            left_join(select(d_course, Code, Cluster), by = "Code") %>%
                                            filter(!is.na(Cluster)) %>%
@@ -148,21 +151,49 @@ tf_idf_overview %>%
 tf_idf_manual %>%
   prepare_tf_idf_cluster %>%
   plot_tf_idf(plot_id = "Cluster_manual")
+
+rm(prepare_tf_idf_cluster)
 ```
 
 ## Concentration Level
+```{r, cache = TRUE}
+prepare_tf_idf_concentration <- function(data) data %>%
+                                                 left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
+                                                 filter(!is.na(Concentration)) %>%
+                                                 gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
+                                                 rename(facet = Concentration) %>%
+                                                 group_by(facet, word) %>%
+                                                   summarise(tf_idf = sum(tf_idf),
+                                                             n = sum(n)) %>%
+                                                   filter(n >= 10) %>%
+                                                   top_n(10, tf_idf) %>%
+                                                 ungroup
 
+tf_idf_description %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(plot_id = "Concentration_description")
+
+tf_idf_overview %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(plot_id = "Concentration_overview")
+
+tf_idf_manual %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(plot_id = "Concentration_manual")
+
+rm(prepare_tf_idf_concentration, plot_tf_idf,
+   tf_idf_description, tf_idf_overview, tf_idf_manual)
+```
 
 # LDA
-hist
 ## Fitting Model
-```{r}
+```{r, eval = FALSE}
 d_overview_cast <- d_overview %>%
   count(Code, word, sort = T) %>%
   cast_dtm(Code,word, n)
 ```
 
-```{r}
+```{r, eval = FALSE}
 LDA_10 <- LDA(d_overview, k = 10, control = list(seed = 123))
 LDA_17 <- LDA(d_overview, k = 17, control = list(seed = 123))
 LDA_25 <- LDA(d_overview, k = 25, control = list(seed = 123))
