@@ -212,42 +212,52 @@ LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
 ```
 
 ## Results
-```{r}
+```{r LDA prepare}
 prepare_data_LDA_beta <- function(results) tidy(results, matrix = "beta") %>%
                                         mutate(topic = paste("Topic", topic)) %>%
                                           group_by(topic) %>%
                                             top_n(10, beta) %>%
-                                          ungroup
+                                          ungroup %>%
+                                          arrange(topic, desc(beta))
 
-prepare_data_LDA_gamma <- function(results, facet = Course){
+prepare_data_LDA_gamma <- function(results, level = Course){
   
   data_gamma <- tidy(results, matrix = "gamma") %>%
     mutate(topic = paste("Topic", topic)) %>%
-    rename(Code = document) %>%
-    left_join(select(d_course, Code, Cluster, Concentration, `Concentration (additional)`), by = "Code")
+    rename(Code = document)
   
-  if(ensym(facet) == sym("Course")) data_gamma <- data_gamma %>%
-                                      rename(facet = Code)
+  if(ensym(level) == sym("Course")) data_gamma <- data_gamma %>%
+                                      rename(facet = Code) 
   
-  if(ensym(facet) == sym("Cluster")) data_gamma <- data_gamma %>%
-                                       filter(is.na(Cluster)) %>%
+  if(ensym(level) == sym("Cluster")) data_gamma <- data_gamma %>% 
+                                       left_join(select(d_course, Code, Cluster), by = "Code") %>%
+                                       filter(!is.na(Cluster)) %>%
                                        rename(facet = Cluster)
                                        
-  if(ensym(facet) == sym("Concentration")) data_gamma <- data_gamma %>% 
-                                             filter(!is.na(Concentration)) %>%
+  if(ensym(level) == sym("Concentration")) data_gamma <- data_gamma %>%
+                                             left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
                                              gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
                                              rename(facet = Concentration)
   
   data_gamma <- data_gamma %>%
     group_by(facet, topic) %>%
       summarise(gamma = mean(gamma)) %>%
-    filter(gamma > 0.05)
-    ungroup
+    filter(gamma > 0.05) %>%
+    ungroup %>%
+    arrange(facet, desc(gamma))
+  
+  return(data_gamma)
   
 }
+
+# Bet Distribution
+LDA_description_10 %>% prepare_data_LDA_beta
+
+# Gamma Distribution
+LDA_description_10 %>% prepare_data_LDA_gamma(level = Cluster)
 ```
 
-```{r function visualize_LDA, eval = F}
+```{r LDA visualize}
 visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
   
   data_prepared %>%
@@ -292,7 +302,7 @@ visualize_LDA_gamma1 <- function(data_prepared, id_plot = "test"){
   
 }
 
-visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){???
+visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
   
   data_prepared %>%
     ggplot(aes(reorder_within(topic, 
@@ -314,7 +324,6 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){???
          width = 15, height = 10, path = "Plots")
     
 }
-
 ```
 
 ```{r visualization LDA, eval = F}
