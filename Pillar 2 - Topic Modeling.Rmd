@@ -60,7 +60,7 @@ rm(compute_tf_idf)
 ```
 
 ```{r plot_tf_idf}
-plot_tf_idf <- function(data, top = 10, n_col = 5, plot_id = NULL){
+plot_tf_idf <- function(data, n_col = 5, plot_id = NULL){
 
   # Barplot
   g <- data %>%
@@ -185,7 +185,7 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 
 # LDA
 ## Fitting Model
-```{r}
+```{r my_cast_tdm}
 my_cast_tdm <- function(data, level) data %>%
   count(Code, word) %>%
   cast_dtm(Code, word, n)
@@ -193,6 +193,8 @@ my_cast_tdm <- function(data, level) data %>%
 d_description_cast <- my_cast_tdm(d_description)
 d_overview_cast <- my_cast_tdm(d_overview)
 d_manual_cast <- my_cast_tdm(d_manual)
+
+rm(my_cast_tdm)
 ```
 
 ```{r, eval = FALSE}
@@ -214,22 +216,14 @@ LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
 ```{r function visualize_LDA, eval = F}
 visualize_LDA <- function(results, id_plot = "test", facet = F, topic_names = NULL){
   
-  # Setup
-  topic_letter <- tibble(topic_number = 1:26,
-                         topic_letter = c(topic_names,
-                                          paste("Topic", LETTERS[(length(topic_names)+1) : 26])))
-  
-  # Beta Distribution: term-topic
-  term_topic <- tidy(results, matrix = "beta") %>%
-    left_join(topic_letter, by = c("topic" = "topic_number")) %>%
-    mutate(topic = topic_letter) %>%
-    select(-topic_letter)
-  
-  term_topic %>%
+  # Beta distribution
+  tidy(LDA_description_10, matrix = "beta") %>%
+    mutate(topic = paste("Topic", topic)) %>%
     group_by(topic) %>%
-    top_n(10, beta) %>%
+      top_n(10, beta) %>%
     ungroup %>%
-    ggplot(aes(x = reorder_within(term, by = beta, within = topic), y = beta, fill = topic)) +
+    
+  ggplot(aes(x = reorder_within(term, by = beta, within = topic), y = beta, fill = topic)) +
     geom_col(show.legend = F) +
     facet_wrap(~ topic, scales = "free") +
     scale_x_reordered() +
@@ -241,21 +235,29 @@ visualize_LDA <- function(results, id_plot = "test", facet = F, topic_names = NU
   ggsave(paste(id_plot, "beta.jpeg"),
          width = 15, height = 10, path = "Plots")
   
-  # Gamma Distribution: document-topic
-  doc_topic <- tidy(results, matrix = "gamma") %>%
-    left_join(topic_letter, by = c("topic" = "topic_number")) %>%
-    mutate(topic = topic_letter,
-           facet = document) %>%
-    select(-c(topic_letter, document))
+  # Gamma Distribution
+  data_gamma <- tidy(LDA_description_10, matrix = "gamma") %>%
+    mutate(topic = paste("Topic", topic)) %>%
+    rename(Code = document) %>%
+    left_join(select(d_course, Code, Cluster, Concentration, `Concentration (additional)`), by = "Code")
   
-  if(facet) doc_topic <- separate(doc_topic, facet, c("document", "facet"), sep = "_") %>%
-    add_count(facet) %>%
+  if(ensym(facet) == sym("Course")) data_gamma <- data_gamma %>%
+                                      rename(facet = Code)
+  
+  if(ensym(facet) == sym("Cluster")) data_gamma <- data_gamma %>%
+                                       filter(is.na(Cluster)) %>%
+                                       rename(facet = Cluster)
+                                       
+  if(ensym(facet) == sym("Concentration")) data_gamma <- data_gamma %>% 
+                                             filter(!is.na(Concentration)) %>%
+                                             gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
+                                             rename(facet = Concentration)
+  
+  
+  # Gamma Distribution: plot 1 docu-topic
+  data_gamma %>%
     group_by(facet, topic) %>%
-    summarise(gamma = sum(gamma)) %>%
-    ungroup
-  
-  # Plot 1
-  doc_topic %>%
+      summarise(gamma = sum(gamma))
     filter(gamma > 0.05) %>%
     ggplot(aes(reorder_within(facet, by = gamma, within = topic), y = gamma, fill = facet)) +
     geom_col(show.legend = F) +
