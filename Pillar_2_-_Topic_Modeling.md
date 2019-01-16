@@ -1,0 +1,524 @@
+Pillar 2 - Topic Modeling
+================
+DARS
+2019-01-15
+
+-   [Setup](#setup)
+-   [TF-IDF](#tf-idf)
+    -   [Functions for Generating Barplots and Word Clouds](#functions-for-generating-barplots-and-word-clouds)
+    -   [Course Level](#course-level)
+    -   [Cluster Level](#cluster-level)
+    -   [Concentration Level](#concentration-level)
+-   [LDA](#lda)
+    -   [Fitting Model](#fitting-model)
+    -   [Results](#results)
+
+``` r
+library(tidyverse)
+library(tidytext)
+
+library(ggwordcloud) # Word Clouds
+library(topicmodels)
+library(lemon)
+library(ggthemes)
+library(rlang)
+```
+
+Setup
+=====
+
+``` r
+load("data_pillar_2.RDATA")
+```
+
+TF-IDF
+======
+
+Functions for Generating Barplots and Word Clouds
+-------------------------------------------------
+
+``` r
+compute_tf_idf <- function(data) data %>%
+                                   count(Code, word) %>%
+                                   bind_tf_idf(term = word, document = Code, n = n)
+
+tf_idf_description <- compute_tf_idf(filter(d_description, `Calendar Year` == "2018-2019"))
+```
+
+    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
+    ## This warning is displayed once per session.
+
+``` r
+tf_idf_overview    <- compute_tf_idf(filter(d_overview, `Calendar Year` == "2018-2019"))
+tf_idf_manual      <- compute_tf_idf(d_manual)
+
+rm(compute_tf_idf)
+```
+
+``` r
+plot_tf_idf <- function(data, top = 10, n_col = 5, plot_id = NULL){
+
+  # Barplot
+  g <- data %>%
+    ggplot(aes(reorder_within(word, tf_idf, facet), tf_idf)) +
+    geom_col(show.legend = F) +
+    labs(x = NULL, y = "tf-idf") +
+    scale_x_reordered() +
+    facet_wrap(~ facet, scales = "free", ncol = n_col) +
+    coord_flip()
+  
+  ggsave(paste(plot_id, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  print(g)
+    
+  # Word Cloud
+  g <- data %>%
+    group_by(facet) %>%
+      mutate(freq = tf_idf / sum(tf_idf)) %>% # normalization within clusters
+    ggplot(aes(size = freq^0.7, label = word, color = freq^0.7)) +
+    geom_text_wordcloud_area(area_corr_power = 1,
+                             eccentricity    = 1,
+                             rm_outside      = T) +
+    scale_radius(range = c(2, 10), limits = c(0, NA)) +
+    scale_color_gradient(low = "red", high = "blue") +
+    facet_wrap(~ facet, ncol = n_col) + 
+    theme(
+      strip.text.x     = element_text(),
+      panel.background = element_rect(fill = "white"),
+      plot.title       = element_text(hjust=0.5)
+    )
+  
+  ggsave(paste(plot_id, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  print(g)
+
+}
+```
+
+Course Level
+------------
+
+``` r
+prepare_tf_idf_course <- function(data) data %>%
+                                          filter(Code %in% sample(unique(.$Code), size = 25, replace = F)) %>% # random selection of courses
+                                          rename(facet = Code) %>%
+                                          group_by(facet) %>%
+                                            filter(n >= 2) %>%
+                                            top_n(10, tf_idf) %>%
+                                          ungroup
+
+set.seed(123)
+tf_idf_description %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(plot_id = "Course_description")
+```
+
+    ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `call2()` instead
+    ## This warning is displayed once per session.
+
+<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-1.png" width="16" height="8" />
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+    ## One word could not fit on page. It has been removed.
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+    ## One word could not fit on page. It has been removed.
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-2.png" width="16" height="8" />
+
+``` r
+set.seed(123)
+tf_idf_overview %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(plot_id = "Course_overview")
+```
+
+<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-3.png" width="16" height="8" />
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-4.png" width="16" height="8" />
+
+``` r
+set.seed(123)
+tf_idf_manual %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(plot_id = "Course_manual")
+```
+
+    ## One word could not fit on page. It has been removed.
+
+<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-5.png" width="16" height="8" />
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-6.png" width="16" height="8" />
+
+``` r
+rm(prepare_tf_idf_course)
+```
+
+Cluster Level
+-------------
+
+``` r
+prepare_tf_idf_cluster <- function(data) data %>%
+                                           left_join(select(d_course, Code, Cluster), by = "Code") %>%
+                                           filter(!is.na(Cluster)) %>%
+                                           rename(facet = Cluster) %>%
+                                           group_by(facet, word) %>%
+                                             summarise(tf_idf = sum(tf_idf),
+                                                       n = sum(n)) %>%
+                                             filter(n >= 10) %>%
+                                             top_n(10, tf_idf) %>%
+                                           ungroup
+
+tf_idf_description %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(plot_id = "Cluster_description")
+```
+
+    ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `new_data_mask()` instead
+    ## This warning is displayed once per session.
+
+    ## Warning: `overscope_eval_next()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `eval_tidy()` with a data mask instead
+    ## This warning is displayed once per session.
+
+    ## Warning: `chr_along()` is soft-deprecated as of rlang 0.2.0.
+    ## This warning is displayed once per session.
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20per%20cluster-1.png)
+
+    ## Some words could not fit on page. They have been removed.
+
+    ## One word could not fit on page. It has been removed.
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+    ## One word could not fit on page. It has been removed.
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+    ## One word could not fit on page. It has been removed.
+    ## One word could not fit on page. It has been removed.
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+    ## One word could not fit on page. It has been removed.
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20per%20cluster-2.png)
+
+``` r
+tf_idf_overview %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(plot_id = "Cluster_overview")
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20per%20cluster-3.png)
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20per%20cluster-4.png)
+
+``` r
+tf_idf_manual %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(plot_id = "Cluster_manual")
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20per%20cluster-5.png)
+
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+    ## Some words could not fit on page. They have been removed.
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20per%20cluster-6.png)
+
+``` r
+rm(prepare_tf_idf_cluster)
+```
+
+Concentration Level
+-------------------
+
+``` r
+prepare_tf_idf_concentration <- function(data) data %>%
+                                                 left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
+                                                 filter(!is.na(Concentration)) %>%
+                                                 gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
+                                                 rename(facet = Concentration) %>%
+                                                 group_by(facet, word) %>%
+                                                   summarise(tf_idf = sum(tf_idf),
+                                                             n = sum(n)) %>%
+                                                   filter(n >= 10) %>%
+                                                   top_n(10, tf_idf) %>%
+                                                 ungroup
+
+tf_idf_description %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(plot_id = "Concentration_description")
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/unnamed-chunk-1-1.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/unnamed-chunk-1-2.png)
+
+``` r
+tf_idf_overview %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(plot_id = "Concentration_overview")
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/unnamed-chunk-1-3.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/unnamed-chunk-1-4.png)
+
+``` r
+tf_idf_manual %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(plot_id = "Concentration_manual")
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/unnamed-chunk-1-5.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/unnamed-chunk-1-6.png)
+
+``` r
+rm(prepare_tf_idf_concentration, plot_tf_idf,
+   tf_idf_description, tf_idf_overview, tf_idf_manual)
+```
+
+LDA
+===
+
+Fitting Model
+-------------
+
+``` r
+d_overview_cast <- d_overview %>%
+  count(Code, word, sort = T) %>%
+  cast_dtm(Code,word, n)
+```
+
+``` r
+LDA_10 <- LDA(d_overview, k = 10, control = list(seed = 123))
+LDA_17 <- LDA(d_overview, k = 17, control = list(seed = 123))
+LDA_25 <- LDA(d_overview, k = 25, control = list(seed = 123))
+```
+
+Results
+-------
+
+``` r
+visualize_LDA <- function(results, id_plot = "test", facet = F, topic_names = NULL){
+  
+  # Setup
+  topic_letter <- tibble(topic_number = 1:26,
+                         topic_letter = c(topic_names,
+                                          paste("Topic", LETTERS[(length(topic_names)+1) : 26])))
+  
+  # Beta Distribution: term-topic
+  term_topic <- tidy(results, matrix = "beta") %>%
+    left_join(topic_letter, by = c("topic" = "topic_number")) %>%
+    mutate(topic = topic_letter) %>%
+    select(-topic_letter)
+  
+  term_topic %>%
+    group_by(topic) %>%
+    top_n(10, beta) %>%
+    ungroup %>%
+    ggplot(aes(x = reorder_within(term, by = beta, within = topic), y = beta, fill = topic)) +
+    geom_col(show.legend = F) +
+    facet_wrap(~ topic, scales = "free") +
+    scale_x_reordered() +
+    labs(x = "Terms", y = "Beta", title = "Main Terms of each Topic") +
+    coord_flip() +
+    theme_light() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste(id_plot, "beta.jpeg"),
+         width = 15, height = 10, path = "Plots")
+  
+  # Gamma Distribution: document-topic
+  doc_topic <- tidy(results, matrix = "gamma") %>%
+    left_join(topic_letter, by = c("topic" = "topic_number")) %>%
+    mutate(topic = topic_letter,
+           facet = document) %>%
+    select(-c(topic_letter, document))
+  
+  if(facet) doc_topic <- separate(doc_topic, facet, c("document", "facet"), sep = "_") %>%
+    add_count(facet) %>%
+    group_by(facet, topic) %>%
+    summarise(gamma = sum(gamma)) %>%
+    ungroup
+  
+  # Plot 1
+  doc_topic %>%
+    filter(gamma > 0.05) %>%
+    ggplot(aes(reorder_within(facet, by = gamma, within = topic), y = gamma, fill = facet)) +
+    geom_col(show.legend = F) +
+    facet_rep_wrap(~ topic, scales = "free",
+                   repeat.tick.labels = "bottom") +
+    scale_x_reordered() +
+    coord_flip() +
+    labs(x = "(Group of) Courses", y = "Gamma", title = "Main Courses/Clusters of each Topic") +
+    theme_light() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 0),
+          plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste(id_plot, "gamma1.jpeg"),
+         width = 15, height = 10, path = "Plots")
+  
+  # Plot 2
+  doc_topic %>%
+    filter(gamma > 0.05) %>%
+    ggplot(aes(reorder_within(topic, by = gamma, within = facet), y = gamma, fill = topic)) +
+    geom_col(show.legend = F) +
+    facet_rep_wrap(~ facet, scales = "free",
+                   repeat.tick.labels = "bottom") +
+    scale_x_reordered() +
+    coord_flip() +
+    labs(x = "Topics", y = "Gamma", title = "Main Topics of each Courses/Cluster") +
+    theme_light() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 0),
+          plot.title = element_text(hjust = 0.5))
+
+  
+  ggsave(paste(id_plot, "gamma2.jpeg"),
+         width = 15, height = 10, path = "Plots")
+  
+}
+```
+
+``` r
+visualize_LDA(LDA_SCI_2 , id_plot = "SCI, k = 2" )
+visualize_LDA(LDA_SCI_5 , id_plot = "SCI, k = 5" )
+visualize_LDA(LDA_SCI_10, id_plot = "SCI, k = 10")
+
+visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10", facet = T)
+visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17", facet = T)
+visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25", facet = T)
+
+visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10 with labelled topics", facet = T,
+              topic_names = c("Psychology & Information", "Economics and Development", "Biology", "Chemistry and Math",
+                              "Sociology", "Law", "Research", "International Politics",
+                              "Philosophy", "Humanities"))
+
+visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17 with labelled topics", facet = T,
+              topic_names = c("Science/Knowledge", "Psycho", "Biology", "Chemistry", "Culture",
+                              "Conflict", "Research", "Foreign Policy", "Arts", "Literature",
+                              "Communication Skills", "Law", "Humanities", "Computer", "Economics", 
+                              "Math", "Management and ?"))
+visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25 with labelled topics", facet = T,
+              topic_names = c(
+                "Information", "Psycho", "Bio", "Chem", "Sociology",
+                "History", "skills", "Europe", "Philosophy", "IR",
+                "Conference", "Law", "Media", "Philosophy", "Economics",
+                "Math", "Management and Literature", "Entrepreneurship", "Conflict", "Research",
+                "Arts", "Computer Science", "Policy?", "Physiology", "Qual. Res."))
+```
