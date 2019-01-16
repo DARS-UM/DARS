@@ -60,7 +60,7 @@ rm(compute_tf_idf)
 ```
 
 ```{r plot_tf_idf}
-plot_tf_idf <- function(data, n_col = 5, plot_id = NULL){
+plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
 
   # Barplot
   g <- data %>%
@@ -71,7 +71,7 @@ plot_tf_idf <- function(data, n_col = 5, plot_id = NULL){
     facet_wrap(~ facet, scales = "free", ncol = n_col) +
     coord_flip()
   
-  ggsave(paste(plot_id, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
   print(g)
     
   # Word Cloud
@@ -91,7 +91,7 @@ plot_tf_idf <- function(data, n_col = 5, plot_id = NULL){
       plot.title       = element_text(hjust=0.5)
     )
   
-  ggsave(paste(plot_id, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
   print(g)
 
 }
@@ -110,17 +110,17 @@ prepare_tf_idf_course <- function(data) data %>%
 set.seed(123)
 tf_idf_description %>%
   prepare_tf_idf_course %>%
-  plot_tf_idf(plot_id = "Course_description")
+  plot_tf_idf(id_plot = "Course_description")
 
 set.seed(123)
 tf_idf_overview %>%
   prepare_tf_idf_course %>%
-  plot_tf_idf(plot_id = "Course_overview")
+  plot_tf_idf(id_plot = "Course_overview")
 
 set.seed(123)
 tf_idf_manual %>%
   prepare_tf_idf_course %>%
-  plot_tf_idf(plot_id = "Course_manual")
+  plot_tf_idf(id_plot = "Course_manual")
 
 rm(prepare_tf_idf_course)
 ```
@@ -140,15 +140,15 @@ prepare_tf_idf_cluster <- function(data) data %>%
 
 tf_idf_description %>%
   prepare_tf_idf_cluster %>%
-  plot_tf_idf(plot_id = "Cluster_description")
+  plot_tf_idf(id_plot = "Cluster_description")
 
 tf_idf_overview %>%
   prepare_tf_idf_cluster %>%
-  plot_tf_idf(plot_id = "Cluster_overview")
+  plot_tf_idf(id_plot = "Cluster_overview")
 
 tf_idf_manual %>%
   prepare_tf_idf_cluster %>%
-  plot_tf_idf(plot_id = "Cluster_manual")
+  plot_tf_idf(id_plot = "Cluster_manual")
 
 rm(prepare_tf_idf_cluster)
 ```
@@ -169,15 +169,15 @@ prepare_tf_idf_concentration <- function(data) data %>%
 
 tf_idf_description %>%
   prepare_tf_idf_concentration %>%
-  plot_tf_idf(plot_id = "Concentration_description")
+  plot_tf_idf(id_plot = "Concentration_description")
 
 tf_idf_overview %>%
   prepare_tf_idf_concentration %>%
-  plot_tf_idf(plot_id = "Concentration_overview")
+  plot_tf_idf(id_plot = "Concentration_overview")
 
 tf_idf_manual %>%
   prepare_tf_idf_concentration %>%
-  plot_tf_idf(plot_id = "Concentration_manual")
+  plot_tf_idf(id_plot = "Concentration_manual")
 
 rm(prepare_tf_idf_concentration, plot_tf_idf,
    tf_idf_description, tf_idf_overview, tf_idf_manual)
@@ -197,7 +197,7 @@ d_manual_cast <- my_cast_tdm(d_manual)
 rm(my_cast_tdm)
 ```
 
-```{r, eval = FALSE}
+```{r, cache = TRUE}
 LDA_description_10 <- LDA(d_description_cast, k = 10, control = list(seed = 123))
 LDA_description_17 <- LDA(d_description_cast, k = 17, control = list(seed = 123))
 LDA_description_25 <- LDA(d_description_cast, k = 25, control = list(seed = 123))
@@ -326,14 +326,47 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
 }
 ```
 
-```{r visualization LDA, eval = F}
-visualize_LDA(LDA_SCI_2 , id_plot = "SCI, k = 2" )
-visualize_LDA(LDA_SCI_5 , id_plot = "SCI, k = 5" )
-visualize_LDA(LDA_SCI_10, id_plot = "SCI, k = 10")
+```{r}
+# Bet Distribution
+LDA_description_10 %>%
+  prepare_data_LDA_beta %>%
+  visualize_LDA_beta
 
-visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10", facet = T)
-visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17", facet = T)
-visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25", facet = T)
+# Gamma Distribution 1
+LDA_description_10 %>%
+  prepare_data_LDA_gamma(level = Cluster) %>%
+  visualize_LDA_gamma1
+
+# Gamma Distribution 2
+LDA_description_10 %>%
+  prepare_data_LDA_gamma(level = Cluster) %>%
+  visualize_LDA_gamma2
+```
+
+
+```{r}
+visualize_LDA <- function(data, level = Course, id_plot = "test"){
+
+  # Beta distribution
+  data %>% 
+    prepare_data_LDA_beta %>%
+    visualize_LDA_beta(id_plot = id_plot)
+  
+  # Gamma 1 distribution
+  data %>% 
+    prepare_data_LDA_gamma(level = !!ensym(level)) %>%
+    visualize_LDA_gamma1(id_plot = id_plot)
+  
+  # Gamma 2 distribution
+  data %>% 
+    prepare_data_LDA_gamma(level = !!ensym(level)) %>%
+    visualize_LDA_gamma2(id_plot = id_plot)
+  
+}
+```
+
+
+```{r visualization LDA, eval = F}
 
 visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10 with labelled topics", facet = T,
               topic_names = c("Psychology & Information", "Economics and Development", "Biology", "Chemistry and Math",
