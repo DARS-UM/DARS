@@ -212,31 +212,16 @@ LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
 ```
 
 ## Results
+```{r}
+prepare_data_LDA_beta <- function(results) tidy(results, matrix = "beta") %>%
+                                        mutate(topic = paste("Topic", topic)) %>%
+                                          group_by(topic) %>%
+                                            top_n(10, beta) %>%
+                                          ungroup
 
-```{r function visualize_LDA, eval = F}
-visualize_LDA <- function(results, id_plot = "test", facet = F, topic_names = NULL){
+prepare_data_LDA_gamma <- function(results, facet = Course){
   
-  # Beta distribution
-  tidy(LDA_description_10, matrix = "beta") %>%
-    mutate(topic = paste("Topic", topic)) %>%
-    group_by(topic) %>%
-      top_n(10, beta) %>%
-    ungroup %>%
-    
-  ggplot(aes(x = reorder_within(term, by = beta, within = topic), y = beta, fill = topic)) +
-    geom_col(show.legend = F) +
-    facet_wrap(~ topic, scales = "free") +
-    scale_x_reordered() +
-    labs(x = "Terms", y = "Beta", title = "Main Terms of each Topic") +
-    coord_flip() +
-    theme_light() +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  ggsave(paste(id_plot, "beta.jpeg"),
-         width = 15, height = 10, path = "Plots")
-  
-  # Gamma Distribution
-  data_gamma <- tidy(LDA_description_10, matrix = "gamma") %>%
+  data_gamma <- tidy(results, matrix = "gamma") %>%
     mutate(topic = paste("Topic", topic)) %>%
     rename(Code = document) %>%
     left_join(select(d_course, Code, Cluster, Concentration, `Concentration (additional)`), by = "Code")
@@ -253,19 +238,51 @@ visualize_LDA <- function(results, id_plot = "test", facet = F, topic_names = NU
                                              gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
                                              rename(facet = Concentration)
   
-  
-  # Gamma Distribution: plot 1 docu-topic
-  data_gamma %>%
+  data_gamma <- data_gamma %>%
     group_by(facet, topic) %>%
-      summarise(gamma = sum(gamma))
-    filter(gamma > 0.05) %>%
-    ggplot(aes(reorder_within(facet, by = gamma, within = topic), y = gamma, fill = facet)) +
+      summarise(gamma = mean(gamma)) %>%
+    filter(gamma > 0.05)
+    ungroup
+  
+}
+```
+
+```{r function visualize_LDA, eval = F}
+visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
+  
+  data_prepared %>%
+  ggplot(aes(x = reorder_within(term,
+                                by = beta,
+                                within = topic),
+             y = beta,
+             fill = topic)) +
     geom_col(show.legend = F) +
-    facet_rep_wrap(~ topic, scales = "free",
-                   repeat.tick.labels = "bottom") +
+    facet_wrap(~ topic, scales = "free") +
+    scale_x_reordered() +
+    labs(x = "Terms", y = "Beta", title = "Main Terms of each Topic") +
+    coord_flip() +
+    theme_light() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste(id_plot, "beta.jpeg"),
+         width = 15, height = 10, path = "Plots")
+  
+}
+
+visualize_LDA_gamma1 <- function(data_prepared, id_plot = "test"){
+  
+  data_prepared %>%
+    ggplot(aes(reorder_within(facet, 
+                              by = gamma, 
+                              within = topic), 
+               y = gamma, 
+               fill = facet)) +
+    geom_col(show.legend = F) +
+    facet_wrap(~ topic, 
+               scales = "free") +
     scale_x_reordered() +
     coord_flip() +
-    labs(x = "(Group of) Courses", y = "Gamma", title = "Main Courses/Clusters of each Topic") +
+   # labs(x = ensym(facet), y = "Gamma", title = paste("Main", ensym(facet), "of each Topic") +
     theme_light() +
     theme(axis.text.x = element_text(angle = 90, hjust = 0),
           plot.title = element_text(hjust = 0.5))
@@ -273,25 +290,31 @@ visualize_LDA <- function(results, id_plot = "test", facet = F, topic_names = NU
   ggsave(paste(id_plot, "gamma1.jpeg"),
          width = 15, height = 10, path = "Plots")
   
-  # Plot 2
-  doc_topic %>%
-    filter(gamma > 0.05) %>%
-    ggplot(aes(reorder_within(topic, by = gamma, within = facet), y = gamma, fill = topic)) +
+}
+
+visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){???
+  
+  data_prepared %>%
+    ggplot(aes(reorder_within(topic, 
+                              by = gamma,
+                              within = facet), 
+               y = gamma, 
+               fill = topic)) +
     geom_col(show.legend = F) +
-    facet_rep_wrap(~ facet, scales = "free",
-                   repeat.tick.labels = "bottom") +
+    facet_wrap(~ facet, 
+               scales = "free") +
     scale_x_reordered() +
     coord_flip() +
-    labs(x = "Topics", y = "Gamma", title = "Main Topics of each Courses/Cluster") +
+  #  labs(x = "Topics", y = "Gamma", title = "Main Topics of each Courses/Cluster") +
     theme_light() +
     theme(axis.text.x = element_text(angle = 90, hjust = 0),
           plot.title = element_text(hjust = 0.5))
-
   
   ggsave(paste(id_plot, "gamma2.jpeg"),
          width = 15, height = 10, path = "Plots")
-  
+    
 }
+
 ```
 
 ```{r visualization LDA, eval = F}
