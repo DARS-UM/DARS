@@ -98,7 +98,7 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
 ```
 
 ## Course Level
-```{r tf-idf course, out.height=8, out.width=16}
+```{r tf-idf course, out.height=8, out.width=16, cache = TRUE}
 prepare_tf_idf_course <- function(data) data %>%
                                           filter(Code %in% sample(unique(.$Code), size = 25, replace = F)) %>% # random selection of courses
                                           rename(facet = Code) %>%
@@ -241,7 +241,7 @@ prepare_data_LDA_gamma <- function(results, level = Course){
   
   data_gamma <- data_gamma %>%
     group_by(facet, topic) %>%
-      summarise(gamma = mean(gamma)) %>%
+      summarise(gamma = sum(gamma)) %>%
     filter(gamma > 0.05) %>%
     ungroup %>%
     arrange(facet, desc(gamma))
@@ -326,7 +326,7 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
 }
 ```
 
-```{r}
+```{r, cache = TRUE}
 # Bet Distribution
 LDA_description_10 %>%
   prepare_data_LDA_beta %>%
@@ -363,6 +363,39 @@ visualize_LDA <- function(data, level = Course, id_plot = "test"){
     visualize_LDA_gamma2(id_plot = id_plot)
   
 }
+```
+
+
+```{r}
+visualize_LDA_all_level <- function(data, id_plot = "test"){
+  
+  data %>% 
+    visualize_LDA(level = Course,
+                  id_plot = paste(id_plot, "_course"))
+  
+  data %>% 
+    visualize_LDA(level = Cluster,
+                  id_plot = paste(id_plot, "_cluster"))
+    
+  data %>% 
+    visualize_LDA(level = Concentration,
+                  id_plot = paste(id_plot, "_concentration"))
+  
+}
+```
+
+```{r, cache = TRUE}
+LDA_description_10 %>% visualize_LDA_all_level(id_plot = "description_k10")
+LDA_description_17 %>% visualize_LDA_all_level(id_plot = "description_k17")
+LDA_description_25 %>% visualize_LDA_all_level(id_plot = "description_k25")
+
+LDA_overview_10 %>% visualize_LDA_all_level(id_plot = "overview_k10")
+LDA_overview_17 %>% visualize_LDA_all_level(id_plot = "overview_k17")
+LDA_overview_25 %>% visualize_LDA_all_level(id_plot = "overview_k25")
+
+LDA_manual_10 %>% visualize_LDA_all_level(id_plot = "manual_k10")
+LDA_manual_17 %>% visualize_LDA_all_level(id_plot = "manual_k17")
+LDA_manual_25 %>% visualize_LDA_all_level(id_plot = "manual_k25")
 ```
 
 

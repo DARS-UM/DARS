@@ -56,7 +56,7 @@ rm(compute_tf_idf)
 ```
 
 ``` r
-plot_tf_idf <- function(data, n_col = 5, plot_id = NULL){
+plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
 
   # Barplot
   g <- data %>%
@@ -67,7 +67,7 @@ plot_tf_idf <- function(data, n_col = 5, plot_id = NULL){
     facet_wrap(~ facet, scales = "free", ncol = n_col) +
     coord_flip()
   
-  ggsave(paste(plot_id, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
   print(g)
     
   # Word Cloud
@@ -87,7 +87,7 @@ plot_tf_idf <- function(data, n_col = 5, plot_id = NULL){
       plot.title       = element_text(hjust=0.5)
     )
   
-  ggsave(paste(plot_id, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
   print(g)
 
 }
@@ -108,7 +108,7 @@ prepare_tf_idf_course <- function(data) data %>%
 set.seed(123)
 tf_idf_description %>%
   prepare_tf_idf_course %>%
-  plot_tf_idf(plot_id = "Course_description")
+  plot_tf_idf(id_plot = "Course_description")
 ```
 
     ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
@@ -156,7 +156,7 @@ tf_idf_description %>%
 set.seed(123)
 tf_idf_overview %>%
   prepare_tf_idf_course %>%
-  plot_tf_idf(plot_id = "Course_overview")
+  plot_tf_idf(id_plot = "Course_overview")
 ```
 
 <img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-3.png" width="16" height="8" />
@@ -193,7 +193,7 @@ tf_idf_overview %>%
 set.seed(123)
 tf_idf_manual %>%
   prepare_tf_idf_course %>%
-  plot_tf_idf(plot_id = "Course_manual")
+  plot_tf_idf(id_plot = "Course_manual")
 ```
 
     ## One word could not fit on page. It has been removed.
@@ -249,7 +249,7 @@ prepare_tf_idf_cluster <- function(data) data %>%
 
 tf_idf_description %>%
   prepare_tf_idf_cluster %>%
-  plot_tf_idf(plot_id = "Cluster_description")
+  plot_tf_idf(id_plot = "Cluster_description")
 ```
 
     ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
@@ -295,7 +295,7 @@ tf_idf_description %>%
 ``` r
 tf_idf_overview %>%
   prepare_tf_idf_cluster %>%
-  plot_tf_idf(plot_id = "Cluster_overview")
+  plot_tf_idf(id_plot = "Cluster_overview")
 ```
 
 ![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20cluster-3.png)
@@ -323,7 +323,7 @@ tf_idf_overview %>%
 ``` r
 tf_idf_manual %>%
   prepare_tf_idf_cluster %>%
-  plot_tf_idf(plot_id = "Cluster_manual")
+  plot_tf_idf(id_plot = "Cluster_manual")
 ```
 
 ![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20cluster-5.png)
@@ -370,7 +370,7 @@ prepare_tf_idf_concentration <- function(data) data %>%
 
 tf_idf_description %>%
   prepare_tf_idf_concentration %>%
-  plot_tf_idf(plot_id = "Concentration_description")
+  plot_tf_idf(id_plot = "Concentration_description")
 ```
 
 ![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-1.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-2.png)
@@ -378,7 +378,7 @@ tf_idf_description %>%
 ``` r
 tf_idf_overview %>%
   prepare_tf_idf_concentration %>%
-  plot_tf_idf(plot_id = "Concentration_overview")
+  plot_tf_idf(id_plot = "Concentration_overview")
 ```
 
 ![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-3.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-4.png)
@@ -386,7 +386,7 @@ tf_idf_overview %>%
 ``` r
 tf_idf_manual %>%
   prepare_tf_idf_concentration %>%
-  plot_tf_idf(plot_id = "Concentration_manual")
+  plot_tf_idf(id_plot = "Concentration_manual")
 ```
 
 ![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-5.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-6.png)
@@ -408,6 +408,12 @@ my_cast_tdm <- function(data, level) data %>%
   cast_dtm(Code, word, n)
 
 d_description_cast <- my_cast_tdm(d_description)
+```
+
+    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
+    ## This warning is displayed once per session.
+
+``` r
 d_overview_cast <- my_cast_tdm(d_overview)
 d_manual_cast <- my_cast_tdm(d_manual)
 
@@ -460,7 +466,7 @@ prepare_data_LDA_gamma <- function(results, level = Course){
   
   data_gamma <- data_gamma %>%
     group_by(facet, topic) %>%
-      summarise(gamma = mean(gamma)) %>%
+      summarise(gamma = sum(gamma)) %>%
     filter(gamma > 0.05) %>%
     ungroup %>%
     arrange(facet, desc(gamma))
@@ -472,6 +478,14 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 # Bet Distribution
 LDA_description_10 %>% prepare_data_LDA_beta
 ```
+
+    ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `call2()` instead
+    ## This warning is displayed once per session.
+
+    ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `new_data_mask()` instead
+    ## This warning is displayed once per session.
 
     ## # A tibble: 100 x 3
     ##    topic   term             beta
@@ -493,20 +507,27 @@ LDA_description_10 %>% prepare_data_LDA_beta
 LDA_description_10 %>% prepare_data_LDA_gamma(level = Cluster)
 ```
 
-    ## # A tibble: 82 x 3
-    ##    facet               topic    gamma
-    ##    <chr>               <chr>    <dbl>
-    ##  1 Biomedical Sciences Topic 8  0.501
-    ##  2 Biomedical Sciences Topic 1  0.226
-    ##  3 Biomedical Sciences Topic 5  0.131
-    ##  4 Biomedical Sciences Topic 7  0.122
-    ##  5 Business            Topic 4  0.343
-    ##  6 Business            Topic 10 0.213
-    ##  7 Business            Topic 5  0.204
-    ##  8 Business            Topic 9  0.121
-    ##  9 Business            Topic 3  0.111
-    ## 10 Computer Science    Topic 4  0.459
-    ## # ... with 72 more rows
+    ## Warning: `overscope_eval_next()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `eval_tidy()` with a data mask instead
+    ## This warning is displayed once per session.
+
+    ## Warning: `chr_along()` is soft-deprecated as of rlang 0.2.0.
+    ## This warning is displayed once per session.
+
+    ## # A tibble: 104 x 3
+    ##    facet               topic     gamma
+    ##    <chr>               <chr>     <dbl>
+    ##  1 Biomedical Sciences Topic 8  8.02  
+    ##  2 Biomedical Sciences Topic 1  3.62  
+    ##  3 Biomedical Sciences Topic 5  2.09  
+    ##  4 Biomedical Sciences Topic 7  1.96  
+    ##  5 Biomedical Sciences Topic 2  0.136 
+    ##  6 Biomedical Sciences Topic 3  0.0969
+    ##  7 Biomedical Sciences Topic 4  0.0783
+    ##  8 Business            Topic 4  3.08  
+    ##  9 Business            Topic 10 1.91  
+    ## 10 Business            Topic 5  1.84  
+    ## # ... with 94 more rows
 
 ``` r
 visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
@@ -578,14 +599,76 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
 ```
 
 ``` r
-visualize_LDA(LDA_SCI_2 , id_plot = "SCI, k = 2" )
-visualize_LDA(LDA_SCI_5 , id_plot = "SCI, k = 5" )
-visualize_LDA(LDA_SCI_10, id_plot = "SCI, k = 10")
+# Bet Distribution
+LDA_description_10 %>%
+  prepare_data_LDA_beta %>%
+  visualize_LDA_beta
 
-visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10", facet = T)
-visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17", facet = T)
-visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25", facet = T)
+# Gamma Distribution 1
+LDA_description_10 %>%
+  prepare_data_LDA_gamma(level = Cluster) %>%
+  visualize_LDA_gamma1
 
+# Gamma Distribution 2
+LDA_description_10 %>%
+  prepare_data_LDA_gamma(level = Cluster) %>%
+  visualize_LDA_gamma2
+```
+
+``` r
+visualize_LDA <- function(data, level = Course, id_plot = "test"){
+
+  # Beta distribution
+  data %>% 
+    prepare_data_LDA_beta %>%
+    visualize_LDA_beta(id_plot = id_plot)
+  
+  # Gamma 1 distribution
+  data %>% 
+    prepare_data_LDA_gamma(level = !!ensym(level)) %>%
+    visualize_LDA_gamma1(id_plot = id_plot)
+  
+  # Gamma 2 distribution
+  data %>% 
+    prepare_data_LDA_gamma(level = !!ensym(level)) %>%
+    visualize_LDA_gamma2(id_plot = id_plot)
+  
+}
+```
+
+``` r
+visualize_LDA_all_level <- function(data, id_plot = "test"){
+  
+  data %>% 
+    visualize_LDA(level = Course,
+                  id_plot = paste(id_plot, "_course"))
+  
+  data %>% 
+    visualize_LDA(level = Cluster,
+                  id_plot = paste(id_plot, "_cluster"))
+    
+  data %>% 
+    visualize_LDA(level = Concentration,
+                  id_plot = paste(id_plot, "_concentration"))
+  
+}
+```
+
+``` r
+LDA_description_10 %>% visualize_LDA_all_level(id_plot = "description_k10")
+LDA_description_17 %>% visualize_LDA_all_level(id_plot = "description_k17")
+LDA_description_25 %>% visualize_LDA_all_level(id_plot = "description_k25")
+
+LDA_overview_10 %>% visualize_LDA_all_level(id_plot = "overview_k10")
+LDA_overview_17 %>% visualize_LDA_all_level(id_plot = "overview_k17")
+LDA_overview_25 %>% visualize_LDA_all_level(id_plot = "overview_k25")
+
+LDA_manual_10 %>% visualize_LDA_all_level(id_plot = "manual_k10")
+LDA_manual_17 %>% visualize_LDA_all_level(id_plot = "manual_k17")
+LDA_manual_25 %>% visualize_LDA_all_level(id_plot = "manual_k25")
+```
+
+``` r
 visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10 with labelled topics", facet = T,
               topic_names = c("Psychology & Information", "Economics and Development", "Biology", "Chemistry and Math",
                               "Sociology", "Law", "Research", "International Politics",
