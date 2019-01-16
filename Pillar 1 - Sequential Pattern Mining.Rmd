@@ -8,6 +8,8 @@ output:
 ---
 
 ```{r library, message = F}
+#detach(package:tm, unload=TRUE) #there is overlap with tm package in inspect()
+
 library(tidyverse)
 library(arules)
 library(arulesSequences)
@@ -128,27 +130,40 @@ d_sequence_transactions <- d_course %>%
   select(Code) %>%
   left_join(d_transcript, by = c("Code" = "Course Code")) %>%
   filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
-  mutate(Time= paste(`Civil Year`,Period, sep="")) %>%
-  select(Code,`Student ID Number`, Time) %>%
+  mutate( Time = paste(Year_numerical, Period, sep = ""),
+          Time = as.double(Time)) %>%
+  select(`Student ID Number`, Code, Time) %>%
+  arrange(`Student ID Number`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
   group_by(`Student ID Number`, Time) %>%
-  arrange(Time,`Student ID Number`) #%>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  #summarize(list_course = list(Code)) %>%
-  #group_by()   #if we run the code until here maybe its possible to use sequence_transactions <- as(sequence_transaction$list_course, "transactions")
+  summarize(list_course = list(Code)) %>% #if we run the code until here maybe its possible to use sequence_transactions <- as(sequence_transaction$list_course, "transactions")
+  mutate(TransactionID = paste(`Student ID Number`, Time, sep = "_"))
 
-sequence_transcript_data <- data.frame(item=d_sequence_transactions$Code)
+list_course <- d_sequence_transactions$list_course
+names(list_course) <- d_sequence_transactions$TransactionID
 
-transcripts.tran <- as(sequence_transcript_data, "transactions")
-
- transactionInfo(transcripts.tran)$sequenceID <- d_sequence_transactions$`Student ID Number`
- 
- transactionInfo(transcripts.tran)$eventID <- d_sequence_transactions$Time
- 
-inspect(head(transcripts.tran))
+my_transactions <- as(list_course, "transactions")
+transactionInfo(my_transactions)$sequenceID <- d_sequence_transactions$`Student ID Number`
+transactionInfo(my_transactions)$eventID <- d_sequence_transactions$Time
+transactionInfo(my_transactions)$transactionID <- NULL
 
 ```
-now we find frequent sequential patterns
+
+now we find frequent sequential patterns. 
+The parameter values are: 
+support:  a numeric value specifying the minimum support of a sequence (default 0.1, range [0,1]).
+
+maxsize:  an integer value specifying the maximum number of items of an element of a sequence (default 10, range > 0).
+maxlen:   an integer value specifying the maximum number of elements of a sequence (default 10, range > 0).
+mingap:   an integer value specifying the minimum time difference between consecutive elements of a sequence (default none, range >= 1).
+maxgap:   an integer value specifying the maximum time difference between consecutive elements of a sequence (default none, range >= 0).
+maxwin:   an integer value specifying the maximum time difference between any two elements of a sequence (default none, range >= 0).
 ```{r}
-frequent_trajectories <- cspade(transcripts.tran, parameter = list(support = 0.50))
+frequent_trajectories <- cspade(my_transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
+summary(frequent_trajectories)
+as(frequent_trajectories, "data.frame")
+
+inspect(head(frequent_trajectories))
+		
 ```
 
 
