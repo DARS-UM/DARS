@@ -462,7 +462,7 @@ print(d_description) # stop words (on, the, of, etc, are excluded)
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 ```{r}
 d_transcript <- d_transcript %>%
-  filter(`Appraisal (Description)` == "Grade supervisor") %>%
+  filter(`Appraisal (Description)` == "Grade supervisor", `Appraisal Type`=="7055") %>%
   select(`Student Number`, `Module (Abbrev.)`, `Module (Desc.)`,
          `Program (Description)`, `Academic Year`, `Academic Session`,
          `Number rep. attemp`, `Grade symbol`, `Booking Status (Desc.)`) %>%
@@ -470,7 +470,7 @@ d_transcript <- d_transcript %>%
          `Course Code` = `Module (Abbrev.)`,
          `Course Title` = `Module (Desc.)`,
          `Study Program` = `Program (Description)`,
-         `Civil Year` = `Academic Year`, # double check
+         `Year_numerical` = `Academic Year`, # double check
          `Period` = `Academic Session`,
          `Number Repeated Attempt` = `Number rep. attemp`,
          Grade = `Grade symbol`,
@@ -478,7 +478,7 @@ d_transcript <- d_transcript %>%
   distinct
 ```
 
-Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes (the correspondance between calendars was given to us by R. Vos) and save it under a variable `Period`:
+Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes (the correspondance between calendars was given to us by R. Vos) and save it under a variable `Period`. We also create another variable:
 ```{r}
 d_transcript <- d_transcript %>%
   mutate(Period = case_when(Period == 1 ~ "1 to 6"  ,
@@ -494,7 +494,8 @@ d_transcript <- d_transcript %>%
                             between(Period, 400, 499) ~ "4",
                             between(Period, 500, 599) ~ "5",
                             between(Period, 600, 660) ~ "6",
-                            between(Period, 901, 999) ~ "1"))
+                            between(Period, 901, 999) ~ "1")) %>%
+  mutate(`Calendar Year`= paste(Year_numerical,Year_numerical+1, sep = "-"))
 ```
 
 ##Estimating concentrations:
