@@ -158,7 +158,10 @@ mingap:   an integer value specifying the minimum time difference between consec
 maxgap:   an integer value specifying the maximum time difference between consecutive elements of a sequence (default none, range >= 0).
 maxwin:   an integer value specifying the maximum time difference between any two elements of a sequence (default none, range >= 0).
 ```{r}
+summary(my_transactions)
+
 frequent_trajectories <- cspade(my_transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
+#Looking into this: 
 summary(frequent_trajectories)
 as(frequent_trajectories, "data.frame")
 
@@ -166,6 +169,12 @@ inspect(head(frequent_trajectories))
 		
 ```
 
+```{r}
+rules <- ruleInduction(frequent_trajectories, confidence = 0.2, #we need to play with the parameters.
+                    control    = list(verbose = TRUE))
+as(rules, "data.frame") %>%
+  arrange(desc(lift))
+```
 
 #Visualisation
 It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
