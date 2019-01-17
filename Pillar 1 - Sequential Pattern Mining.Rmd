@@ -29,6 +29,13 @@ find_course <- function(data = d_transcript, code){
 }
 
 ```
+#Data Exploration of Transcripts
+```{r}
+exploration <- d_transcript %>%
+  mutate(Grade = case_when(Grade == "NG"~ "0.0",
+                           T~Grade),
+         Grade=as.double(Grade))
+```
 
 #Getting dates
 For a first exploration of arules, we conceptualise our framework like this:
@@ -198,9 +205,9 @@ d_pass_sequence_transactions <- d_course %>%
                       Grade > 5.5 ~"Pass",
                               T~"Fail"),
          Low_grade =
-           case_when(Grade=="NG"~"Sad", #if we don't do this NG satisfies the condition for pass v
-                      Grade > fail_threshold ~"OK",
-                              T~"Sad")
+           case_when(Grade=="NG"~"low score", #if we don't do this NG satisfies the condition for pass v
+                      Grade > fail_threshold ~"high score",
+                              T~"low score")
          ) %>%
   mutate(Item = paste(Code, Low_grade, sep = "_") ) %>% #Change for Outcome/Low_grade
   filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
@@ -233,10 +240,13 @@ pass_rules_df <- as(pass_rules, "data.frame") %>%
 ```
 Checking who failed
 ```{r}
-pass_rules_df %>%
+view_rules <- pass_rules_df %>%
   separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove= F to keep columns
-  filter(str_detect(RHS, "_Sad")) %>%
+  filter(str_detect(RHS, "low score")) %>% #change so that it changes automatically
   arrange(desc(confidence), desc(lift))
+
+
+write_csv(view_rules, "Data_Evgueni.csv")
 ```
 
 #Visualisation
