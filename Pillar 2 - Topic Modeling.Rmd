@@ -49,11 +49,11 @@ load("data_pillar_2.RDATA")
 
 ```{r compute_tf_idf, cache = TRUE}
 compute_tf_idf <- function(data) data %>%
-                                   count(Code, word) %>%
-                                   bind_tf_idf(term = word, document = Code, n = n)
+                                   count(`Course ID`, word) %>%
+                                   bind_tf_idf(term = word, document = `Course ID`, n = n)
 
-tf_idf_description <- compute_tf_idf(filter(d_description, `Calendar Year` == "2018-2019"))
-tf_idf_overview    <- compute_tf_idf(filter(d_overview, `Calendar Year` == "2018-2019"))
+tf_idf_description <- compute_tf_idf(filter(d_description, `Academic Year` == "2018-2019"))
+tf_idf_overview    <- compute_tf_idf(filter(d_overview, `Academic Year` == "2018-2019"))
 tf_idf_manual      <- compute_tf_idf(d_manual)
 
 rm(compute_tf_idf)
@@ -72,7 +72,6 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
     coord_flip()
   
   ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
-  print(g)
     
   # Word Cloud
   g <- data %>%
@@ -92,7 +91,6 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
     )
   
   ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
-  print(g)
 
 }
 ```
@@ -100,8 +98,8 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
 ## Course Level
 ```{r tf-idf course, out.height=8, out.width=16, cache = TRUE}
 prepare_tf_idf_course <- function(data) data %>%
-                                          filter(Code %in% sample(unique(.$Code), size = 25, replace = F)) %>% # random selection of courses
-                                          rename(facet = Code) %>%
+                                          filter(`Course ID` %in% sample(unique(.$`Course ID`), size = 25, replace = F)) %>% # random selection of courses
+                                          rename(facet = `Course ID`) %>%
                                           group_by(facet) %>%
                                             filter(n >= 2) %>%
                                             top_n(10, tf_idf) %>%
@@ -128,7 +126,7 @@ rm(prepare_tf_idf_course)
 ## Cluster Level
 ```{r tf-idf cluster, cache = TRUE}
 prepare_tf_idf_cluster <- function(data) data %>%
-                                           left_join(select(d_course, Code, Cluster), by = "Code") %>%
+                                           left_join(select(d_course, `Course ID`, Cluster), by = "Course ID") %>%
                                            filter(!is.na(Cluster)) %>%
                                            rename(facet = Cluster) %>%
                                            group_by(facet, word) %>%
@@ -156,7 +154,7 @@ rm(prepare_tf_idf_cluster)
 ## Concentration Level
 ```{r tf-idf concentration, cache = TRUE}
 prepare_tf_idf_concentration <- function(data) data %>%
-                                                 left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
+                                                 left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
                                                  filter(!is.na(Concentration)) %>%
                                                  gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
                                                  rename(facet = Concentration) %>%
@@ -187,8 +185,8 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 ## Fitting Model
 ```{r my_cast_tdm}
 my_cast_tdm <- function(data, level) data %>%
-  count(Code, word) %>%
-  cast_dtm(Code, word, n)
+  count(`Course ID`, word) %>%
+  cast_dtm(`Course ID`, word, n)
 
 d_description_cast <- my_cast_tdm(d_description)
 d_overview_cast <- my_cast_tdm(d_overview)
@@ -213,29 +211,33 @@ LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
 
 ## Results
 ```{r LDA prepare}
-prepare_data_LDA_beta <- function(results) tidy(results, matrix = "beta") %>%
-                                        mutate(topic = paste("Topic", topic)) %>%
-                                          group_by(topic) %>%
-                                            top_n(10, beta) %>%
-                                          ungroup %>%
-                                          arrange(topic, desc(beta))
+prepare_data_LDA_beta <- function(results){
+  
+  tidy(results, matrix = "beta") %>%
+    mutate(topic = paste("Topic", topic)) %>%
+      group_by(topic) %>%
+        top_n(10, beta) %>%
+      ungroup %>%
+      arrange(topic, desc(beta))
+  
+}
 
 prepare_data_LDA_gamma <- function(results, level = Course){
   
   data_gamma <- tidy(results, matrix = "gamma") %>%
     mutate(topic = paste("Topic", topic)) %>%
-    rename(Code = document)
+    rename(`Course ID` = document)
   
   if(ensym(level) == sym("Course")) data_gamma <- data_gamma %>%
-                                      rename(facet = Code) 
+                                      rename(facet = `Course ID`) 
   
   if(ensym(level) == sym("Cluster")) data_gamma <- data_gamma %>% 
-                                       left_join(select(d_course, Code, Cluster), by = "Code") %>%
+                                       left_join(select(d_course, `Course ID`, Cluster), by = "Course ID") %>%
                                        filter(!is.na(Cluster)) %>%
                                        rename(facet = Cluster)
                                        
   if(ensym(level) == sym("Concentration")) data_gamma <- data_gamma %>%
-                                             left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
+                                             left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
                                              gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
                                              rename(facet = Concentration)
   

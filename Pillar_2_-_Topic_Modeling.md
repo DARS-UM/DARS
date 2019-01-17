@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-01-16
+2019-01-17
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -39,17 +39,17 @@ Functions for Generating Barplots and Word Clouds
 
 ``` r
 compute_tf_idf <- function(data) data %>%
-                                   count(Code, word) %>%
-                                   bind_tf_idf(term = word, document = Code, n = n)
+                                   count(`Course ID`, word) %>%
+                                   bind_tf_idf(term = word, document = `Course ID`, n = n)
 
-tf_idf_description <- compute_tf_idf(filter(d_description, `Calendar Year` == "2018-2019"))
+tf_idf_description <- compute_tf_idf(filter(d_description, `Academic Year` == "2018-2019"))
 ```
 
     ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
     ## This warning is displayed once per session.
 
 ``` r
-tf_idf_overview    <- compute_tf_idf(filter(d_overview, `Calendar Year` == "2018-2019"))
+tf_idf_overview    <- compute_tf_idf(filter(d_overview, `Academic Year` == "2018-2019"))
 tf_idf_manual      <- compute_tf_idf(d_manual)
 
 rm(compute_tf_idf)
@@ -68,7 +68,6 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
     coord_flip()
   
   ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
-  print(g)
     
   # Word Cloud
   g <- data %>%
@@ -88,7 +87,6 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
     )
   
   ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
-  print(g)
 
 }
 ```
@@ -98,8 +96,8 @@ Course Level
 
 ``` r
 prepare_tf_idf_course <- function(data) data %>%
-                                          filter(Code %in% sample(unique(.$Code), size = 25, replace = F)) %>% # random selection of courses
-                                          rename(facet = Code) %>%
+                                          filter(`Course ID` %in% sample(unique(.$`Course ID`), size = 25, replace = F)) %>% # random selection of courses
+                                          rename(facet = `Course ID`) %>%
                                           group_by(facet) %>%
                                             filter(n >= 2) %>%
                                             top_n(10, tf_idf) %>%
@@ -115,81 +113,12 @@ tf_idf_description %>%
     ## Please use `call2()` instead
     ## This warning is displayed once per session.
 
-    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
-    ## This warning is displayed once per session.
-
-<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-1.png" width="16" height="8" />
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-    ## One word could not fit on page. It has been removed.
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-    ## One word could not fit on page. It has been removed.
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-2.png" width="16" height="8" />
-
 ``` r
 set.seed(123)
 tf_idf_overview %>%
   prepare_tf_idf_course %>%
   plot_tf_idf(id_plot = "Course_overview")
-```
 
-<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-3.png" width="16" height="8" />
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-4.png" width="16" height="8" />
-
-``` r
 set.seed(123)
 tf_idf_manual %>%
   prepare_tf_idf_course %>%
@@ -197,36 +126,6 @@ tf_idf_manual %>%
 ```
 
     ## One word could not fit on page. It has been removed.
-
-<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-5.png" width="16" height="8" />
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-<img src="Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf course-6.png" width="16" height="8" />
 
 ``` r
 rm(prepare_tf_idf_course)
@@ -237,7 +136,7 @@ Cluster Level
 
 ``` r
 prepare_tf_idf_cluster <- function(data) data %>%
-                                           left_join(select(d_course, Code, Cluster), by = "Code") %>%
+                                           left_join(select(d_course, `Course ID`, Cluster), by = "Course ID") %>%
                                            filter(!is.na(Cluster)) %>%
                                            rename(facet = Cluster) %>%
                                            group_by(facet, word) %>%
@@ -263,92 +162,15 @@ tf_idf_description %>%
     ## Warning: `chr_along()` is soft-deprecated as of rlang 0.2.0.
     ## This warning is displayed once per session.
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20cluster-1.png)
-
-    ## Some words could not fit on page. They have been removed.
-
-    ## One word could not fit on page. It has been removed.
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-    ## One word could not fit on page. It has been removed.
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-    ## One word could not fit on page. It has been removed.
-    ## One word could not fit on page. It has been removed.
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-    ## One word could not fit on page. It has been removed.
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20cluster-2.png)
-
 ``` r
 tf_idf_overview %>%
   prepare_tf_idf_cluster %>%
   plot_tf_idf(id_plot = "Cluster_overview")
-```
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20cluster-3.png)
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20cluster-4.png)
-
-``` r
 tf_idf_manual %>%
   prepare_tf_idf_cluster %>%
   plot_tf_idf(id_plot = "Cluster_manual")
-```
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20cluster-5.png)
-
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-    ## Some words could not fit on page. They have been removed.
-
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20cluster-6.png)
-
-``` r
 rm(prepare_tf_idf_cluster)
 ```
 
@@ -357,7 +179,7 @@ Concentration Level
 
 ``` r
 prepare_tf_idf_concentration <- function(data) data %>%
-                                                 left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
+                                                 left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
                                                  filter(!is.na(Concentration)) %>%
                                                  gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
                                                  rename(facet = Concentration) %>%
@@ -371,27 +193,15 @@ prepare_tf_idf_concentration <- function(data) data %>%
 tf_idf_description %>%
   prepare_tf_idf_concentration %>%
   plot_tf_idf(id_plot = "Concentration_description")
-```
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-1.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-2.png)
-
-``` r
 tf_idf_overview %>%
   prepare_tf_idf_concentration %>%
   plot_tf_idf(id_plot = "Concentration_overview")
-```
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-3.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-4.png)
-
-``` r
 tf_idf_manual %>%
   prepare_tf_idf_concentration %>%
   plot_tf_idf(id_plot = "Concentration_manual")
-```
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-5.png)![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/tf-idf%20concentration-6.png)
-
-``` r
 rm(prepare_tf_idf_concentration, plot_tf_idf,
    tf_idf_description, tf_idf_overview, tf_idf_manual)
 ```
@@ -404,16 +214,10 @@ Fitting Model
 
 ``` r
 my_cast_tdm <- function(data, level) data %>%
-  count(Code, word) %>%
-  cast_dtm(Code, word, n)
+  count(`Course ID`, word) %>%
+  cast_dtm(`Course ID`, word, n)
 
 d_description_cast <- my_cast_tdm(d_description)
-```
-
-    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
-    ## This warning is displayed once per session.
-
-``` r
 d_overview_cast <- my_cast_tdm(d_overview)
 d_manual_cast <- my_cast_tdm(d_manual)
 
@@ -438,29 +242,33 @@ Results
 -------
 
 ``` r
-prepare_data_LDA_beta <- function(results) tidy(results, matrix = "beta") %>%
-                                        mutate(topic = paste("Topic", topic)) %>%
-                                          group_by(topic) %>%
-                                            top_n(10, beta) %>%
-                                          ungroup %>%
-                                          arrange(topic, desc(beta))
+prepare_data_LDA_beta <- function(results){
+  
+  tidy(results, matrix = "beta") %>%
+    mutate(topic = paste("Topic", topic)) %>%
+      group_by(topic) %>%
+        top_n(10, beta) %>%
+      ungroup %>%
+      arrange(topic, desc(beta))
+  
+}
 
 prepare_data_LDA_gamma <- function(results, level = Course){
   
   data_gamma <- tidy(results, matrix = "gamma") %>%
     mutate(topic = paste("Topic", topic)) %>%
-    rename(Code = document)
+    rename(`Course ID` = document)
   
   if(ensym(level) == sym("Course")) data_gamma <- data_gamma %>%
-                                      rename(facet = Code) 
+                                      rename(facet = `Course ID`) 
   
   if(ensym(level) == sym("Cluster")) data_gamma <- data_gamma %>% 
-                                       left_join(select(d_course, Code, Cluster), by = "Code") %>%
+                                       left_join(select(d_course, `Course ID`, Cluster), by = "Course ID") %>%
                                        filter(!is.na(Cluster)) %>%
                                        rename(facet = Cluster)
                                        
   if(ensym(level) == sym("Concentration")) data_gamma <- data_gamma %>%
-                                             left_join(select(d_course, Code, Concentration, `Concentration (additional)`), by = "Code") %>%
+                                             left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
                                              gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
                                              rename(facet = Concentration)
   
@@ -478,14 +286,6 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 # Bet Distribution
 LDA_description_10 %>% prepare_data_LDA_beta
 ```
-
-    ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `call2()` instead
-    ## This warning is displayed once per session.
-
-    ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `new_data_mask()` instead
-    ## This warning is displayed once per session.
 
     ## # A tibble: 100 x 3
     ##    topic   term             beta
@@ -506,13 +306,6 @@ LDA_description_10 %>% prepare_data_LDA_beta
 # Gamma Distribution
 LDA_description_10 %>% prepare_data_LDA_gamma(level = Cluster)
 ```
-
-    ## Warning: `overscope_eval_next()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `eval_tidy()` with a data mask instead
-    ## This warning is displayed once per session.
-
-    ## Warning: `chr_along()` is soft-deprecated as of rlang 0.2.0.
-    ## This warning is displayed once per session.
 
     ## # A tibble: 104 x 3
     ##    facet               topic     gamma
