@@ -16,8 +16,18 @@ library(arulesSequences)
 ```
 
 # Setup
+load previous data and create function to find courses
 ```{r}
 load("data_pillar_1.RDATA")
+
+find_course <- function(data = d_transcript, code){
+  c = code
+  x <- data %>%
+    filter(`Course Code`== c)
+  
+  return(x$`Course Title`[1])
+}
+
 ```
 
 #Getting dates
@@ -65,12 +75,7 @@ colnames(results)[2] <- "association"
 results %>%
   arrange(desc(confidence))
 ```
-
-```{r}
-d_transcript %>% filter(`Course Code`=="SSC3016")
-```
-
-Now we include data for pass and fail
+Now we include data for pass and fail:
 ```{r}
 d_transaction_passed <- d_course %>%
   select(Type, Code, Letters) %>%
@@ -179,6 +184,8 @@ as(rules, "data.frame") %>%
 First we add pass fai information to our data set and transform it to transactions class:
 ```{r}
 #sequences
+fail_threshold <- 6.5
+
 d_pass_sequence_transactions <- d_course %>%
   select(Type, Code, Letters) %>%
   filter(Type == "Elective",
@@ -189,9 +196,13 @@ d_pass_sequence_transactions <- d_course %>%
   mutate(Outcome = 
            case_when( Grade=="NG"~"Fail", #if we don't do this NG satisfies the condition for pass v
                       Grade > 5.5 ~"Pass",
-                              T~"Fail")
+                              T~"Fail"),
+         Low_grade =
+           case_when(Grade=="NG"~"Sad", #if we don't do this NG satisfies the condition for pass v
+                      Grade > fail_threshold ~"OK",
+                              T~"Sad")
          ) %>%
-  mutate(Item = paste(Code, Outcome, sep = "_") ) %>%
+  mutate(Item = paste(Code, Low_grade, sep = "_") ) %>% #Change for Outcome/Low_grade
   filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
   mutate( Time = paste(Year_numerical, Period, sep = ""),
           Time = as.double(Time)) %>%
@@ -215,7 +226,7 @@ as(pass_transactions, "data.frame")
 frequent_pass_trajectories <- cspade(pass_transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
 summary(frequent_pass_trajectories)
 
-pass_rules <- ruleInduction(frequent_pass_trajectories, confidence = 0.2, #we need to play with the parameters.
+pass_rules <- ruleInduction(frequent_pass_trajectories, confidence = 0.1, #we need to play with the parameters.
                     control    = list(verbose = TRUE))
 pass_rules_df <- as(pass_rules, "data.frame") %>%
   arrange(desc(lift))
@@ -223,8 +234,9 @@ pass_rules_df <- as(pass_rules, "data.frame") %>%
 Checking who failed
 ```{r}
 pass_rules_df %>%
-  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = F) %>%
-  filter(str_detect(RHS, "_Fail"))
+  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove= F to keep columns
+  filter(str_detect(RHS, "_Sad")) %>%
+  arrange(desc(confidence), desc(lift))
 ```
 
 #Visualisation
