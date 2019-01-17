@@ -1,9 +1,10 @@
 Data Preparation
 ================
 DARS
-2019-01-15
+2019-01-17
 
 -   [Import Data](#import-data)
+    -   [Setup](#setup)
     -   [Course Data](#course-data)
     -   [Textual Data](#textual-data)
         -   [Course Catalogues](#course-catalogues)
@@ -36,7 +37,12 @@ library(hunspell) # Stemmer
 Import Data
 ===========
 
-The datasets we use are saved as spreadsheet on our google drive *DARS* (with exeption of grade data saved as csv files on the computer for privacy reasons). We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based. \#\# Setup First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. `lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and two columns containing binary vectors indicating which assessment types and AoD we will consider when ploting the data[1]. Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
+The datasets we use are saved as spreadsheet on our google drive *DARS* (with exeption of grade data saved as csv files on the computer for privacy reasons). We use the function `gsheet2tbl` to import them to `R Studio` as tibbles. We use the tibble data format (an evolution of the data frame format) because this is the format of reference of the `tidyverse` on whose tools our analysis is heavily based.
+
+Setup
+-----
+
+First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. `lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and two columns containing binary vectors indicating which assessment types and AoD we will consider when ploting the data[1]. Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
 
 ``` r
 lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
@@ -60,18 +66,18 @@ print(d_course)
 ```
 
     ## # A tibble: 280 x 11
-    ##    Code  `Course Title` Period `Period (additi~ `Period (additi~
-    ##    <chr> <chr>          <chr>  <chr>            <chr>           
-    ##  1 AAM2~ Academic Advi~ Perio~ <NA>             <NA>            
-    ##  2 AAM2~ Academic Advi~ Perio~ <NA>             <NA>            
-    ##  3 AAM2~ Academic Advi~ Perio~ <NA>             <NA>            
-    ##  4 AAM2~ Academic Advi~ Perio~ <NA>             <NA>            
-    ##  5 AAM2~ Academic Advi~ Perio~ <NA>             <NA>            
-    ##  6 AAM2~ Academic Advi~ Perio~ <NA>             <NA>            
-    ##  7 AAM2~ Academic Advi~ Perio~ <NA>             <NA>            
-    ##  8 CAP3~ Capstone       Perio~ Period 4         <NA>            
-    ##  9 COR1~ Philosophy of~ Perio~ Period 5         <NA>            
-    ## 10 COR1~ Contemporary ~ Perio~ Period 4         <NA>            
+    ##    `Course ID` `Course Title` Period `Period (additi~ `Period (additi~
+    ##    <chr>       <chr>          <chr>  <chr>            <chr>           
+    ##  1 AAM2001     Academic Advi~ Perio~ <NA>             <NA>            
+    ##  2 AAM2002     Academic Advi~ Perio~ <NA>             <NA>            
+    ##  3 AAM2003     Academic Advi~ Perio~ <NA>             <NA>            
+    ##  4 AAM2004     Academic Advi~ Perio~ <NA>             <NA>            
+    ##  5 AAM2005     Academic Advi~ Perio~ <NA>             <NA>            
+    ##  6 AAM2006     Academic Advi~ Perio~ <NA>             <NA>            
+    ##  7 AAM2007     Academic Advi~ Perio~ <NA>             <NA>            
+    ##  8 CAP3000     Capstone       Perio~ Period 4         <NA>            
+    ##  9 COR1002     Philosophy of~ Perio~ Period 5         <NA>            
+    ## 10 COR1003     Contemporary ~ Perio~ Period 4         <NA>            
     ## # ... with 270 more rows, and 6 more variables: Concentration <chr>,
     ## #   `Concentration (additional)` <chr>, Cluster <chr>, `Missing from ILO
     ## #   File` <int>, `Most Recent Catalogue` <chr>, Type <chr>
@@ -79,54 +85,52 @@ print(d_course)
 ``` r
 d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
   select(- `Comment on Assessment`) %>%
-  gather(Assessment, assessment_covered, - Code, factor_key = T) %>%
-  mutate(assessment_covered = as.logical(assessment_covered)) %>%
-  filter(assessment_covered) %>%
+  gather(Assessment, assessment_covered, - `Course ID`, factor_key = T) %>%
+  filter(assessment_covered == 1) %>%
   select(- assessment_covered) %>%
-  arrange(Code)
+  arrange(`Course ID`)
 print(d_assessment)
 ```
 
     ## # A tibble: 482 x 2
-    ##    Code    Assessment    
-    ##    <chr>   <fct>         
-    ##  1 AAM2001 Oral          
-    ##  2 AAM2002 Oral          
-    ##  3 AAM2003 Oral          
-    ##  4 AAM2004 Oral          
-    ##  5 AAM2005 Oral          
-    ##  6 AAM2006 Oral          
-    ##  7 AAM2007 Oral          
-    ##  8 CAP3000 Paper         
-    ##  9 CAP3000 Presentation  
-    ## 10 CAP3000 Research Prop.
+    ##    `Course ID` Assessment    
+    ##    <chr>       <fct>         
+    ##  1 AAM2001     Oral          
+    ##  2 AAM2002     Oral          
+    ##  3 AAM2003     Oral          
+    ##  4 AAM2004     Oral          
+    ##  5 AAM2005     Oral          
+    ##  6 AAM2006     Oral          
+    ##  7 AAM2007     Oral          
+    ##  8 CAP3000     Paper         
+    ##  9 CAP3000     Presentation  
+    ## 10 CAP3000     Research Prop.
     ## # ... with 472 more rows
 
 ``` r
 d_ILO <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1896457050') %>%
   select(- c(Comments, Comments_for_Jeroen)) %>%
-  gather(AoD, AoD_covered, -c(Code, Objectives), factor_key = T) %>%
-  mutate(AoD_covered = as.logical(AoD_covered)) %>%
-  rename(ILO = Objectives) %>%
-  filter(AoD_covered) %>%
+  gather(AoD, AoD_covered, -c(`Course ID`, Objectives), factor_key = T) %>%
+  filter(AoD_covered == 1) %>%
   select(- AoD_covered) %>%
-  arrange(Code)
+  rename(ILO = Objectives) %>%
+  arrange(`Course ID`)
 print(d_ILO)
 ```
 
     ## # A tibble: 1,232 x 3
-    ##    Code    ILO         AoD                   
-    ##    <chr>   <chr>       <fct>                 
-    ##  1 AAM2001 Not Defined Academic Expertise    
-    ##  2 AAM2001 Not Defined Reflective Skills     
-    ##  3 AAM2001 Not Defined Decision-making Skills
-    ##  4 AAM2002 Not Defined Academic Expertise    
-    ##  5 AAM2002 Not Defined Reflective Skills     
-    ##  6 AAM2002 Not Defined Decision-making Skills
-    ##  7 AAM2003 Not Defined Academic Expertise    
-    ##  8 AAM2003 Not Defined Reflective Skills     
-    ##  9 AAM2003 Not Defined Decision-making Skills
-    ## 10 AAM2004 Not Defined Academic Expertise    
+    ##    `Course ID` ILO         AoD                   
+    ##    <chr>       <chr>       <fct>                 
+    ##  1 AAM2001     Not Defined Academic Expertise    
+    ##  2 AAM2001     Not Defined Reflective Skills     
+    ##  3 AAM2001     Not Defined Decision-making Skills
+    ##  4 AAM2002     Not Defined Academic Expertise    
+    ##  5 AAM2002     Not Defined Reflective Skills     
+    ##  6 AAM2002     Not Defined Decision-making Skills
+    ##  7 AAM2003     Not Defined Academic Expertise    
+    ##  8 AAM2003     Not Defined Reflective Skills     
+    ##  9 AAM2003     Not Defined Decision-making Skills
+    ## 10 AAM2004     Not Defined Academic Expertise    
     ## # ... with 1,222 more rows
 
 Textual Data
@@ -172,7 +176,7 @@ d_transcript <- rbind(
     "Raw Grades/grades2.csv",
     col_types = cols(
       `Program (Abbreviation)` = col_character(),
-      `Appraisal Status` = col_character(), 
+      `Appraisal Status` = col_character(),
       `Module Booking Reason (Description)` = col_character(), 
       `Object name` = col_character(), 
       `Start date` = col_character(), 
@@ -201,24 +205,23 @@ In this analysis, we conside that a course can cover an AoD in two ways: a cours
 In order to determine which AoD each course covers with its ILOs, we first eliminate the AoD that are not covered by the ILOs, and then we keep only one instance of each combination of course and AoD in case a course had several ILOs covering the same AoD.
 
 ``` r
-d_AoD_ILO <- d_ILO %>%
-  distinct(Code, AoD)
+d_AoD_ILO <- distinct(d_ILO, `Course ID`, AoD)
 print(d_AoD_ILO)
 ```
 
     ## # A tibble: 681 x 2
-    ##    Code    AoD                   
-    ##    <chr>   <fct>                 
-    ##  1 AAM2001 Academic Expertise    
-    ##  2 AAM2001 Reflective Skills     
-    ##  3 AAM2001 Decision-making Skills
-    ##  4 AAM2002 Academic Expertise    
-    ##  5 AAM2002 Reflective Skills     
-    ##  6 AAM2002 Decision-making Skills
-    ##  7 AAM2003 Academic Expertise    
-    ##  8 AAM2003 Reflective Skills     
-    ##  9 AAM2003 Decision-making Skills
-    ## 10 AAM2004 Academic Expertise    
+    ##    `Course ID` AoD                   
+    ##    <chr>       <fct>                 
+    ##  1 AAM2001     Academic Expertise    
+    ##  2 AAM2001     Reflective Skills     
+    ##  3 AAM2001     Decision-making Skills
+    ##  4 AAM2002     Academic Expertise    
+    ##  5 AAM2002     Reflective Skills     
+    ##  6 AAM2002     Decision-making Skills
+    ##  7 AAM2003     Academic Expertise    
+    ##  8 AAM2003     Reflective Skills     
+    ##  9 AAM2003     Decision-making Skills
+    ## 10 AAM2004     Academic Expertise    
     ## # ... with 671 more rows
 
 #### AoD from Assessment
@@ -231,6 +234,8 @@ In order to determine which AoD each course covers with its assessments, we need
 map_assessment_AoD <- as.matrix(gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216')[,lists$AoD] %>%
                                   mutate_all(as.logical))
 rownames(map_assessment_AoD) <- lists$Assessment
+
+# Print section of matrix
 print(map_assessment_AoD[1:5, 8:12])
 ```
 
@@ -250,9 +255,10 @@ print(map_assessment_AoD[1:5, 8:12])
 Now that we have the matrix `map_assessment_AoD`, we want to find out which AoDs are covered by a course through its assessments. To do this we create an empty tibble `d_AoD_assessment` to store which assessment is covered by each course, and which AoD said assessment covers.Then, we fill in the information with a loop. In the loop, we first extract a row of `d_assessment` and save it as `observation`. Then, we determine the corresponding assessment which we save as `assessment`. Then, we use the matrix `map_assessment_AoD` to determine which AoD `assessment` covers and use `cbind` and `rbind` to add the information to the tibble `d_AoD_assessment`.
 
 ``` r
-d_AoD_assessment <- tibble(Code        = character(0),
+d_AoD_assessment <- tibble(`Course ID` = character(0),
                            Assessment  = character(0),
                            AoD         = character(0))
+
 for(i in 1 : nrow(d_assessment)){
   
   observation <- d_assessment[i, ]
@@ -271,24 +277,23 @@ rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 Next, we keep ony one copy of each distinct combination of course and AoD in case a course had several assessments covering the same AoD (this is analogous to what we did with the tibble `d_AoD_ILO`).
 
 ``` r
-d_AoD_assessment <- d_AoD_assessment %>%
-  distinct(Code, AoD)
+d_AoD_assessment <- distinct(d_AoD_assessment, `Course ID`, AoD)
 print(d_AoD_assessment)
 ```
 
     ## # A tibble: 732 x 2
-    ##    Code    AoD                     
-    ##    <chr>   <fct>                   
-    ##  1 AAM2001 Communication Skills    
-    ##  2 AAM2002 Communication Skills    
-    ##  3 AAM2003 Communication Skills    
-    ##  4 AAM2004 Communication Skills    
-    ##  5 AAM2005 Communication Skills    
-    ##  6 AAM2006 Communication Skills    
-    ##  7 AAM2007 Communication Skills    
-    ##  8 CAP3000 Problem Solving Skills  
-    ##  9 CAP3000 Critical Thinking Skills
-    ## 10 CAP3000 Communication Skills    
+    ##    `Course ID` AoD                     
+    ##    <chr>       <fct>                   
+    ##  1 AAM2001     Communication Skills    
+    ##  2 AAM2002     Communication Skills    
+    ##  3 AAM2003     Communication Skills    
+    ##  4 AAM2004     Communication Skills    
+    ##  5 AAM2005     Communication Skills    
+    ##  6 AAM2006     Communication Skills    
+    ##  7 AAM2007     Communication Skills    
+    ##  8 CAP3000     Problem Solving Skills  
+    ##  9 CAP3000     Critical Thinking Skills
+    ## 10 CAP3000     Communication Skills    
     ## # ... with 722 more rows
 
 #### Combining AoD from ILOs and from assessments
@@ -299,24 +304,25 @@ Finally, we can use a `rbind` to combine the two tibbles `d_AoD_ILO` and `d_AoD_
 d_AoD <- rbind(d_AoD_ILO,
                d_AoD_assessment) %>%
   distinct %>%
-  arrange(Code)
+  arrange(`Course ID`)
+
 rm(d_AoD_ILO, d_AoD_assessment)
 print(d_AoD)
 ```
 
     ## # A tibble: 1,231 x 2
-    ##    Code    AoD                   
-    ##    <chr>   <fct>                 
-    ##  1 AAM2001 Academic Expertise    
-    ##  2 AAM2001 Reflective Skills     
-    ##  3 AAM2001 Decision-making Skills
-    ##  4 AAM2001 Communication Skills  
-    ##  5 AAM2002 Academic Expertise    
-    ##  6 AAM2002 Reflective Skills     
-    ##  7 AAM2002 Decision-making Skills
-    ##  8 AAM2002 Communication Skills  
-    ##  9 AAM2003 Academic Expertise    
-    ## 10 AAM2003 Reflective Skills     
+    ##    `Course ID` AoD                   
+    ##    <chr>       <fct>                 
+    ##  1 AAM2001     Academic Expertise    
+    ##  2 AAM2001     Reflective Skills     
+    ##  3 AAM2001     Decision-making Skills
+    ##  4 AAM2001     Communication Skills  
+    ##  5 AAM2002     Academic Expertise    
+    ##  6 AAM2002     Reflective Skills     
+    ##  7 AAM2002     Decision-making Skills
+    ##  8 AAM2002     Communication Skills  
+    ##  9 AAM2003     Academic Expertise    
+    ## 10 AAM2003     Reflective Skills     
     ## # ... with 1,221 more rows
 
 ### Courses
@@ -327,47 +333,47 @@ Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and asse
 
 ``` r
 d_ILO_detail <- d_ILO %>% 
-  distinct(Code, ILO) %>%
-  count(Code) %>%
+  distinct(`Course ID`, ILO) %>%
+  count(`Course ID`) %>%
   rename(n_ILO = n)
 
 d_assessment_detail <- d_assessment %>%
-  group_by(Code) %>%
+  group_by(`Course ID`) %>%
   summarise(n_assessment = n(),
             `Assessments Covered` = paste(Assessment, collapse = ", "))
 
 d_AoD_detail <- d_AoD %>%
-  group_by(Code) %>%
+  group_by(`Course ID`) %>%
   summarise(n_AoD = n(),
             `AoD Covered` = paste(AoD, collapse = ", "))
 
 d_course_detail <- d_ILO_detail %>%
-  full_join(d_assessment_detail, by = "Code") %>%
-  full_join(d_AoD_detail       , by = "Code")
+  full_join(d_assessment_detail, by = "Course ID") %>%
+  full_join(d_AoD_detail       , by = "Course ID")
 
 rm(d_ILO_detail, d_assessment_detail, d_AoD_detail)
 print(d_course_detail)
 ```
 
     ## # A tibble: 280 x 6
-    ##    Code   n_ILO n_assessment `Assessments Cove~ n_AoD `AoD Covered`       
-    ##    <chr>  <int>        <int> <chr>              <int> <chr>               
-    ##  1 AAM20~     1            1 Oral                   4 Academic Expertise,~
-    ##  2 AAM20~     1            1 Oral                   4 Academic Expertise,~
-    ##  3 AAM20~     1            1 Oral                   4 Academic Expertise,~
-    ##  4 AAM20~     1            1 Oral                   4 Academic Expertise,~
-    ##  5 AAM20~     1            1 Oral                   4 Academic Expertise,~
-    ##  6 AAM20~     1            1 Oral                   4 Academic Expertise,~
-    ##  7 AAM20~     1            1 Oral                   4 Academic Expertise,~
-    ##  8 CAP30~     3            3 Paper, Presentati~    10 Advanced Knowledge,~
-    ##  9 COR10~     3            2 Essay, Written Ex~     7 Core, Elementary Kn~
-    ## 10 COR10~     3            3 Paper, Written Ex~     7 Core, Elementary Kn~
+    ##    `Course ID` n_ILO n_assessment `Assessments Cov~ n_AoD `AoD Covered`   
+    ##    <chr>       <int>        <int> <chr>             <int> <chr>           
+    ##  1 AAM2001         1            1 Oral                  4 Academic Expert~
+    ##  2 AAM2002         1            1 Oral                  4 Academic Expert~
+    ##  3 AAM2003         1            1 Oral                  4 Academic Expert~
+    ##  4 AAM2004         1            1 Oral                  4 Academic Expert~
+    ##  5 AAM2005         1            1 Oral                  4 Academic Expert~
+    ##  6 AAM2006         1            1 Oral                  4 Academic Expert~
+    ##  7 AAM2007         1            1 Oral                  4 Academic Expert~
+    ##  8 CAP3000         3            3 Paper, Presentat~    10 Advanced Knowle~
+    ##  9 COR1002         3            2 Essay, Written E~     7 Core, Elementar~
+    ## 10 COR1003         3            3 Paper, Written E~     7 Core, Elementar~
     ## # ... with 270 more rows
 
 ``` r
 d_course <- d_course %>%
-  full_join(d_course_detail, by = "Code") %>%
-  select(Code, `Course Title`, Cluster,
+  full_join(d_course_detail, by = "Course ID") %>%
+  select(`Course ID`, `Course Title`, Cluster,
          n_ILO,
          n_assessment, `Assessments Covered`,
          n_AoD, `AoD Covered`, 
@@ -378,80 +384,82 @@ print(d_course)
 ```
 
     ## # A tibble: 280 x 16
-    ##    Code  `Course Title` Cluster n_ILO n_assessment `Assessments Co~ n_AoD
-    ##    <chr> <chr>          <chr>   <int>        <int> <chr>            <int>
-    ##  1 AAM2~ Academic Advi~ <NA>        1            1 Oral                 4
-    ##  2 AAM2~ Academic Advi~ <NA>        1            1 Oral                 4
-    ##  3 AAM2~ Academic Advi~ <NA>        1            1 Oral                 4
-    ##  4 AAM2~ Academic Advi~ <NA>        1            1 Oral                 4
-    ##  5 AAM2~ Academic Advi~ <NA>        1            1 Oral                 4
-    ##  6 AAM2~ Academic Advi~ <NA>        1            1 Oral                 4
-    ##  7 AAM2~ Academic Advi~ <NA>        1            1 Oral                 4
-    ##  8 CAP3~ Capstone       <NA>        3            3 Paper, Presenta~    10
-    ##  9 COR1~ Philosophy of~ Philos~     3            2 Essay, Written ~     7
-    ## 10 COR1~ Contemporary ~ History     3            3 Paper, Written ~     7
-    ## # ... with 270 more rows, and 9 more variables: `AoD Covered` <chr>,
-    ## #   Period <chr>, `Period (additional)` <chr>, `Period (additional
-    ## #   bis)` <chr>, Concentration <chr>, `Concentration (additional)` <chr>,
-    ## #   `Missing from ILO File` <int>, `Most Recent Catalogue` <chr>,
-    ## #   Type <chr>
+    ##    `Course ID` `Course Title` Cluster n_ILO n_assessment `Assessments Co~
+    ##    <chr>       <chr>          <chr>   <int>        <int> <chr>           
+    ##  1 AAM2001     Academic Advi~ <NA>        1            1 Oral            
+    ##  2 AAM2002     Academic Advi~ <NA>        1            1 Oral            
+    ##  3 AAM2003     Academic Advi~ <NA>        1            1 Oral            
+    ##  4 AAM2004     Academic Advi~ <NA>        1            1 Oral            
+    ##  5 AAM2005     Academic Advi~ <NA>        1            1 Oral            
+    ##  6 AAM2006     Academic Advi~ <NA>        1            1 Oral            
+    ##  7 AAM2007     Academic Advi~ <NA>        1            1 Oral            
+    ##  8 CAP3000     Capstone       <NA>        3            3 Paper, Presenta~
+    ##  9 COR1002     Philosophy of~ Philos~     3            2 Essay, Written ~
+    ## 10 COR1003     Contemporary ~ History     3            3 Paper, Written ~
+    ## # ... with 270 more rows, and 10 more variables: n_AoD <int>, `AoD
+    ## #   Covered` <chr>, Period <chr>, `Period (additional)` <chr>, `Period
+    ## #   (additional bis)` <chr>, Concentration <chr>, `Concentration
+    ## #   (additional)` <chr>, `Missing from ILO File` <int>, `Most Recent
+    ## #   Catalogue` <chr>, Type <chr>
 
 The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
 
 ``` r
 d_course <- d_course %>%
-  rbind(filter(., Code %in% c("UGR3001", "UGR3002", "UGR3003", "UGR3005")) %>%
-          mutate(Code = case_when(Code == "UGR3001" ~ "UGR2001",
-                                  Code == "UGR3002" ~ "UGR2002",
-                                  Code == "UGR3003" ~ "UGR2003",
-                                  Code == "UGR3005" ~ "UGR2005")))
-print(filter(d_course, Code %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
-                                   "UGR3001", "UGR3002", "UGR3003", "UGR3005")))
+  rbind(filter(., `Course ID` %in% c("UGR3001", "UGR3002", "UGR3003", "UGR3005")) %>%
+          mutate(`Course ID` = case_when(`Course ID` == "UGR3001" ~ "UGR2001",
+                                  `Course ID` == "UGR3002" ~ "UGR2002",
+                                  `Course ID` == "UGR3003" ~ "UGR2003",
+                                  `Course ID` == "UGR3005" ~ "UGR2005")))
+
+print(filter(d_course, `Course ID` %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2005",
+                                          "UGR3001", "UGR3002", "UGR3003", "UGR3005")))
 ```
 
     ## # A tibble: 8 x 16
-    ##   Code  `Course Title` Cluster n_ILO n_assessment `Assessments Co~ n_AoD
-    ##   <chr> <chr>          <chr>   <int>        <int> <chr>            <int>
-    ## 1 UGR3~ Undergraduate~ Methods     5            2 Paper, Presenta~    10
-    ## 2 UGR3~ Undergraduate~ Skills     NA            6 Paper, Essay, P~     6
-    ## 3 UGR3~ Applied Resea~ Skills     NA            5 Paper, Presenta~     5
-    ## 4 UGR3~ Artistic Rese~ Methods    NA            2 Paper, Research~     5
-    ## 5 UGR2~ Undergraduate~ Methods     5            2 Paper, Presenta~    10
-    ## 6 UGR2~ Undergraduate~ Skills     NA            6 Paper, Essay, P~     6
-    ## 7 UGR2~ Applied Resea~ Skills     NA            5 Paper, Presenta~     5
-    ## 8 UGR2~ Artistic Rese~ Methods    NA            2 Paper, Research~     5
-    ## # ... with 9 more variables: `AoD Covered` <chr>, Period <chr>, `Period
-    ## #   (additional)` <chr>, `Period (additional bis)` <chr>,
-    ## #   Concentration <chr>, `Concentration (additional)` <chr>, `Missing from
-    ## #   ILO File` <int>, `Most Recent Catalogue` <chr>, Type <chr>
+    ##   `Course ID` `Course Title` Cluster n_ILO n_assessment `Assessments Co~
+    ##   <chr>       <chr>          <chr>   <int>        <int> <chr>           
+    ## 1 UGR3001     Undergraduate~ Methods     5            2 Paper, Presenta~
+    ## 2 UGR3002     Undergraduate~ Skills     NA            6 Paper, Essay, P~
+    ## 3 UGR3003     Applied Resea~ Skills     NA            5 Paper, Presenta~
+    ## 4 UGR3005     Artistic Rese~ Methods    NA            2 Paper, Research~
+    ## 5 UGR2001     Undergraduate~ Methods     5            2 Paper, Presenta~
+    ## 6 UGR2002     Undergraduate~ Skills     NA            6 Paper, Essay, P~
+    ## 7 UGR2003     Applied Resea~ Skills     NA            5 Paper, Presenta~
+    ## 8 UGR2005     Artistic Rese~ Methods    NA            2 Paper, Research~
+    ## # ... with 10 more variables: n_AoD <int>, `AoD Covered` <chr>,
+    ## #   Period <chr>, `Period (additional)` <chr>, `Period (additional
+    ## #   bis)` <chr>, Concentration <chr>, `Concentration (additional)` <chr>,
+    ## #   `Missing from ILO File` <int>, `Most Recent Catalogue` <chr>,
+    ## #   Type <chr>
 
 Finally, we add a series of informative variable at the course level.
 
 ``` r
 d_course <- d_course %>%
   mutate(
-    Letters = substring(Code, 1, 3),
-    Number  = as.numeric(substring(Code, 4, 7)),
+    Letters = substring(`Course ID`, 1, 3),
+    Number  = as.numeric(substring(`Course ID`, 4, 7)),
     Level   = case_when(between(Number, 1000, 1999) ~ "Introductory",
                         between(Number, 2000, 2999) ~ "Intermediate",
                         between(Number, 3000, 3999) ~ "Advanced"    ))
 
-print(select(d_course, Code, Letters, Number, Level))
+print(select(d_course, `Course ID`, Letters, Number, Level))
 ```
 
     ## # A tibble: 284 x 4
-    ##    Code    Letters Number Level       
-    ##    <chr>   <chr>    <dbl> <chr>       
-    ##  1 AAM2001 AAM       2001 Intermediate
-    ##  2 AAM2002 AAM       2002 Intermediate
-    ##  3 AAM2003 AAM       2003 Intermediate
-    ##  4 AAM2004 AAM       2004 Intermediate
-    ##  5 AAM2005 AAM       2005 Intermediate
-    ##  6 AAM2006 AAM       2006 Intermediate
-    ##  7 AAM2007 AAM       2007 Intermediate
-    ##  8 CAP3000 CAP       3000 Advanced    
-    ##  9 COR1002 COR       1002 Introductory
-    ## 10 COR1003 COR       1003 Introductory
+    ##    `Course ID` Letters Number Level       
+    ##    <chr>       <chr>    <dbl> <chr>       
+    ##  1 AAM2001     AAM       2001 Intermediate
+    ##  2 AAM2002     AAM       2002 Intermediate
+    ##  3 AAM2003     AAM       2003 Intermediate
+    ##  4 AAM2004     AAM       2004 Intermediate
+    ##  5 AAM2005     AAM       2005 Intermediate
+    ##  6 AAM2006     AAM       2006 Intermediate
+    ##  7 AAM2007     AAM       2007 Intermediate
+    ##  8 CAP3000     CAP       3000 Advanced    
+    ##  9 COR1002     COR       1002 Introductory
+    ## 10 COR1003     COR       1003 Introductory
     ## # ... with 274 more rows
 
 Textual Data
@@ -474,9 +482,9 @@ In the loop, we first determine the content of the current and following page. I
 ``` r
 # Setup
 n_catalogue <- length(corpus_catalogues)
-calendar_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
-d_description <- tibble(Code            = character(0),
-                        `Calendar Year` = character(0),
+academic_years <- c("2014-2015", "2015-2016", "2016-2017", "2017-2018", "2018-2019")
+d_description <- tibble(`Course ID`     = character(0),
+                        `Academic Year` = character(0),
                         Overview        = character(0),
                         Description     = NA)
 
@@ -522,12 +530,12 @@ for(n in 1 : n_catalogue){
                 else paste(cat_overview[page : (page + 1)], collapse = " ")
     
     # Save overview
-    Code <- substr(overview, start = 1, stop = 7)
-    year <- calendar_years[n]
+    code <- substr(overview, start = 1, stop = 7)
+    year <- academic_years[n]
     d_description <- d_description %>%
       add_row(
-        Code = Code,
-        `Calendar Year` = year,
+        `Course ID` = code,
+        `Academic Year` = year,
         Overview = overview,
         Description = NA
       )
@@ -537,28 +545,28 @@ for(n in 1 : n_catalogue){
 } # close for-loop (n)
 
 rm(corpus_catalogues,
-   n_catalogue, calendar_years, course_code, content_to_exclude,
+   n_catalogue, academic_years, course_code, content_to_exclude,
    n, cat,
    page_overview_start, page_overview_end,
    pages_to_exclude, cat_overview,
    first_three_letters, first_pages_overview,
-   page, overview, Code, year)
+   page, overview, code, year)
 print(d_description)
 ```
 
     ## # A tibble: 831 x 4
-    ##    Code   `Calendar Year` Overview                             Description
-    ##    <chr>  <chr>           <chr>                                <lgl>      
-    ##  1 COR10~ 2014-2015       "COR1002 - Philosophy of Science\r\~ NA         
-    ##  2 COR10~ 2014-2015       "COR1003 - Contemporary World Histo~ NA         
-    ##  3 COR10~ 2014-2015       "COR1004 - Political Philosophy\r\n~ NA         
-    ##  4 COR10~ 2014-2015       "COR1005 - Modeling Nature\r\nCours~ NA         
-    ##  5 HUM10~ 2014-2015       "HUM1003 - Cultural Studies I: Doin~ NA         
-    ##  6 HUM10~ 2014-2015       "HUM1007 - Introduction to Philosop~ NA         
-    ##  7 HUM10~ 2014-2015       "HUM1010 - Common Foundations of La~ NA         
-    ##  8 HUM10~ 2014-2015       "HUM1011 - Introduction to Art; Rep~ NA         
-    ##  9 HUM10~ 2014-2015       "HUM1012 - Pop Songs and Poetry: Th~ NA         
-    ## 10 HUM10~ 2014-2015       "HUM1013 - The Idea of Europe: The ~ NA         
+    ##    `Course ID` `Academic Year` Overview                        Description
+    ##    <chr>       <chr>           <chr>                           <lgl>      
+    ##  1 COR1002     2014-2015       "COR1002 - Philosophy of Scien~ NA         
+    ##  2 COR1003     2014-2015       "COR1003 - Contemporary World ~ NA         
+    ##  3 COR1004     2014-2015       "COR1004 - Political Philosoph~ NA         
+    ##  4 COR1005     2014-2015       "COR1005 - Modeling Nature\r\n~ NA         
+    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural Studies I:~ NA         
+    ##  6 HUM1007     2014-2015       "HUM1007 - Introduction to Phi~ NA         
+    ##  7 HUM1010     2014-2015       "HUM1010 - Common Foundations ~ NA         
+    ##  8 HUM1011     2014-2015       "HUM1011 - Introduction to Art~ NA         
+    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Songs and Poetr~ NA         
+    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea of Europe:~ NA         
     ## # ... with 821 more rows
 
 ##### Extracting Descriptions
@@ -586,7 +594,7 @@ for(course in 1 : nrow(d_description)){
   # for overviews w/o Literature section, find section Instructional Format.
   if(is_empty(line_end)){
     line_end <- grep(pattern = "^Instructional format$", x = overview_by_line) - 1
-    print(paste("line_end irregular for", d_description$Code[course],
+    print(paste("line_end irregular for", d_description$`Course ID`[course],
                 "in catalogue", d_description$`Calendar Year`[course]))
     } # close if-statement
   
@@ -597,12 +605,29 @@ for(course in 1 : nrow(d_description)){
 }
 ```
 
-    ## [1] "line_end irregular for UGR3003 in catalogue 2016-2017"
-    ## [1] "line_end irregular for PRO2012 in catalogue 2017-2018"
-    ## [1] "line_end irregular for UGR3003 in catalogue 2017-2018"
-    ## [1] "line_end irregular for PRO2012 in catalogue 2018-2019"
-    ## [1] "line_end irregular for UGR3003 in catalogue 2018-2019"
-    ## [1] "line_end irregular for UGR3005 in catalogue 2018-2019"
+    ## Warning: Unknown or uninitialised column: 'Calendar Year'.
+
+    ## [1] "line_end irregular for UGR3003 in catalogue "
+
+    ## Warning: Unknown or uninitialised column: 'Calendar Year'.
+
+    ## [1] "line_end irregular for PRO2012 in catalogue "
+
+    ## Warning: Unknown or uninitialised column: 'Calendar Year'.
+
+    ## [1] "line_end irregular for UGR3003 in catalogue "
+
+    ## Warning: Unknown or uninitialised column: 'Calendar Year'.
+
+    ## [1] "line_end irregular for PRO2012 in catalogue "
+
+    ## Warning: Unknown or uninitialised column: 'Calendar Year'.
+
+    ## [1] "line_end irregular for UGR3003 in catalogue "
+
+    ## Warning: Unknown or uninitialised column: 'Calendar Year'.
+
+    ## [1] "line_end irregular for UGR3005 in catalogue "
 
 ``` r
 rm(symbol_to_line, start_descrip, end_descrip,
@@ -611,18 +636,18 @@ print(d_description)
 ```
 
     ## # A tibble: 831 x 4
-    ##    Code   `Calendar Year` Overview                Description             
-    ##    <chr>  <chr>           <chr>                   <chr>                   
-    ##  1 COR10~ 2014-2015       "COR1002 - Philosophy ~ Starting from classical~
-    ##  2 COR10~ 2014-2015       "COR1003 - Contemporar~ The course intends to t~
-    ##  3 COR10~ 2014-2015       "COR1004 - Political P~ Politics is a complex a~
-    ##  4 COR10~ 2014-2015       "COR1005 - Modeling Na~ The aim of the course i~
-    ##  5 HUM10~ 2014-2015       "HUM1003 - Cultural St~ Cultural Studies is a w~
-    ##  6 HUM10~ 2014-2015       "HUM1007 - Introductio~ One of the greatest and~
-    ##  7 HUM10~ 2014-2015       "HUM1010 - Common Foun~ What do Europeans have ~
-    ##  8 HUM10~ 2014-2015       "HUM1011 - Introductio~ The traditional term fo~
-    ##  9 HUM10~ 2014-2015       "HUM1012 - Pop Songs a~ This course is based on~
-    ## 10 HUM10~ 2014-2015       "HUM1013 - The Idea of~ This course deals with ~
+    ##    `Course ID` `Academic Year` Overview             Description           
+    ##    <chr>       <chr>           <chr>                <chr>                 
+    ##  1 COR1002     2014-2015       "COR1002 - Philosop~ Starting from classic~
+    ##  2 COR1003     2014-2015       "COR1003 - Contempo~ The course intends to~
+    ##  3 COR1004     2014-2015       "COR1004 - Politica~ Politics is a complex~
+    ##  4 COR1005     2014-2015       "COR1005 - Modeling~ The aim of the course~
+    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural~ Cultural Studies is a~
+    ##  6 HUM1007     2014-2015       "HUM1007 - Introduc~ One of the greatest a~
+    ##  7 HUM1010     2014-2015       "HUM1010 - Common F~ What do Europeans hav~
+    ##  8 HUM1011     2014-2015       "HUM1011 - Introduc~ The traditional term ~
+    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Song~ This course is based ~
+    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea~ This course deals wit~
     ## # ... with 821 more rows
 
 #### Extracting Text: Course Manuals
@@ -634,26 +659,27 @@ Since we want to use tools from dplyr and tidytext we must first transform our c
 ``` r
 d_manual <- tidy(corpus_manuals) %>%
   select(id, text) %>%
-  mutate(Code = substring(id, 1, 7)) %>%
+  mutate(`Course ID` = substring(id, 1, 7)) %>%
   select(-id) %>%
   rename(Manual = text)
+
 rm(corpus_manuals)
 print(d_manual)
 ```
 
     ## # A tibble: 153 x 2
-    ##    Manual                                                           Code  
-    ##    <chr>                                                            <chr> 
-    ##  1 "P h i l o s o p hy o f S c i e n c e\r\n                      ~ COR10~
-    ##  2 "General information\r\nIntroduction\r\nNew things are happenin~ COR10~
-    ##  3 "University College Maastricht. 2017-18, Period 2\r\n          ~ COR10~
-    ##  4 "Theory Construction\r\nand\r\nModelling Techniques\r\nCode: CO~ COR10~
-    ##  5 "  Cultural Studies I\r\nDoing Cultural Studies\r\n University ~ HUM10~
-    ##  6 "AN INTRODUCTORY COURSE TO PHILOSOPHY\n                        ~ HUM10~
-    ##  7 "                 HU1010\r\nCOMMON FOUNDATIONS OF LAW IN EUROPE~ HUM10~
-    ##  8 "Introduction to Art\r\nRepresentations, Performances and Inter~ HUM10~
-    ##  9 "Pop Songs and Poetry: Theory and Analysis\r\n            Code:~ HUM10~
-    ## 10 "\n              The Idea of Europe:\r\nThe Intellectual Histor~ HUM10~
+    ##    Manual                                                      `Course ID`
+    ##    <chr>                                                       <chr>      
+    ##  1 "P h i l o s o p hy o f S c i e n c e\r\n                 ~ COR1002    
+    ##  2 "General information\r\nIntroduction\r\nNew things are hap~ COR1003    
+    ##  3 "University College Maastricht. 2017-18, Period 2\r\n     ~ COR1004    
+    ##  4 "Theory Construction\r\nand\r\nModelling Techniques\r\nCod~ COR1005    
+    ##  5 "  Cultural Studies I\r\nDoing Cultural Studies\r\n Univer~ HUM1003    
+    ##  6 "AN INTRODUCTORY COURSE TO PHILOSOPHY\n                   ~ HUM1007    
+    ##  7 "                 HU1010\r\nCOMMON FOUNDATIONS OF LAW IN E~ HUM1010    
+    ##  8 "Introduction to Art\r\nRepresentations, Performances and ~ HUM1011    
+    ##  9 "Pop Songs and Poetry: Theory and Analysis\r\n            ~ HUM1012    
+    ## 10 "\n              The Idea of Europe:\r\nThe Intellectual H~ HUM1013    
     ## # ... with 143 more rows
 
 ### Tidy Text Format
@@ -662,11 +688,11 @@ To put everything into tidy text format, we first create three tibbles `d_overvi
 
 ``` r
 d_overview <- d_description %>%
-  select(Code, `Calendar Year`, Overview) %>%
+  select(`Course ID`, `Academic Year`, Overview) %>%
   unnest_tokens(output = word, input = Overview)
 
 d_description <- d_description %>%
-  select(Code, `Calendar Year`, Description) %>%
+  select(`Course ID`, `Academic Year`, Description) %>%
   unnest_tokens(output = word, input = Description)
 
 d_manual <- unnest_tokens(d_manual, output = word, input = Manual)
@@ -686,7 +712,7 @@ stem_hunspell <- function(term) {
   else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
 }
 
-dictionary <- select(d_overview, Code, word) %>%
+dictionary <- select(d_overview, `Course ID`, word) %>%
   rbind(d_manual) %>% 
   distinct(word) %>%
   mutate(word_stem = purrr::map_chr(.x = word,
@@ -730,18 +756,18 @@ print(d_description) # See starting - start
 ```
 
     ## # A tibble: 185,054 x 4
-    ##    Code    `Calendar Year` word_original word       
-    ##    <chr>   <chr>           <chr>         <chr>      
-    ##  1 COR1002 2014-2015       starting      start      
-    ##  2 COR1002 2014-2015       from          from       
-    ##  3 COR1002 2014-2015       classical     classical  
-    ##  4 COR1002 2014-2015       positions     position   
-    ##  5 COR1002 2014-2015       on            on         
-    ##  6 COR1002 2014-2015       the           the        
-    ##  7 COR1002 2014-2015       objectivity   objectivity
-    ##  8 COR1002 2014-2015       and           and        
-    ##  9 COR1002 2014-2015       methodology   methodology
-    ## 10 COR1002 2014-2015       of            of         
+    ##    `Course ID` `Academic Year` word_original word       
+    ##    <chr>       <chr>           <chr>         <chr>      
+    ##  1 COR1002     2014-2015       starting      start      
+    ##  2 COR1002     2014-2015       from          from       
+    ##  3 COR1002     2014-2015       classical     classical  
+    ##  4 COR1002     2014-2015       positions     position   
+    ##  5 COR1002     2014-2015       on            on         
+    ##  6 COR1002     2014-2015       the           the        
+    ##  7 COR1002     2014-2015       objectivity   objectivity
+    ##  8 COR1002     2014-2015       and           and        
+    ##  9 COR1002     2014-2015       methodology   methodology
+    ## 10 COR1002     2014-2015       of            of         
     ## # ... with 185,044 more rows
 
 ### Removing Stopwords
@@ -764,18 +790,18 @@ print(d_description) # stop words (on, the, of, etc, are excluded)
 ```
 
     ## # A tibble: 84,299 x 4
-    ##    Code    `Calendar Year` word_original word       
-    ##    <chr>   <chr>           <chr>         <chr>      
-    ##  1 COR1002 2014-2015       starting      start      
-    ##  2 COR1002 2014-2015       classical     classical  
-    ##  3 COR1002 2014-2015       positions     position   
-    ##  4 COR1002 2014-2015       objectivity   objectivity
-    ##  5 COR1002 2014-2015       methodology   methodology
-    ##  6 COR1002 2014-2015       science       science    
-    ##  7 COR1002 2014-2015       logical       logical    
-    ##  8 COR1002 2014-2015       empiricism    empiricism 
-    ##  9 COR1002 2014-2015       critical      critical   
-    ## 10 COR1002 2014-2015       rationalism   rationalism
+    ##    `Course ID` `Academic Year` word_original word       
+    ##    <chr>       <chr>           <chr>         <chr>      
+    ##  1 COR1002     2014-2015       starting      start      
+    ##  2 COR1002     2014-2015       classical     classical  
+    ##  3 COR1002     2014-2015       positions     position   
+    ##  4 COR1002     2014-2015       objectivity   objectivity
+    ##  5 COR1002     2014-2015       methodology   methodology
+    ##  6 COR1002     2014-2015       science       science    
+    ##  7 COR1002     2014-2015       logical       logical    
+    ##  8 COR1002     2014-2015       empiricism    empiricism 
+    ##  9 COR1002     2014-2015       critical      critical   
+    ## 10 COR1002     2014-2015       rationalism   rationalism
     ## # ... with 84,289 more rows
 
 Student Data
@@ -789,23 +815,30 @@ Our dataframe contains many variables and rows that are either empty or meaningl
 
 ``` r
 d_transcript <- d_transcript %>%
-  filter(`Appraisal (Description)` == "Grade supervisor") %>%
-  select(`Student Number`, `Module (Abbrev.)`, `Module (Desc.)`,
-         `Program (Description)`, `Academic Year`, `Academic Session`,
-         `Number rep. attemp`, `Grade symbol`, `Booking Status (Desc.)`) %>%
-  rename(`Student ID Number` = `Student Number`,
-         `Course Code` = `Module (Abbrev.)`,
+  filter(`Appraisal (Description)` == "Grade supervisor", `Appraisal Type`=="7055") %>%
+  select(`Student Number`,
+         `Module (Abbrev.)`,
+         `Module (Desc.)`,
+         `Program (Description)`,
+         `Academic Year`,
+         `Academic Session`,
+         `Number rep. attemp`,
+         `Grade symbol`,
+         `Booking Status (Desc.)`) %>%
+  rename(`Student ID` = `Student Number`,
+         `Course ID` = `Module (Abbrev.)`,
          `Course Title` = `Module (Desc.)`,
          `Study Program` = `Program (Description)`,
-         `Civil Year` = `Academic Year`, # double check
-         `Period` = `Academic Session`,
+         Year_numerical = `Academic Year`, # double check
+         Period = `Academic Session`,
          `Number Repeated Attempt` = `Number rep. attemp`,
          Grade = `Grade symbol`,
-         `Status` = `Booking Status (Desc.)`) %>% # is there a better name for the variable?
+         Status = `Booking Status (Desc.)`) %>% # is there a better name for the variable?
+#  mutate(as.POSIXct('2/5/2010',format='%m/%d/%Y')) %>%
   distinct
 ```
 
-Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes (the correspondance between calendars was given to us by R. Vos) and save it under a variable `Period`:
+Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes (the correspondance between calendars was given to us by R. Vos) and save it under a variable `Period`. We also create another variable:
 
 ``` r
 d_transcript <- d_transcript %>%
@@ -822,7 +855,8 @@ d_transcript <- d_transcript %>%
                             between(Period, 400, 499) ~ "4",
                             between(Period, 500, 599) ~ "5",
                             between(Period, 600, 660) ~ "6",
-                            between(Period, 901, 999) ~ "1"))
+                            between(Period, 901, 999) ~ "1")) %>%
+  mutate(`Academic Year`= paste(Year_numerical, Year_numerical + 1, sep = "-"))
 ```
 
 Estimating concentrations:
