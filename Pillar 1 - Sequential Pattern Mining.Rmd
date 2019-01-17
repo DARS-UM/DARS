@@ -71,7 +71,6 @@ d_transcript %>% filter(`Course Code`=="SSC3016")
 ```
 
 Now we include data for pass and fail
-
 ```{r}
 d_transaction_passed <- d_course %>%
   select(Type, Code, Letters) %>%
@@ -80,7 +79,8 @@ d_transaction_passed <- d_course %>%
          ! Letters %in% c("SAS", "SAH", "SAC")) %>%
   select(Code) %>%
   left_join(d_transcript, by = c("Code" = "Course Code")) %>%
-  mutate(Outcome = case_when(Grade > 5.5 ~"Pass",
+  mutate(Outcome = case_when(Grade=="NG"~"Fail",
+                             Grade > 5.5 ~"Pass",
                              T~"Fail")) %>%
   mutate(Item= paste(Code, Outcome, sep = "_")) %>%
   select(`Student ID Number`, Item) %>%
@@ -158,7 +158,10 @@ mingap:   an integer value specifying the minimum time difference between consec
 maxgap:   an integer value specifying the maximum time difference between consecutive elements of a sequence (default none, range >= 0).
 maxwin:   an integer value specifying the maximum time difference between any two elements of a sequence (default none, range >= 0).
 ```{r}
+summary(my_transactions)
+
 frequent_trajectories <- cspade(my_transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
+#Looking into this: 
 summary(frequent_trajectories)
 as(frequent_trajectories, "data.frame")
 
@@ -166,6 +169,63 @@ inspect(head(frequent_trajectories))
 		
 ```
 
+```{r}
+rules <- ruleInduction(frequent_trajectories, confidence = 0.2, #we need to play with the parameters.
+                    control    = list(verbose = TRUE))
+as(rules, "data.frame") %>%
+  arrange(desc(lift))
+```
+#Sequence mining with pass fail.
+First we add pass fai information to our data set and transform it to transactions class:
+```{r}
+#sequences
+d_pass_sequence_transactions <- d_course %>%
+  select(Type, Code, Letters) %>%
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  select(Code) %>%
+  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
+  mutate(Outcome = 
+           case_when( Grade=="NG"~"Fail", #if we don't do this NG satisfies the condition for pass v
+                      Grade > 5.5 ~"Pass",
+                              T~"Fail")
+         ) %>%
+  mutate(Item = paste(Code, Outcome, sep = "_") ) %>%
+  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
+  mutate( Time = paste(Year_numerical, Period, sep = ""),
+          Time = as.double(Time)) %>%
+  select(`Student ID Number`, Item, Time) %>%
+  arrange(`Student ID Number`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
+  group_by(`Student ID Number`, Time) %>%
+  summarize(list_course = list(Item)) %>% #if we run the code until here maybe its possible to use sequence_transactions <- as(sequence_transaction$list_course, "transactions")
+  mutate(TransactionID = paste(`Student ID Number`, Time, sep = "_"))
+
+pass_list_course <- d_pass_sequence_transactions$list_course
+names(pass_list_course) <- d_pass_sequence_transactions$TransactionID
+
+pass_transactions <- as(pass_list_course, "transactions")
+transactionInfo(pass_transactions)$sequenceID <- d_pass_sequence_transactions$`Student ID Number`
+transactionInfo(pass_transactions)$eventID <- d_pass_sequence_transactions$Time
+transactionInfo(pass_transactions)$transactionID <- NULL
+```
+Checking the results:
+```{r}
+as(pass_transactions, "data.frame")
+frequent_pass_trajectories <- cspade(pass_transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
+summary(frequent_pass_trajectories)
+
+pass_rules <- ruleInduction(frequent_pass_trajectories, confidence = 0.2, #we need to play with the parameters.
+                    control    = list(verbose = TRUE))
+pass_rules_df <- as(pass_rules, "data.frame") %>%
+  arrange(desc(lift))
+```
+Checking who failed
+```{r}
+pass_rules_df %>%
+  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = F) %>%
+  filter(str_detect(RHS, "_Fail"))
+```
 
 #Visualisation
 It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
