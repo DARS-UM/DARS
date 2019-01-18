@@ -29,13 +29,61 @@ find_course <- function(code){ #can be modified to accept other data that is not
 }
 
 ```
+
 #Data Exploration of Transcripts
 ```{r}
 exploration <- d_transcript %>%
-  mutate(Grade = case_when(Grade == "NG"~ "0.0",
+  mutate(Grade = case_when(Grade == "NG"~ "-1", #"0,0", #maybe we could just remove these from the analysis and treat them separately?
                            T~Grade),
-         Grade=as.double(Grade))
+         Grade = str_replace(string = Grade, pattern = ",",replace = "."),
+         Grade = as.numeric(Grade))%>%
+  filter(!is.na(Grade)) %>%
+  filter(Grade != -1) #remove NG
+
+summary(exploration)
+
+student_statistics <- exploration %>%
+  group_by(`Student ID Number`) %>%
+  summarise(n = n(),
+            Min = min(Grade), 
+            Max = max(Grade), 
+            Mean = mean(Grade), 
+            Median = median(Grade), 
+            SD = sd(Grade), 
+            `Proportion Failed` = mean(Grade < 5.5))
+
+course_statistics <- exploration %>%
+  group_by(`Course Code`) %>%
+  summarise(n = n(),
+            Min = min(Grade), 
+            Max = max(Grade), 
+            Mean = mean(Grade), 
+            Median = median(Grade), 
+            SD = sd(Grade), 
+            `Proportion Failed` = mean(Grade < 5.5)) %>%
+  inner_join(d_course, by= c("Course Code" = "Code")) #to get only UCM courses for which we have statistics
+
+#We have NA in grades. Something weird is happening. 
+summary(str_detect(d_transcript$Grade, pattern="NA")) #shows NA's = 312 FALSE= 89069 WHY ARE THERE NAs?
+
+has_na <- d_transcript %>%
+  mutate(What = str_detect(Grade, pattern="NA")) %>%
+  filter(is.na(What))
 ```
+We have found some NA values for the grades! Students:
+0177849- COR1003 & EMTH0001  +++++++++++++++ Master thesis should not be showing up! +++++++++++++
+0177857
+0222100
+0270148
+0313173
+0317101
+0317349
+
+#Getting graphics
+```{r}
+
+```
+
 
 #Getting dates
 For a first exploration of arules, we conceptualise our framework like this:
@@ -241,12 +289,46 @@ pass_rules_df <- as(pass_rules, "data.frame") %>%
 Checking who failed
 ```{r}
 view_rules <- pass_rules_df %>%
-  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove= F to keep columns
+  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
   filter(str_detect(RHS, "low score")) %>% #change so that it changes automatically
   arrange(desc(confidence), desc(lift))
 
 
 write_csv(view_rules, "Data_Evgueni.csv")
+```
+
+
+#Unifying transaction data
+```{r}
+fail_threshold <- 6.5
+
+category <-"Low_grade" #Outcome or Low_grade
+
+d_pass_sequence_transactions <- d_course %>%
+  select(Type, Code, Letters) %>%
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  select(Code) %>%
+  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
+  mutate(Outcome = 
+           case_when( Grade=="NG"~"Fail", #if we don't do this NG satisfies the condition for pass v
+                      Grade > 5.5 ~"Pass",
+                              T~"Fail"),
+         Low_grade =
+           case_when(Grade=="NG"~"low score", #if we don't do this NG satisfies the condition for pass v
+                      Grade > fail_threshold ~"high score",
+                              T~"low score")
+         ) %>%
+  mutate(Item = paste(Code, Low_grade, sep = "_") ) %>% #Change for Outcome/Low_grade
+  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
+  mutate( Time = paste(Year_numerical, Period, sep = ""),
+          Time = as.double(Time)) %>%
+  select(`Student ID Number`, Item, Time) %>%
+  arrange(`Student ID Number`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
+  group_by(`Student ID Number`, Time) %>%
+  summarize(list_course = list(Item)) %>% #if we run the code until here maybe its possible to use sequence_transactions <- as(sequence_transaction$list_course, "transactions")
+  mutate(TransactionID = paste(`Student ID Number`, Time, sep = "_"))
 ```
 
 #Visualisation

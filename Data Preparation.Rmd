@@ -527,8 +527,6 @@ save(lists, d_course, d_AoD, d_assessment, d_transcript,
 ```
 
 
-
-
 # TODO
 
 ## Estimating concentrations
