@@ -517,6 +517,7 @@ d_transcript <- d_transcript %>%
 print(d_transcript)
 ```
 
+<<<<<<< HEAD
 # Save Data
 ```{r}
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
@@ -525,8 +526,11 @@ save(lists, d_course, d_AoD, d_assessment, d_transcript,
      d_overview, d_description, d_manual,
      file = "data_pillar_2.RDATA")
 ```
+=======
+>>>>>>> 63d33b11183fb5b421d2f5ae72b7e140d1cc1157
 
 
+<<<<<<< HEAD
 
 
 # TODO
@@ -534,6 +538,8 @@ save(lists, d_course, d_AoD, d_assessment, d_transcript,
 ## Estimating concentrations
 For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops" 
 
+=======
+>>>>>>> 63d33b11183fb5b421d2f5ae72b7e140d1cc1157
 ```{r, eval = FALSE}
 d_concentration <- d_course %>%
   select(Code, Concentration, `Concentration (additional)`) %>%

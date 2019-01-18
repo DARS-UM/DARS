@@ -870,6 +870,28 @@ d_transcript <- d_transcript %>%
 ``` r
 print(d_transcript)
 ```
+<<<<<<< HEAD
+=======
+
+    ## # A tibble: 81,435 x 8
+    ##    `Student ID` `Course ID` `Course Title` Grade Year_numerical Period
+    ##    <chr>        <chr>       <chr>          <chr>          <int> <chr> 
+    ##  1 6051398      COR1005     Theory Constr~ 5,7             2012 1     
+    ##  2 6051398      SSC1009     Introduction ~ 7,8             2012 1     
+    ##  3 6051398      SKI1008     Introduction ~ 7,9             2012 1     
+    ##  4 6051398      SCI1016     Sustainable D~ 5,8             2012 2     
+    ##  5 6051398      SKI1009     Introduction ~ 7,5             2012 2     
+    ##  6 6051398      HUM1013     The Idea of E~ 5,9             2012 2     
+    ##  7 6051398      PRO1010     Introducing A~ 8,2             2012 3     
+    ##  8 6051398      SKI1004     Research Meth~ 4,6             2012 4     
+    ##  9 6051398      SKI1004     Research Meth~ 5,6             2012 4     
+    ## 10 6051398      SCI2012     Globalization~ 5,5             2012 4     
+    ## # ... with 81,425 more rows, and 2 more variables: `Number Repeated
+    ## #   Attempt` <int>, `Academic Year` <chr>
+
+DO LATER (Estimating concentrations)
+------------------------------------
+>>>>>>> 63d33b11183fb5b421d2f5ae72b7e140d1cc1157
 
     ## # A tibble: 81,435 x 8
     ##    `Student ID` `Course ID` `Course Title` Grade Year_numerical Period
@@ -898,6 +920,7 @@ save(lists, d_course, d_AoD, d_assessment, d_transcript,
      file = "data_pillar_2.RDATA")
 ```
 
+<<<<<<< HEAD
 TODO
 ====
 
@@ -906,6 +929,8 @@ Estimating concentrations
 
 For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops"
 
+=======
+>>>>>>> 63d33b11183fb5b421d2f5ae72b7e140d1cc1157
 ``` r
 d_concentration <- d_course %>%
   select(Code, Concentration, `Concentration (additional)`) %>%
