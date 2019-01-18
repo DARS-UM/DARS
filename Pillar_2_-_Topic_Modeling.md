@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-01-17
+2019-01-18
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -11,7 +11,9 @@ DARS
     -   [Concentration Level](#concentration-level)
 -   [LDA](#lda)
     -   [Fitting Model](#fitting-model)
-    -   [Results](#results)
+    -   [Visualization](#visualization)
+        -   [Functions](#functions)
+        -   [Plots](#plots)
 
 ``` r
 library(tidyverse)
@@ -218,6 +220,12 @@ my_cast_tdm <- function(data, level) data %>%
   cast_dtm(`Course ID`, word, n)
 
 d_description_cast <- my_cast_tdm(d_description)
+```
+
+    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
+    ## This warning is displayed once per session.
+
+``` r
 d_overview_cast <- my_cast_tdm(d_overview)
 d_manual_cast <- my_cast_tdm(d_manual)
 
@@ -238,8 +246,17 @@ LDA_manual_17 <- LDA(d_manual_cast, k = 17, control = list(seed = 123))
 LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
 ```
 
-Results
--------
+``` r
+save(LDA_description_10, LDA_description_17, LDA_description_25,
+     LDA_overview_10, LDA_overview_17, LDA_overview_25,
+     LDA_manual_10, LDA_manual_17, LDA_manual_25,
+     file = "LDA.RDATA")
+```
+
+Visualization
+-------------
+
+### Functions
 
 ``` r
 prepare_data_LDA_beta <- function(results){
@@ -287,19 +304,27 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 LDA_description_10 %>% prepare_data_LDA_beta
 ```
 
+    ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `call2()` instead
+    ## This warning is displayed once per session.
+
+    ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `new_data_mask()` instead
+    ## This warning is displayed once per session.
+
     ## # A tibble: 100 x 3
-    ##    topic   term             beta
-    ##    <chr>   <chr>           <dbl>
-    ##  1 Topic 1 student       0.0212 
-    ##  2 Topic 1 develop       0.0154 
-    ##  3 Topic 1 human         0.0144 
-    ##  4 Topic 1 cuss          0.0141 
-    ##  5 Topic 1 public        0.0140 
-    ##  6 Topic 1 international 0.0137 
-    ##  7 Topic 1 model         0.0130 
-    ##  8 Topic 1 heal          0.0105 
-    ##  9 Topic 1 meet          0.00889
-    ## 10 Topic 1 issue         0.00872
+    ##    topic   term          beta
+    ##    <chr>   <chr>        <dbl>
+    ##  1 Topic 1 human      0.0171 
+    ##  2 Topic 1 study      0.0132 
+    ##  3 Topic 1 theory     0.0131 
+    ##  4 Topic 1 psychology 0.0118 
+    ##  5 Topic 1 social     0.0110 
+    ##  6 Topic 1 cuss       0.0101 
+    ##  7 Topic 1 gender     0.00878
+    ##  8 Topic 1 process    0.00751
+    ##  9 Topic 1 cell       0.00706
+    ## 10 Topic 1 role       0.00609
     ## # ... with 90 more rows
 
 ``` r
@@ -307,20 +332,27 @@ LDA_description_10 %>% prepare_data_LDA_beta
 LDA_description_10 %>% prepare_data_LDA_gamma(level = Cluster)
 ```
 
-    ## # A tibble: 104 x 3
-    ##    facet               topic     gamma
-    ##    <chr>               <chr>     <dbl>
-    ##  1 Biomedical Sciences Topic 8  8.02  
-    ##  2 Biomedical Sciences Topic 1  3.62  
-    ##  3 Biomedical Sciences Topic 5  2.09  
-    ##  4 Biomedical Sciences Topic 7  1.96  
-    ##  5 Biomedical Sciences Topic 2  0.136 
-    ##  6 Biomedical Sciences Topic 3  0.0969
-    ##  7 Biomedical Sciences Topic 4  0.0783
-    ##  8 Business            Topic 4  3.08  
-    ##  9 Business            Topic 10 1.91  
-    ## 10 Business            Topic 5  1.84  
-    ## # ... with 94 more rows
+    ## Warning: `overscope_eval_next()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `eval_tidy()` with a data mask instead
+    ## This warning is displayed once per session.
+
+    ## Warning: `chr_along()` is soft-deprecated as of rlang 0.2.0.
+    ## This warning is displayed once per session.
+
+    ## # A tibble: 101 x 3
+    ##    facet               topic   gamma
+    ##    <chr>               <chr>   <dbl>
+    ##  1 Biomedical Sciences Topic 9 7.23 
+    ##  2 Biomedical Sciences Topic 1 6.09 
+    ##  3 Biomedical Sciences Topic 3 1.42 
+    ##  4 Biomedical Sciences Topic 2 0.926
+    ##  5 Biomedical Sciences Topic 6 0.224
+    ##  6 Biomedical Sciences Topic 4 0.115
+    ##  7 Business            Topic 6 2.00 
+    ##  8 Business            Topic 8 2.00 
+    ##  9 Business            Topic 3 2.00 
+    ## 10 Business            Topic 7 1.85 
+    ## # ... with 91 more rows
 
 ``` r
 visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
@@ -351,7 +383,7 @@ visualize_LDA_gamma1 <- function(data_prepared, id_plot = "test"){
                               by = gamma, 
                               within = topic), 
                y = gamma, 
-               fill = facet)) +
+               fill = topic)) +
     geom_col(show.legend = F) +
     facet_wrap(~ topic, 
                scales = "free") +
@@ -392,24 +424,7 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
 ```
 
 ``` r
-# Bet Distribution
-LDA_description_10 %>%
-  prepare_data_LDA_beta %>%
-  visualize_LDA_beta
-
-# Gamma Distribution 1
-LDA_description_10 %>%
-  prepare_data_LDA_gamma(level = Cluster) %>%
-  visualize_LDA_gamma1
-
-# Gamma Distribution 2
-LDA_description_10 %>%
-  prepare_data_LDA_gamma(level = Cluster) %>%
-  visualize_LDA_gamma2
-```
-
-``` r
-visualize_LDA <- function(data, level = Course, id_plot = "test"){
+visualize_LDA_all_distrib <- function(data, level = Course, id_plot = "test"){
 
   # Beta distribution
   data %>% 
@@ -433,19 +448,21 @@ visualize_LDA <- function(data, level = Course, id_plot = "test"){
 visualize_LDA_all_level <- function(data, id_plot = "test"){
   
   data %>% 
-    visualize_LDA(level = Course,
-                  id_plot = paste(id_plot, "_course"))
+    visualize_LDA_all_distrib(level = Course,
+                              id_plot = paste(id_plot, "_course"))
   
   data %>% 
-    visualize_LDA(level = Cluster,
-                  id_plot = paste(id_plot, "_cluster"))
+    visualize_LDA_all_distrib(level = Cluster,
+                              id_plot = paste(id_plot, "_cluster"))
     
   data %>% 
-    visualize_LDA(level = Concentration,
-                  id_plot = paste(id_plot, "_concentration"))
+    visualize_LDA_all_distrib(level = Concentration,
+                              id_plot = paste(id_plot, "_concentration"))
   
 }
 ```
+
+### Plots
 
 ``` r
 LDA_description_10 %>% visualize_LDA_all_level(id_plot = "description_k10")
@@ -459,6 +476,46 @@ LDA_overview_25 %>% visualize_LDA_all_level(id_plot = "overview_k25")
 LDA_manual_10 %>% visualize_LDA_all_level(id_plot = "manual_k10")
 LDA_manual_17 %>% visualize_LDA_all_level(id_plot = "manual_k17")
 LDA_manual_25 %>% visualize_LDA_all_level(id_plot = "manual_k25")
+```
+
+``` r
+tidy(LDA_manual_10, "beta") %>%
+  filter(beta > 1e-3) %>%
+  bind_tf_idf(term = term, document = topic, n = beta) %>%
+  group_by(topic) %>%
+  top_n(10, tf_idf) %>%
+  arrange(topic, desc(tf_idf))
+
+
+  count(term, topic) %>%
+  arrange(desc(n)) %>%
+    
+  filter(beta > 1e-3) %>%
+  group_by(term) %>%
+    mutate(n_topic = n(),
+           beta = beta / n_topic) %>%
+  group_by(topic) %>%
+    top_n(10, beta)
+
+
+  count(topic, term, wt = beta) %>%
+  (term = term, document = topic, n = n) %>%
+  group_by(topic) %>%
+  top_n(10, tf_idf)
+
+
+  group_by(term) %>%
+  summarise(beta = sum(beta)) %>%
+  arrange(desc(beta))
+
+
+
+  
+
+
+labels <- list(
+  description_10 = "X"
+)
 ```
 
 ``` r
