@@ -821,21 +821,18 @@ d_transcript <- d_transcript %>%
          `Module (Abbrev.)`,
          `Module (Desc.)`,
          `Program (Abbreviation)`,
+         `Grade symbol`,
          `Academic Year`,
          `Academic Session`,
-         `Number rep. attemp`,
-         `Grade symbol`,
-         `Booking Status (Desc.)`) %>%
+         `Number rep. attemp`) %>%
   rename(`Student ID` = `Student Number`,
          `Course ID` = `Module (Abbrev.)`,
          `Course Title` = `Module (Desc.)`,
-         `Study Program` = `Program (Abbreviation)`,
-         Year_numerical = `Academic Year`, # double check
-         Period = `Academic Session`,
-         `Number Repeated Attempt` = `Number rep. attemp`,
          Grade = `Grade symbol`,
-         Status = `Booking Status (Desc.)`) %>% # is there a better name for the variable?
-#  mutate(as.POSIXct('2/5/2010',format='%m/%d/%Y')) %>%
+         `Study Program` = `Program (Abbreviation)`,
+         Year_numerical = `Academic Year`,
+         Period = `Academic Session`,
+         `Number Repeated Attempt` = `Number rep. attemp`) %>%
   distinct
 ```
 
@@ -868,12 +865,30 @@ d_transcript <- d_transcript %>%
   select(- `Study Program`)
 ```
 
+``` r
+print(d_transcript)
+```
+
+    ## # A tibble: 81,435 x 8
+    ##    `Student ID` `Course ID` `Course Title` Grade Year_numerical Period
+    ##    <chr>        <chr>       <chr>          <chr>          <int> <chr> 
+    ##  1 6051398      COR1005     Theory Constr~ 5,7             2012 1     
+    ##  2 6051398      SSC1009     Introduction ~ 7,8             2012 1     
+    ##  3 6051398      SKI1008     Introduction ~ 7,9             2012 1     
+    ##  4 6051398      SCI1016     Sustainable D~ 5,8             2012 2     
+    ##  5 6051398      SKI1009     Introduction ~ 7,5             2012 2     
+    ##  6 6051398      HUM1013     The Idea of E~ 5,9             2012 2     
+    ##  7 6051398      PRO1010     Introducing A~ 8,2             2012 3     
+    ##  8 6051398      SKI1004     Research Meth~ 4,6             2012 4     
+    ##  9 6051398      SKI1004     Research Meth~ 5,6             2012 4     
+    ## 10 6051398      SCI2012     Globalization~ 5,5             2012 4     
+    ## # ... with 81,425 more rows, and 2 more variables: `Number Repeated
+    ## #   Attempt` <int>, `Academic Year` <chr>
+
 DO LATER (Estimating concentrations)
 ------------------------------------
 
 For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops"
-
-NOTE TO RAPHAEL: we might want o have your course concentrations because they take double concentrations into account!
 
 ``` r
 d_concentration <- d_course %>%

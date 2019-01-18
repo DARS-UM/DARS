@@ -464,25 +464,24 @@ print(d_description) # stop words (on, the, of, etc, are excluded)
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 ```{r}
 d_transcript <- d_transcript %>%
+  # only keep one observation (with the final grade) per student-course
   filter(`Appraisal (Description)` == "Grade supervisor", `Appraisal Type`=="7055") %>%
   select(`Student Number`,
          `Module (Abbrev.)`,
          `Module (Desc.)`,
          `Program (Abbreviation)`,
+         `Grade symbol`,
          `Academic Year`,
          `Academic Session`,
-         `Number rep. attemp`,
-         `Grade symbol`,
-         `Booking Status (Desc.)`) %>%
+         `Number rep. attemp`) %>%
   rename(`Student ID` = `Student Number`,
          `Course ID` = `Module (Abbrev.)`,
          `Course Title` = `Module (Desc.)`,
-         `Study Program` = `Program (Abbreviation)`,
-         Year_numerical = `Academic Year`, # double check
-         Period = `Academic Session`,
-         `Number Repeated Attempt` = `Number rep. attemp`,
          Grade = `Grade symbol`,
-         Status = `Booking Status (Desc.)`) %>% # is there a better name for the variable?
+         `Study Program` = `Program (Abbreviation)`,
+         Year_numerical = `Academic Year`,
+         Period = `Academic Session`,
+         `Number Repeated Attempt` = `Number rep. attemp`) %>%
   distinct
 ```
 
@@ -514,12 +513,13 @@ d_transcript <- d_transcript %>%
   select(- `Study Program`)
 ```
 
+```{r}
+print(d_transcript)
+```
+
 
 ## DO LATER (Estimating concentrations)
 For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops" 
-
-
-NOTE TO RAPHAEL: we might want o have your course concentrations because they take double concentrations into account!
 
 ```{r, eval = FALSE}
 d_concentration <- d_course %>%
