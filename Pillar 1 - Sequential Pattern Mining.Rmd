@@ -55,6 +55,8 @@ student_statistics <- exploration %>%
             `Proportion Failed` = mean(Grade < 5.5))
 
 course_statistics <- exploration %>%
+  inner_join(d_course, by = "Course ID") %>%
+  filter(between(Year_numerical, 2015,2016)) %>% #filter year
   group_by(`Course ID`) %>%
   summarise(n = n(),
             Min = min(Grade), 
@@ -63,7 +65,7 @@ course_statistics <- exploration %>%
             Median = median(Grade), 
             SD = sd(Grade), 
             `Proportion Failed` = mean(Grade < 5.5)) %>%
-  right_join(d_course, by = "Course ID")
+  inner_join(select(d_course,`Course ID`, `Course Title`), by = "Course ID")
 
 
 concentration_statistics <- exploration %>%
@@ -89,6 +91,41 @@ cluster_statistics <- exploration %>%
             Median = median(Grade), 
             SD = sd(Grade), 
             `Proportion Failed` = mean(Grade < 5.5))
+
+year_statistics <- exploration %>%
+  inner_join(d_course, by = "Course ID") %>%
+  group_by(Year_numerical) %>%
+  summarise(n = n(),
+            Min = min(Grade), 
+            Max = max(Grade), 
+            Mean = round(mean(Grade), 2), 
+            Median = median(Grade), 
+            SD = sd(Grade), 
+            `Proportion Failed` = mean(Grade < 5.5))
+
+level_statistics <- exploration %>%
+  inner_join(d_course, by = "Course ID") %>%
+  group_by(Level) %>%
+  summarise(n = n(),
+            Min = min(Grade), 
+            Max = max(Grade), 
+            Mean = round(mean(Grade), 2), 
+            Median = median(Grade), 
+            SD = sd(Grade), 
+            `Proportion Failed` = mean(Grade < 5.5))
+
+percentage_grades_awarded <- d_transcript %>%
+          mutate(Grade = str_replace(string = Grade, pattern = ",",replace = "."),
+                 Grade = as.integer(Grade)) %>%
+  filter(Year_numerical %in% c(2015,2016))%>%
+  mutate(total=n())%>%
+  group_by(Grade) %>%
+  mutate(grade_total=n())%>%
+  select(Grade, grade_total,total)%>%
+  distinct()%>%
+  mutate(Percentage = signif(grade_total/total,digits=2))%>%
+  arrange(Grade)
+
 ```
 We have found some NA values for the grades! Students:
 
