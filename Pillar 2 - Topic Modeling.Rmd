@@ -40,7 +40,7 @@ scale_y_reordered <- function(..., sep = "___") {
 ```
 
 # Setup
-```{r load data}
+```{r import data}
 load("data_pillar_2.RDATA")
 ```
 
@@ -195,7 +195,7 @@ d_manual_cast <- my_cast_tdm(d_manual)
 rm(my_cast_tdm)
 ```
 
-```{r, cache = TRUE}
+```{r LDA fit, cache = TRUE}
 LDA_description_10 <- LDA(d_description_cast, k = 10, control = list(seed = 123))
 LDA_description_17 <- LDA(d_description_cast, k = 17, control = list(seed = 123))
 LDA_description_25 <- LDA(d_description_cast, k = 25, control = list(seed = 123))
@@ -209,7 +209,16 @@ LDA_manual_17 <- LDA(d_manual_cast, k = 17, control = list(seed = 123))
 LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
 ```
 
-## Results
+```{r LDA save models}
+save(LDA_description_10, LDA_description_17, LDA_description_25,
+     LDA_overview_10, LDA_overview_17, LDA_overview_25,
+     LDA_manual_10, LDA_manual_17, LDA_manual_25,
+     file = "LDA.RDATA")
+```
+
+
+## Visualization
+### Functions
 ```{r LDA prepare}
 prepare_data_LDA_beta <- function(results){
   
@@ -288,7 +297,7 @@ visualize_LDA_gamma1 <- function(data_prepared, id_plot = "test"){
                               by = gamma, 
                               within = topic), 
                y = gamma, 
-               fill = facet)) +
+               fill = topic)) +
     geom_col(show.legend = F) +
     facet_wrap(~ topic, 
                scales = "free") +
@@ -328,26 +337,8 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
 }
 ```
 
-```{r, cache = TRUE}
-# Bet Distribution
-LDA_description_10 %>%
-  prepare_data_LDA_beta %>%
-  visualize_LDA_beta
-
-# Gamma Distribution 1
-LDA_description_10 %>%
-  prepare_data_LDA_gamma(level = Cluster) %>%
-  visualize_LDA_gamma1
-
-# Gamma Distribution 2
-LDA_description_10 %>%
-  prepare_data_LDA_gamma(level = Cluster) %>%
-  visualize_LDA_gamma2
-```
-
-
-```{r}
-visualize_LDA <- function(data, level = Course, id_plot = "test"){
+```{r LDA visualize all distrib}
+visualize_LDA_all_distrib <- function(data, level = Course, id_plot = "test"){
 
   # Beta distribution
   data %>% 
@@ -367,26 +358,27 @@ visualize_LDA <- function(data, level = Course, id_plot = "test"){
 }
 ```
 
-
-```{r}
+```{r LDA visualize all level}
 visualize_LDA_all_level <- function(data, id_plot = "test"){
   
   data %>% 
-    visualize_LDA(level = Course,
-                  id_plot = paste(id_plot, "_course"))
+    visualize_LDA_all_distrib(level = Course,
+                              id_plot = paste(id_plot, "_course"))
   
   data %>% 
-    visualize_LDA(level = Cluster,
-                  id_plot = paste(id_plot, "_cluster"))
+    visualize_LDA_all_distrib(level = Cluster,
+                              id_plot = paste(id_plot, "_cluster"))
     
   data %>% 
-    visualize_LDA(level = Concentration,
-                  id_plot = paste(id_plot, "_concentration"))
+    visualize_LDA_all_distrib(level = Concentration,
+                              id_plot = paste(id_plot, "_concentration"))
   
 }
 ```
 
-```{r, cache = TRUE}
+
+### Plots
+```{r LDA plot, cache = TRUE}
 LDA_description_10 %>% visualize_LDA_all_level(id_plot = "description_k10")
 LDA_description_17 %>% visualize_LDA_all_level(id_plot = "description_k17")
 LDA_description_25 %>% visualize_LDA_all_level(id_plot = "description_k25")
@@ -400,9 +392,47 @@ LDA_manual_17 %>% visualize_LDA_all_level(id_plot = "manual_k17")
 LDA_manual_25 %>% visualize_LDA_all_level(id_plot = "manual_k25")
 ```
 
+```{r label, eval = F}
+tidy(LDA_manual_10, "beta") %>%
+  filter(beta > 1e-3) %>%
+  bind_tf_idf(term = term, document = topic, n = beta) %>%
+  group_by(topic) %>%
+  top_n(10, tf_idf) %>%
+  arrange(topic, desc(tf_idf))
 
-```{r visualization LDA, eval = F}
 
+  count(term, topic) %>%
+  arrange(desc(n)) %>%
+    
+  filter(beta > 1e-3) %>%
+  group_by(term) %>%
+    mutate(n_topic = n(),
+           beta = beta / n_topic) %>%
+  group_by(topic) %>%
+    top_n(10, beta)
+
+
+  count(topic, term, wt = beta) %>%
+  (term = term, document = topic, n = n) %>%
+  group_by(topic) %>%
+  top_n(10, tf_idf)
+
+
+  group_by(term) %>%
+  summarise(beta = sum(beta)) %>%
+  arrange(desc(beta))
+
+
+
+  
+
+
+labels <- list(
+  description_10 = "X"
+)
+```
+
+```{r label bis, eval = FALSE}
 visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10 with labelled topics", facet = T,
               topic_names = c("Psychology & Information", "Economics and Development", "Biology", "Chemistry and Math",
                               "Sociology", "Law", "Research", "International Politics",
