@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-01-17
+2019-01-18
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -21,7 +21,8 @@ DARS
         -   [Removing Stopwords](#removing-stopwords)
     -   [Student Data](#student-data-1)
         -   [Selecting Variables](#selecting-variables)
-    -   [Estimating concentrations:](#estimating-concentrations)
+        -   [Keeping UCM program only](#keeping-ucm-program-only)
+    -   [DO LATER (Estimating concentrations)](#do-later-estimating-concentrations)
         -   [Getting UCM\_YEAR](#getting-ucm_year)
         -   [Removing master Program data and Cleaning Capstone Data](#removing-master-program-data-and-cleaning-capstone-data)
 -   [Save Data](#save-data)
@@ -819,7 +820,7 @@ d_transcript <- d_transcript %>%
   select(`Student Number`,
          `Module (Abbrev.)`,
          `Module (Desc.)`,
-         `Program (Description)`,
+         `Program (Abbreviation)`,
          `Academic Year`,
          `Academic Session`,
          `Number rep. attemp`,
@@ -828,7 +829,7 @@ d_transcript <- d_transcript %>%
   rename(`Student ID` = `Student Number`,
          `Course ID` = `Module (Abbrev.)`,
          `Course Title` = `Module (Desc.)`,
-         `Study Program` = `Program (Description)`,
+         `Study Program` = `Program (Abbreviation)`,
          Year_numerical = `Academic Year`, # double check
          Period = `Academic Session`,
          `Number Repeated Attempt` = `Number rep. attemp`,
@@ -859,8 +860,16 @@ d_transcript <- d_transcript %>%
   mutate(`Academic Year`= paste(Year_numerical, Year_numerical + 1, sep = "-"))
 ```
 
-Estimating concentrations:
---------------------------
+### Keeping UCM program only
+
+``` r
+d_transcript <- d_transcript %>%
+  filter(`Study Program` == "7501") %>%
+  select(- `Study Program`)
+```
+
+DO LATER (Estimating concentrations)
+------------------------------------
 
 For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops"
 
