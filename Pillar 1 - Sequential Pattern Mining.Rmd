@@ -20,9 +20,9 @@ load previous data and create function to find courses
 ```{r}
 load("data_pillar_1.RDATA")
 
-find_course <- function(data = d_transcript, code){
+find_course <- function(code){ #can be modified to accept other data that is not d_transcript
   c = code
-  x <- data %>%
+  x <- d_transcript %>%
     filter(`Course Code`== c)
   
   return(x$`Course Title`[1])
