@@ -22,10 +22,11 @@ DARS
     -   [Student Data](#student-data-1)
         -   [Selecting Variables](#selecting-variables)
         -   [Keeping UCM program only](#keeping-ucm-program-only)
-    -   [DO LATER (Estimating concentrations)](#do-later-estimating-concentrations)
+-   [Save Data](#save-data)
+-   [TODO](#todo)
+    -   [Estimating concentrations](#estimating-concentrations)
         -   [Getting UCM\_YEAR](#getting-ucm_year)
         -   [Removing master Program data and Cleaning Capstone Data](#removing-master-program-data-and-cleaning-capstone-data)
--   [Save Data](#save-data)
 
 ``` r
 library(tidyverse)
@@ -816,6 +817,7 @@ Our dataframe contains many variables and rows that are either empty or meaningl
 
 ``` r
 d_transcript <- d_transcript %>%
+  # only keep one observation (with the final grade) per student-course
   filter(`Appraisal (Description)` == "Grade supervisor", `Appraisal Type`=="7055") %>%
   select(`Student Number`,
          `Module (Abbrev.)`,
@@ -885,8 +887,22 @@ print(d_transcript)
     ## # ... with 81,425 more rows, and 2 more variables: `Number Repeated
     ## #   Attempt` <int>, `Academic Year` <chr>
 
-DO LATER (Estimating concentrations)
-------------------------------------
+Save Data
+=========
+
+``` r
+save(lists, d_course, d_AoD, d_assessment, d_transcript,
+     file = "data_pillar_1.RDATA")
+save(lists, d_course, d_AoD, d_assessment, d_transcript,
+     d_overview, d_description, d_manual,
+     file = "data_pillar_2.RDATA")
+```
+
+TODO
+====
+
+Estimating concentrations
+-------------------------
 
 For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops"
 
@@ -1155,16 +1171,5 @@ d_transcript <-a_clean_transcripts%>%
 ```
 
 NOTES: The data is now arranged so as to respect the order in time for each individual student. However, the comparison is still tricky as people who finished in 2008 will have CAP recorded as taken on their first year since this is all the data we have. COMMENT SOFIA: save a\_clean\_transcript as d\_transcript
-
-Save Data
-=========
-
-``` r
-save(lists, d_course, d_AoD, d_assessment, d_transcript,
-     file = "data_pillar_1.RDATA")
-save(lists, d_course, d_AoD, d_assessment, d_transcript,
-     d_overview, d_description, d_manual,
-     file = "data_pillar_2.RDATA")
-```
 
 [1] We do not include all assessments and all AoDs on the plots in order to keep them readable.
