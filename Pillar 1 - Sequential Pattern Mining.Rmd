@@ -13,6 +13,8 @@ output:
 library(tidyverse)
 library(arules)
 library(arulesSequences)
+
+library(rlang)
 ```
 
 # Setup
@@ -43,7 +45,7 @@ exploration <- d_transcript %>%
 summary(exploration)
 
 student_statistics <- exploration %>%
-  group_by(`Student ID Number`) %>%
+  group_by(`Student ID`) %>%
   summarise(n = n(),
             Min = min(Grade), 
             Max = max(Grade), 
@@ -53,16 +55,52 @@ student_statistics <- exploration %>%
             `Proportion Failed` = mean(Grade < 5.5))
 
 course_statistics <- exploration %>%
-  group_by(`Course Code`) %>%
+  group_by(`Course ID`) %>%
   summarise(n = n(),
             Min = min(Grade), 
             Max = max(Grade), 
-            Mean = mean(Grade), 
+            Mean = round(mean(Grade), 2), 
             Median = median(Grade), 
             SD = sd(Grade), 
             `Proportion Failed` = mean(Grade < 5.5)) %>%
-  inner_join(d_course, by= c("Course Code" = "Code")) #to get only UCM courses for which we have statistics
+  right_join(d_course, by = "Course ID")
 
+
+concentration_statistics <- exploration %>%
+  inner_join(select(d_course,-Period, -`Period (additional)`,-`Period (additional bis)`,-`Course Title`), by = "Course ID") %>%
+  #left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
+  gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
+  group_by(Concentration) %>%
+  summarise(n = n(),
+            Min = min(Grade), 
+            Max = max(Grade), 
+            Mean = round(mean(Grade), 2), 
+            Median = median(Grade), 
+            SD = sd(Grade), 
+            `Proportion Failed` = mean(Grade < 5.5))
+  
+cluster_statistics <- exploration %>%
+  inner_join(d_course, by = "Course ID") %>%
+  group_by(Cluster) %>%
+  summarise(n = n(),
+            Min = min(Grade), 
+            Max = max(Grade), 
+            Mean = round(mean(Grade), 2), 
+            Median = median(Grade), 
+            SD = sd(Grade), 
+            `Proportion Failed` = mean(Grade < 5.5))
+```
+We have found some NA values for the grades! Students:
+
+0177849 - COR1003 & EMTH0001  +++++++++++++++ Master thesis should not be showing up! +++++++++++++
+0177857
+0222100
+0270148
+0313173
+0317101
+0317349
+
+```{r}
 #We have NA in grades. Something weird is happening. 
 summary(str_detect(d_transcript$Grade, pattern="NA")) #shows NA's = 312 FALSE= 89069 WHY ARE THERE NAs?
 
@@ -70,14 +108,7 @@ has_na <- d_transcript %>%
   mutate(What = str_detect(Grade, pattern="NA")) %>%
   filter(is.na(What))
 ```
-We have found some NA values for the grades! Students:
-0177849- COR1003 & EMTH0001  +++++++++++++++ Master thesis should not be showing up! +++++++++++++
-0177857
-0222100
-0270148
-0313173
-0317101
-0317349
+
 
 #Getting graphics
 ```{r}
