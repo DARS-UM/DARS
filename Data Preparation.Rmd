@@ -514,10 +514,20 @@ d_transcript <- d_transcript %>%
   select(- `Study Program`)
 ```
 
+### Clean Grade Variable
+
+```{r}
+d_transcript <- d_transcript %>%
+  mutate(Grade = case_when(Grade == "NG"~ "-1",
+                           T~ Grade),
+          Grade = str_replace(string = Grade, pattern = ",",replace = "."),
+         Grade = as.numeric(Grade))
+```
+
+
 ```{r}
 print(d_transcript)
 ```
-
 
 # Save Data
 ```{r}
