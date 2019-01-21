@@ -243,42 +243,8 @@ results_passed %>%
   filter(RHS_pass == "Fail}") %>%
   arrange(desc(count))
 ```
-#Mining-sequences
-Let I = {I1, I2,..., Ip} be the set of all items. An itemset is a nonempty set of items. A sequence is an ordered list of events. A sequence s is denoted <e1e2e3 ···el>, where event e1 occurs before e2, which occurs before e3, and so on. Event ej is also called an element of s. In the case of customer purchase data, an event refers to a shopping trip in which a customer bought items at a certain store. The event is thus an itemset, that is, an unordered list of items that the customer purchased during the trip. The itemset (or event) is denoted (x1x2 ···xq), where xk is an item. For brevity, the brackets are omitted if an element has only one item, that is, element (x) is written as x. 
 
-SequenceID = `Student ID Number`
-Event ID   =  UCM_YEAR_Period OR Year_period. 
-Items      =  Course
-```{r}
-d_sequence_transactions <- d_course %>%
-  select(Type, Code, Letters) %>%
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  select(Code) %>%
-  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
-  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
-  mutate( Time = paste(Year_numerical, Period, sep = ""),
-          Time = as.double(Time)) %>%
-  select(`Student ID Number`, Code, Time) %>%
-  arrange(`Student ID Number`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  group_by(`Student ID Number`, Time) %>%
-  summarize(list_course = list(Code)) %>% #if we run the code until here maybe its possible to use sequence_transactions <- as(sequence_transaction$list_course, "transactions")
-  mutate(TransactionID = paste(`Student ID Number`, Time, sep = "_"))
-
-list_course <- d_sequence_transactions$list_course
-names(list_course) <- d_sequence_transactions$TransactionID
-
-my_transactions <- as(list_course, "transactions")
-transactionInfo(my_transactions)$sequenceID <- d_sequence_transactions$`Student ID Number`
-transactionInfo(my_transactions)$eventID <- d_sequence_transactions$Time
-transactionInfo(my_transactions)$transactionID <- NULL
-
-#checking results
-as(my_transactions, "data.frame")
-```
-
-now we find frequent sequential patterns. 
+#Mining-sequences:
 The parameter values are: 
 support:  a numeric value specifying the minimum support of a sequence (default 0.1, range [0,1]).
 
@@ -287,120 +253,119 @@ maxlen:   an integer value specifying the maximum number of elements of a sequen
 mingap:   an integer value specifying the minimum time difference between consecutive elements of a sequence (default none, range >= 1).
 maxgap:   an integer value specifying the maximum time difference between consecutive elements of a sequence (default none, range >= 0).
 maxwin:   an integer value specifying the maximum time difference between any two elements of a sequence (default none, range >= 0).
-```{r}
-summary(my_transactions)
 
-frequent_trajectories <- cspade(my_transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
-#Looking into this: 
-summary(frequent_trajectories)
-as(frequent_trajectories, "data.frame")
-
-inspect(head(frequent_trajectories))
-		
-```
-
+#Preparing data frame:
 ```{r}
-rules <- ruleInduction(frequent_trajectories, confidence = 0.2, #we need to play with the parameters.
-                    control    = list(verbose = TRUE))
-as(rules, "data.frame") %>%
-  arrange(desc(lift))
-```
-#Sequence mining with pass fail.
-First we add pass fail information to our data set and transform it to transactions class:
-```{r}
-#sequences
 fail_threshold <- 6.5
 
-d_pass_sequence_transactions <- d_course %>%
-  select(Type, Code, Letters) %>%
+category <-quo(Discrete_grade) #Outcome or Low_grade or Discrete_grade or #None
+
+
+d_sequence_transactions <- d_course %>%
+  
+  select(Type, `Course ID`, Letters) %>%
+  
   filter(Type == "Elective",
          ! Letters %in% c("SKI", "PRO"),
          ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  select(Code) %>%
-  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
-  mutate(Outcome = 
-           case_when( Grade=="NG"~"Fail", #if we don't do this NG satisfies the condition for pass v
-                      Grade > 5.5 ~"Pass",
-                              T~"Fail"),
-         Low_grade =
-           case_when(Grade=="NG"~"low score", #if we don't do this NG satisfies the condition for pass v
+  
+  select(`Course ID`) %>%
+  
+  left_join(d_transcript, by = "Course ID") %>%
+  
+    mutate(
+      Grade = case_when(
+        Grade == "NG"~ "-1",
+        T            ~ Grade),
+      Grade = str_replace(string = Grade, pattern = ",",replace = "."),
+      Grade = as.numeric(Grade)) %>%
+  
+  # filter(!is.na(Grade)) %>% #remove NaN
+  # filter(Grade != -1) %>% #remove NG
+  mutate(
+    Outcome = 
+           case_when( Grade == -1   ~"Fail", #if we don't do this NG satisfies the condition for pass v
+                      Grade  > 5.5 ~"Pass",
+                               T~"Fail"),
+    Low_grade =
+           case_when(Grade == -1 ~"low score", #if we don't do this NG satisfies the condition for pass v
                       Grade > fail_threshold ~"high score",
-                              T~"low score")
+                               T~"low score"),
+    Discrete_grade =
+           case_when(Grade <= 5.4             ~ 5.0,
+                     between(Grade, 5.5, 6.4) ~ 6.0,
+                     between(Grade, 6.5, 7.4) ~ 7.0,
+                     between(Grade, 7.5, 8.4) ~ 8.0,
+                     between(Grade, 8.5, 9.4) ~ 9.0,
+                     Grade >= 9.5             ~ 10.0,
+                     T ~ -99999    #this is a control, we should not have any grades here
+                     ),
+    None= "" # this might not be optimal
          ) %>%
-  mutate(Item = paste(Code, Low_grade, sep = "_") ) %>% #Change for Outcome/Low_grade
+  
+  mutate(Item = paste(`Course ID`, !!category, sep = "_")) %>% #Change for Outcome/Low_grade/Discrete_grade
+  
   filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
+  
   mutate( Time = paste(Year_numerical, Period, sep = ""),
           Time = as.double(Time)) %>%
-  select(`Student ID Number`, Item, Time) %>%
-  arrange(`Student ID Number`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  group_by(`Student ID Number`, Time) %>%
-  summarize(list_course = list(Item)) %>% #if we run the code until here maybe its possible to use sequence_transactions <- as(sequence_transaction$list_course, "transactions")
-  mutate(TransactionID = paste(`Student ID Number`, Time, sep = "_"))
+  
+  select(`Student ID`, Item, Time) %>%
+  
+  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
+  
+  group_by(`Student ID`, Time) %>%
+  
+  summarize(list_course = list(Item)) %>%
+  
+  mutate(TransactionID = paste(`Student ID`, Time, sep = "_"))
 
-pass_list_course <- d_pass_sequence_transactions$list_course
-names(pass_list_course) <- d_pass_sequence_transactions$TransactionID
-
-pass_transactions <- as(pass_list_course, "transactions")
-transactionInfo(pass_transactions)$sequenceID <- d_pass_sequence_transactions$`Student ID Number`
-transactionInfo(pass_transactions)$eventID <- d_pass_sequence_transactions$Time
-transactionInfo(pass_transactions)$transactionID <- NULL
 ```
-Checking the results:
-```{r}
-as(pass_transactions, "data.frame")
-frequent_pass_trajectories <- cspade(pass_transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
-summary(frequent_pass_trajectories)
 
-pass_rules <- ruleInduction(frequent_pass_trajectories, confidence = 0.1, #we need to play with the parameters.
+##to transaction
+```{r}
+transaction_list_course <- d_sequence_transactions$list_course
+names(transaction_list_course) <- d_sequence_transactions$TransactionID
+
+transactions <- as(transaction_list_course, "transactions")
+transactionInfo(transactions)$sequenceID <- d_sequence_transactions$`Student ID`
+transactionInfo(transactions)$eventID <- d_sequence_transactions$Time
+transactionInfo(transactions)$transactionID <- NULL
+
+#checking results
+as(transactions, "data.frame")
+```
+
+##Rule induction
+```{r}
+#FURTURE: create filter by function
+string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
+                           quo_name(category)=="Low_grade"      ~ "low score",
+                           quo_name(category)=="Discrete_grade" ~ "5",
+                           quo_name(category)=="None"           ~ "_" #useless filter
+                           )
+
+frequent_trajectories <- cspade(transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
+
+
+summary(frequent_trajectories)
+
+
+rules <- ruleInduction(frequent_trajectories, confidence = 0.1, #we need to play with the parameters.
                     control    = list(verbose = TRUE))
-pass_rules_df <- as(pass_rules, "data.frame") %>%
-  arrange(desc(lift))
-```
-Checking who failed
-```{r}
-view_rules <- pass_rules_df %>%
+
+
+pass_rules_df <- as(rules, "data.frame") %>%
+  
   separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
-  filter(str_detect(RHS, "low score")) %>% #change so that it changes automatically
+  
+  filter(str_detect(RHS, string_filter)) %>% #FILTER (YES) --> uncomment, (NO)-->comment
+  
   arrange(desc(confidence), desc(lift))
 
+pass_rules_df
 
-write_csv(view_rules, "Data_Evgueni.csv")
 ```
-
-
-#Unifying transaction data
-```{r}
-fail_threshold <- 6.5
-
-category <-"Low_grade" #Outcome or Low_grade
-
-d_pass_sequence_transactions <- d_course %>%
-  select(Type, Code, Letters) %>%
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  select(Code) %>%
-  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
-  mutate(Outcome = 
-           case_when( Grade=="NG"~"Fail", #if we don't do this NG satisfies the condition for pass v
-                      Grade > 5.5 ~"Pass",
-                              T~"Fail"),
-         Low_grade =
-           case_when(Grade=="NG"~"low score", #if we don't do this NG satisfies the condition for pass v
-                      Grade > fail_threshold ~"high score",
-                              T~"low score")
-         ) %>%
-  mutate(Item = paste(Code, Low_grade, sep = "_") ) %>% #Change for Outcome/Low_grade
-  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
-  mutate( Time = paste(Year_numerical, Period, sep = ""),
-          Time = as.double(Time)) %>%
-  select(`Student ID Number`, Item, Time) %>%
-  arrange(`Student ID Number`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  group_by(`Student ID Number`, Time) %>%
-  summarize(list_course = list(Item)) %>% #if we run the code until here maybe its possible to use sequence_transactions <- as(sequence_transaction$list_course, "transactions")
-  mutate(TransactionID = paste(`Student ID Number`, Time, sep = "_"))
-```
-
 #Visualisation
 It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
 
