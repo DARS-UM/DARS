@@ -71,7 +71,7 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
     facet_wrap(~ facet, scales = "free", ncol = n_col) +
     coord_flip()
   
-  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots/tf_idf", width = 16, height = 8)
     
   # Word Cloud
   g <- data %>%
@@ -90,13 +90,13 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
       plot.title       = element_text(hjust=0.5)
     )
   
-  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots/tf_idf", width = 16, height = 8)
 
 }
 ```
 
 ## Course Level
-```{r tf-idf course, out.height=8, out.width=16, cache = TRUE}
+```{r tf-idf course, cache = TRUE}
 prepare_tf_idf_course <- function(data) data %>%
                                           filter(`Course ID` %in% sample(unique(.$`Course ID`), size = 25, replace = F)) %>% # random selection of courses
                                           rename(facet = `Course ID`) %>%
@@ -216,7 +216,6 @@ save(LDA_description_10, LDA_description_17, LDA_description_25,
      file = "LDA.RDATA")
 ```
 
-
 ## Visualization
 ### Functions
 ```{r LDA prepare}
@@ -286,7 +285,7 @@ visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
     theme(plot.title = element_text(hjust = 0.5))
   
   ggsave(paste(id_plot, "beta.jpeg"),
-         width = 15, height = 10, path = "Plots")
+         width = 16, height = 10, path = "Plots/Topic Model")
   
 }
 
@@ -309,7 +308,7 @@ visualize_LDA_gamma1 <- function(data_prepared, id_plot = "test"){
           plot.title = element_text(hjust = 0.5))
   
   ggsave(paste(id_plot, "gamma1.jpeg"),
-         width = 15, height = 10, path = "Plots")
+         width = 16, height = 10, path = "Plots/Topic Model")
   
 }
 
@@ -332,7 +331,7 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
           plot.title = element_text(hjust = 0.5))
   
   ggsave(paste(id_plot, "gamma2.jpeg"),
-         width = 15, height = 10, path = "Plots")
+         width = 16, height = 10, path = "Plots/Topic Model")
     
 }
 ```
@@ -376,7 +375,6 @@ visualize_LDA_all_level <- function(data, id_plot = "test"){
 }
 ```
 
-
 ### Plots
 ```{r LDA plot, cache = TRUE}
 LDA_description_10 %>% visualize_LDA_all_level(id_plot = "description_k10")
@@ -392,7 +390,7 @@ LDA_manual_17 %>% visualize_LDA_all_level(id_plot = "manual_k17")
 LDA_manual_25 %>% visualize_LDA_all_level(id_plot = "manual_k25")
 ```
 
-```{r label, eval = F}
+```{r label, eval = FALSE}
 tidy(LDA_manual_10, "beta") %>%
   filter(beta > 1e-3) %>%
   bind_tf_idf(term = term, document = topic, n = beta) %>%

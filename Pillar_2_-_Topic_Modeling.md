@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-01-18
+2019-01-21
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -69,7 +69,7 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
     facet_wrap(~ facet, scales = "free", ncol = n_col) +
     coord_flip()
   
-  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots/tf_idf", width = 16, height = 8)
     
   # Word Cloud
   g <- data %>%
@@ -88,7 +88,7 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
       plot.title       = element_text(hjust=0.5)
     )
   
-  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots", width = 16, height = 8)
+  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots/tf_idf", width = 16, height = 8)
 
 }
 ```
@@ -113,6 +113,9 @@ tf_idf_description %>%
 
     ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
     ## Please use `call2()` instead
+    ## This warning is displayed once per session.
+
+    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
     ## This warning is displayed once per session.
 
 ``` r
@@ -220,12 +223,6 @@ my_cast_tdm <- function(data, level) data %>%
   cast_dtm(`Course ID`, word, n)
 
 d_description_cast <- my_cast_tdm(d_description)
-```
-
-    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
-    ## This warning is displayed once per session.
-
-``` r
 d_overview_cast <- my_cast_tdm(d_overview)
 d_manual_cast <- my_cast_tdm(d_manual)
 
@@ -304,10 +301,6 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 LDA_description_10 %>% prepare_data_LDA_beta
 ```
 
-    ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `call2()` instead
-    ## This warning is displayed once per session.
-
     ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
     ## Please use `new_data_mask()` instead
     ## This warning is displayed once per session.
@@ -372,7 +365,7 @@ visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
     theme(plot.title = element_text(hjust = 0.5))
   
   ggsave(paste(id_plot, "beta.jpeg"),
-         width = 15, height = 10, path = "Plots")
+         width = 16, height = 10, path = "Plots/Topic Model")
   
 }
 
@@ -395,7 +388,7 @@ visualize_LDA_gamma1 <- function(data_prepared, id_plot = "test"){
           plot.title = element_text(hjust = 0.5))
   
   ggsave(paste(id_plot, "gamma1.jpeg"),
-         width = 15, height = 10, path = "Plots")
+         width = 16, height = 10, path = "Plots/Topic Model")
   
 }
 
@@ -418,7 +411,7 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
           plot.title = element_text(hjust = 0.5))
   
   ggsave(paste(id_plot, "gamma2.jpeg"),
-         width = 15, height = 10, path = "Plots")
+         width = 16, height = 10, path = "Plots/Topic Model")
     
 }
 ```
