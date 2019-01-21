@@ -16,6 +16,7 @@ library(topicmodels)
 library(lemon)
 library(ggthemes)
 library(rlang)
+library(ldatuning) # ideal number of topics in LDA
 ```
 
 ```{r function reorder_within & co., echo = FALSE}
@@ -182,6 +183,29 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 ```
 
 # LDA
+
+## Ideal Number of Topic
+
+```{r, eval = FALSE}
+result <- FindTopicsNumber(
+  
+  d_description_cast,
+  topics = seq(from = 20, to = 150, by = 5),
+  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+  method = "Gibbs",
+  control = list(seed = 123),
+  mc.cores = 1L,
+  verbose = TRUE
+  
+)
+
+FindTopicsNumber_plot(result1)
+save(result,
+     file = "LDA_ntopics.RDATA")
+```
+
+
+
 ## Fitting Model
 ```{r my_cast_tdm}
 my_cast_tdm <- function(data, level) data %>%
