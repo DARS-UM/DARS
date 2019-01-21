@@ -366,10 +366,35 @@ pass_rules_df <- as(rules, "data.frame") %>%
 pass_rules_df
 
 ```
+
+
+
+
 #Visualisation
 It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
 
 
+#Puting students into take and not take. 
+
+```{r}
+test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`= unique(d_course$`Course ID`)) %>%
+  left_join(d_transcript, by=c("Course ID", "Student ID")) %>%
+  select(`Course ID`, `Student ID`, Grade, Year_numerical, Period) %>%
+  mutate(
+    take_course = case_when(
+      is.na(Grade)  ~ FALSE,
+      T             ~ TRUE
+      ),
+    PFN = case_when(
+      is.na(Grade)  ~ "not",
+      Grade >= 5.5  ~ "pass",
+      Grade < 5.5   ~ "fail"
+      )
+    )
+
+table(test$PFN)
+
+```
 
 
 
