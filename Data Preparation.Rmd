@@ -516,7 +516,7 @@ d_transcript <- d_transcript %>%
 
 ### Clean Grade Variable
 
-```{r}
+```{r clean grade variable}
 d_transcript <- d_transcript %>%
   mutate(Grade = case_when(Grade == "NG"~ "-1",
                            T~ Grade),

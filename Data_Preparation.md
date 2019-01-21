@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-01-18
+2019-01-21
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -22,6 +22,7 @@ DARS
     -   [Student Data](#student-data-1)
         -   [Selecting Variables](#selecting-variables)
         -   [Keeping UCM program only](#keeping-ucm-program-only)
+        -   [Clean Grade Variable](#clean-grade-variable)
 -   [Save Data](#save-data)
 -   [TODO](#todo)
     -   [Estimating concentrations](#estimating-concentrations)
@@ -30,11 +31,46 @@ DARS
 
 ``` r
 library(tidyverse)
+```
+
+    ## Warning: package 'tidyverse' was built under R version 3.4.2
+
+    ## Warning: package 'ggplot2' was built under R version 3.4.4
+
+    ## Warning: package 'tibble' was built under R version 3.4.3
+
+    ## Warning: package 'tidyr' was built under R version 3.4.4
+
+    ## Warning: package 'readr' was built under R version 3.4.4
+
+    ## Warning: package 'purrr' was built under R version 3.4.4
+
+    ## Warning: package 'dplyr' was built under R version 3.4.4
+
+    ## Warning: package 'stringr' was built under R version 3.4.4
+
+    ## Warning: package 'forcats' was built under R version 3.4.3
+
+``` r
 library(tidytext)
+```
+
+    ## Warning: package 'tidytext' was built under R version 3.4.4
+
+``` r
 library(gsheet) # import spreadsheets from google drive
 library(tm)
+```
+
+    ## Warning: package 'tm' was built under R version 3.4.4
+
+    ## Warning: package 'NLP' was built under R version 3.4.4
+
+``` r
 library(hunspell) # Stemmer
 ```
+
+    ## Warning: package 'hunspell' was built under R version 3.4.3
 
 Import Data
 ===========
@@ -235,6 +271,11 @@ In order to determine which AoD each course covers with its assessments, we need
 ``` r
 map_assessment_AoD <- as.matrix(gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216')[,lists$AoD] %>%
                                   mutate_all(as.logical))
+```
+
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
+
+``` r
 rownames(map_assessment_AoD) <- lists$Assessment
 
 # Print section of matrix
@@ -358,18 +399,18 @@ print(d_course_detail)
 ```
 
     ## # A tibble: 280 x 6
-    ##    `Course ID` n_ILO n_assessment `Assessments Cov~ n_AoD `AoD Covered`   
-    ##    <chr>       <int>        <int> <chr>             <int> <chr>           
-    ##  1 AAM2001         1            1 Oral                  4 Academic Expert~
-    ##  2 AAM2002         1            1 Oral                  4 Academic Expert~
-    ##  3 AAM2003         1            1 Oral                  4 Academic Expert~
-    ##  4 AAM2004         1            1 Oral                  4 Academic Expert~
-    ##  5 AAM2005         1            1 Oral                  4 Academic Expert~
-    ##  6 AAM2006         1            1 Oral                  4 Academic Expert~
-    ##  7 AAM2007         1            1 Oral                  4 Academic Expert~
-    ##  8 CAP3000         3            3 Paper, Presentat~    10 Advanced Knowle~
-    ##  9 COR1002         3            2 Essay, Written E~     7 Core, Elementar~
-    ## 10 COR1003         3            3 Paper, Written E~     7 Core, Elementar~
+    ##    `Course ID` n_ILO n_assessment `Assessments Cove~ n_AoD `AoD Covered`   
+    ##    <chr>       <int>        <int> <chr>              <int> <chr>           
+    ##  1 AAM2001         1            1 Oral                   4 Academic Expert~
+    ##  2 AAM2002         1            1 Oral                   4 Academic Expert~
+    ##  3 AAM2003         1            1 Oral                   4 Academic Expert~
+    ##  4 AAM2004         1            1 Oral                   4 Academic Expert~
+    ##  5 AAM2005         1            1 Oral                   4 Academic Expert~
+    ##  6 AAM2006         1            1 Oral                   4 Academic Expert~
+    ##  7 AAM2007         1            1 Oral                   4 Academic Expert~
+    ##  8 CAP3000         3            3 Paper, Presentati~    10 Advanced Knowle~
+    ##  9 COR1002         3            2 Essay, Written Ex~     7 Core, Elementar~
+    ## 10 COR1003         3            3 Paper, Written Ex~     7 Core, Elementar~
     ## # ... with 270 more rows
 
 ``` r
@@ -670,18 +711,18 @@ print(d_manual)
 ```
 
     ## # A tibble: 153 x 2
-    ##    Manual                                                      `Course ID`
-    ##    <chr>                                                       <chr>      
-    ##  1 "P h i l o s o p hy o f S c i e n c e\r\n                 ~ COR1002    
-    ##  2 "General information\r\nIntroduction\r\nNew things are hap~ COR1003    
-    ##  3 "University College Maastricht. 2017-18, Period 2\r\n     ~ COR1004    
-    ##  4 "Theory Construction\r\nand\r\nModelling Techniques\r\nCod~ COR1005    
-    ##  5 "  Cultural Studies I\r\nDoing Cultural Studies\r\n Univer~ HUM1003    
-    ##  6 "AN INTRODUCTORY COURSE TO PHILOSOPHY\n                   ~ HUM1007    
-    ##  7 "                 HU1010\r\nCOMMON FOUNDATIONS OF LAW IN E~ HUM1010    
-    ##  8 "Introduction to Art\r\nRepresentations, Performances and ~ HUM1011    
-    ##  9 "Pop Songs and Poetry: Theory and Analysis\r\n            ~ HUM1012    
-    ## 10 "\n              The Idea of Europe:\r\nThe Intellectual H~ HUM1013    
+    ##    Manual                                                       `Course ID`
+    ##    <chr>                                                        <chr>      
+    ##  1 "P h i l o s o p hy o f S c i e n c e\r\n                  ~ COR1002    
+    ##  2 "General information\r\nIntroduction\r\nNew things are happ~ COR1003    
+    ##  3 "University College Maastricht. 2017-18, Period 2\r\n      ~ COR1004    
+    ##  4 "Theory Construction\r\nand\r\nModelling Techniques\r\nCode~ COR1005    
+    ##  5 "  Cultural Studies I\r\nDoing Cultural Studies\r\n Univers~ HUM1003    
+    ##  6 "AN INTRODUCTORY COURSE TO PHILOSOPHY\n                    ~ HUM1007    
+    ##  7 "                 HU1010\r\nCOMMON FOUNDATIONS OF LAW IN EU~ HUM1010    
+    ##  8 "Introduction to Art\r\nRepresentations, Performances and I~ HUM1011    
+    ##  9 "Pop Songs and Poetry: Theory and Analysis\r\n            C~ HUM1012    
+    ## 10 "\n              The Idea of Europe:\r\nThe Intellectual Hi~ HUM1013    
     ## # ... with 143 more rows
 
 ### Tidy Text Format
@@ -868,23 +909,33 @@ d_transcript <- d_transcript %>%
   select(- `Study Program`)
 ```
 
+### Clean Grade Variable
+
+``` r
+d_transcript <- d_transcript %>%
+  mutate(Grade = case_when(Grade == "NG"~ "-1",
+                           T~ Grade),
+          Grade = str_replace(string = Grade, pattern = ",",replace = "."),
+         Grade = as.numeric(Grade))
+```
+
 ``` r
 print(d_transcript)
 ```
 
     ## # A tibble: 81,435 x 8
     ##    `Student ID` `Course ID` `Course Title` Grade Year_numerical Period
-    ##    <chr>        <chr>       <chr>          <chr>          <int> <chr> 
-    ##  1 6051398      COR1005     Theory Constr~ 5,7             2012 1     
-    ##  2 6051398      SSC1009     Introduction ~ 7,8             2012 1     
-    ##  3 6051398      SKI1008     Introduction ~ 7,9             2012 1     
-    ##  4 6051398      SCI1016     Sustainable D~ 5,8             2012 2     
-    ##  5 6051398      SKI1009     Introduction ~ 7,5             2012 2     
-    ##  6 6051398      HUM1013     The Idea of E~ 5,9             2012 2     
-    ##  7 6051398      PRO1010     Introducing A~ 8,2             2012 3     
-    ##  8 6051398      SKI1004     Research Meth~ 4,6             2012 4     
-    ##  9 6051398      SKI1004     Research Meth~ 5,6             2012 4     
-    ## 10 6051398      SCI2012     Globalization~ 5,5             2012 4     
+    ##    <chr>        <chr>       <chr>          <dbl>          <int> <chr> 
+    ##  1 6051398      COR1005     Theory Constr~   5.7           2012 1     
+    ##  2 6051398      SSC1009     Introduction ~   7.8           2012 1     
+    ##  3 6051398      SKI1008     Introduction ~   7.9           2012 1     
+    ##  4 6051398      SCI1016     Sustainable D~   5.8           2012 2     
+    ##  5 6051398      SKI1009     Introduction ~   7.5           2012 2     
+    ##  6 6051398      HUM1013     The Idea of E~   5.9           2012 2     
+    ##  7 6051398      PRO1010     Introducing A~   8.2           2012 3     
+    ##  8 6051398      SKI1004     Research Meth~   4.6           2012 4     
+    ##  9 6051398      SKI1004     Research Meth~   5.6           2012 4     
+    ## 10 6051398      SCI2012     Globalization~   5.5           2012 4     
     ## # ... with 81,425 more rows, and 2 more variables: `Number Repeated
     ## #   Attempt` <int>, `Academic Year` <chr>
 
