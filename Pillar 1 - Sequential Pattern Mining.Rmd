@@ -274,6 +274,8 @@ transactionInfo(my_transactions)$sequenceID <- d_sequence_transactions$`Student 
 transactionInfo(my_transactions)$eventID <- d_sequence_transactions$Time
 transactionInfo(my_transactions)$transactionID <- NULL
 
+#checking results
+as(my_transactions, "data.frame")
 ```
 
 now we find frequent sequential patterns. 
@@ -304,7 +306,7 @@ as(rules, "data.frame") %>%
   arrange(desc(lift))
 ```
 #Sequence mining with pass fail.
-First we add pass fai information to our data set and transform it to transactions class:
+First we add pass fail information to our data set and transform it to transactions class:
 ```{r}
 #sequences
 fail_threshold <- 6.5
