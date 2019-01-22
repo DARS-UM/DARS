@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-01-21
+2019-01-22
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -10,6 +10,7 @@ DARS
     -   [Cluster Level](#cluster-level)
     -   [Concentration Level](#concentration-level)
 -   [LDA](#lda)
+    -   [Ideal Number of Topics](#ideal-number-of-topics)
     -   [Fitting Model](#fitting-model)
     -   [Visualization](#visualization)
         -   [Functions](#functions)
@@ -24,6 +25,7 @@ library(topicmodels)
 library(lemon)
 library(ggthemes)
 library(rlang)
+library(ldatuning) # ideal number of topics in LDA
 ```
 
 Setup
@@ -214,6 +216,33 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 LDA
 ===
 
+Ideal Number of Topics
+----------------------
+
+``` r
+result <- FindTopicsNumber(
+  
+  d_description_cast,
+  topics = seq(from = 20, to = 150, by = 5),
+  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+  method = "Gibbs",
+  control = list(seed = 123),
+  mc.cores = 1L,
+  verbose = TRUE
+  
+)
+
+save(result,
+     file = "LDA_ntopics.RDATA")
+```
+
+``` r
+load("LDA_ntopics.RDATA")
+FindTopicsNumber_plot(result)
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/unnamed-chunk-2-1.png)
+
 Fitting Model
 -------------
 
@@ -223,6 +252,12 @@ my_cast_tdm <- function(data, level) data %>%
   cast_dtm(`Course ID`, word, n)
 
 d_description_cast <- my_cast_tdm(d_description)
+```
+
+    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
+    ## This warning is displayed once per session.
+
+``` r
 d_overview_cast <- my_cast_tdm(d_overview)
 d_manual_cast <- my_cast_tdm(d_manual)
 
@@ -300,6 +335,10 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 # Bet Distribution
 LDA_description_10 %>% prepare_data_LDA_beta
 ```
+
+    ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
+    ## Please use `call2()` instead
+    ## This warning is displayed once per session.
 
     ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
     ## Please use `new_data_mask()` instead

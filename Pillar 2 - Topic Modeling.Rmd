@@ -184,7 +184,7 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 
 # LDA
 
-## Ideal Number of Topic
+## Ideal Number of Topics
 
 ```{r, eval = FALSE}
 result <- FindTopicsNumber(
@@ -199,12 +199,14 @@ result <- FindTopicsNumber(
   
 )
 
-FindTopicsNumber_plot(result1)
 save(result,
      file = "LDA_ntopics.RDATA")
 ```
 
-
+```{r}
+load("LDA_ntopics.RDATA")
+FindTopicsNumber_plot(result)
+```
 
 ## Fitting Model
 ```{r my_cast_tdm}
