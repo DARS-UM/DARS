@@ -186,7 +186,7 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 
 ## Ideal Number of Topics
 
-```{r, eval = FALSE}
+```{r LDA number topics, eval = FALSE}
 result <- FindTopicsNumber(
   
   d_description_cast,
@@ -203,7 +203,7 @@ save(result,
      file = "LDA_ntopics.RDATA")
 ```
 
-```{r}
+```{r LDA number topics plot}
 load("LDA_ntopics.RDATA")
 FindTopicsNumber_plot(result)
 ```
@@ -222,23 +222,26 @@ rm(my_cast_tdm)
 ```
 
 ```{r LDA fit, cache = TRUE}
-LDA_description_10 <- LDA(d_description_cast, k = 10, control = list(seed = 123))
-LDA_description_17 <- LDA(d_description_cast, k = 17, control = list(seed = 123))
-LDA_description_25 <- LDA(d_description_cast, k = 25, control = list(seed = 123))
+n_topics <- 120
+levels   <- c("description", "overview", "manual")
+list_nam <- character(0)
 
-LDA_overview_10 <- LDA(d_overview_cast, k = 10, control = list(seed = 123))
-LDA_overview_17 <- LDA(d_overview_cast, k = 17, control = list(seed = 123))
-LDA_overview_25 <- LDA(d_overview_cast, k = 25, control = list(seed = 123))
+for(level in levels){
+  
+  dataset   <- get(paste("d", level, "cast", sep = "_"))
+  LDA_model <- LDA(dataset, k = n_topics, control = list(seed = 123))
+  nam <- paste("LDA", level, n_topics, sep = "_")
+  
+  assign(
+    x     = nam,
+    value = LDA_model
+  )
+  
+  list_nam <- c(list_nam, nam)
+  
+}
 
-LDA_manual_10 <- LDA(d_manual_cast, k = 10, control = list(seed = 123))
-LDA_manual_17 <- LDA(d_manual_cast, k = 17, control = list(seed = 123))
-LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
-```
-
-```{r LDA save models}
-save(LDA_description_10, LDA_description_17, LDA_description_25,
-     LDA_overview_10, LDA_overview_17, LDA_overview_25,
-     LDA_manual_10, LDA_manual_17, LDA_manual_25,
+save(list = list_nam,
      file = "LDA.RDATA")
 ```
 
@@ -287,10 +290,10 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 }
 
 # Bet Distribution
-LDA_description_10 %>% prepare_data_LDA_beta
+LDA_description_120 %>% prepare_data_LDA_beta
 
 # Gamma Distribution
-LDA_description_10 %>% prepare_data_LDA_gamma(level = Cluster)
+LDA_description_120 %>% prepare_data_LDA_gamma(level = Cluster)
 ```
 
 ```{r LDA visualize}
@@ -403,17 +406,11 @@ visualize_LDA_all_level <- function(data, id_plot = "test"){
 
 ### Plots
 ```{r LDA plot, cache = TRUE}
-LDA_description_10 %>% visualize_LDA_all_level(id_plot = "description_k10")
-LDA_description_17 %>% visualize_LDA_all_level(id_plot = "description_k17")
-LDA_description_25 %>% visualize_LDA_all_level(id_plot = "description_k25")
+LDA_description_120 %>% visualize_LDA_all_level(id_plot = "description_k120")
 
-LDA_overview_10 %>% visualize_LDA_all_level(id_plot = "overview_k10")
-LDA_overview_17 %>% visualize_LDA_all_level(id_plot = "overview_k17")
-LDA_overview_25 %>% visualize_LDA_all_level(id_plot = "overview_k25")
+LDA_overview_120 %>% visualize_LDA_all_level(id_plot = "overview_k120")
 
-LDA_manual_10 %>% visualize_LDA_all_level(id_plot = "manual_k10")
-LDA_manual_17 %>% visualize_LDA_all_level(id_plot = "manual_k17")
-LDA_manual_25 %>% visualize_LDA_all_level(id_plot = "manual_k25")
+LDA_manual_120 %>% visualize_LDA_all_level(id_plot = "manual_k120")
 ```
 
 ```{r label, eval = FALSE}

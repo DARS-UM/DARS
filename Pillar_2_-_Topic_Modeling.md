@@ -241,7 +241,7 @@ load("LDA_ntopics.RDATA")
 FindTopicsNumber_plot(result)
 ```
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/unnamed-chunk-2-1.png)
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/LDA%20number%20topics%20plot-1.png)
 
 Fitting Model
 -------------
@@ -265,23 +265,26 @@ rm(my_cast_tdm)
 ```
 
 ``` r
-LDA_description_10 <- LDA(d_description_cast, k = 10, control = list(seed = 123))
-LDA_description_17 <- LDA(d_description_cast, k = 17, control = list(seed = 123))
-LDA_description_25 <- LDA(d_description_cast, k = 25, control = list(seed = 123))
+n_topics <- 120
+levels   <- c("description", "overview", "manual")
+list_nam <- character(0)
 
-LDA_overview_10 <- LDA(d_overview_cast, k = 10, control = list(seed = 123))
-LDA_overview_17 <- LDA(d_overview_cast, k = 17, control = list(seed = 123))
-LDA_overview_25 <- LDA(d_overview_cast, k = 25, control = list(seed = 123))
+for(level in levels){
+  
+  dataset   <- get(paste("d", level, "cast", sep = "_"))
+  LDA_model <- LDA(dataset, k = n_topics, control = list(seed = 123))
+  nam <- paste("LDA", level, n_topics, sep = "_")
+  
+  assign(
+    x     = nam,
+    value = LDA_model
+  )
+  
+  list_nam <- c(list_nam, nam)
+  
+}
 
-LDA_manual_10 <- LDA(d_manual_cast, k = 10, control = list(seed = 123))
-LDA_manual_17 <- LDA(d_manual_cast, k = 17, control = list(seed = 123))
-LDA_manual_25 <- LDA(d_manual_cast, k = 25, control = list(seed = 123))
-```
-
-``` r
-save(LDA_description_10, LDA_description_17, LDA_description_25,
-     LDA_overview_10, LDA_overview_17, LDA_overview_25,
-     LDA_manual_10, LDA_manual_17, LDA_manual_25,
+save(list = list_nam,
      file = "LDA.RDATA")
 ```
 
@@ -333,7 +336,7 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 }
 
 # Bet Distribution
-LDA_description_10 %>% prepare_data_LDA_beta
+LDA_description_120 %>% prepare_data_LDA_beta
 ```
 
     ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
@@ -344,24 +347,24 @@ LDA_description_10 %>% prepare_data_LDA_beta
     ## Please use `new_data_mask()` instead
     ## This warning is displayed once per session.
 
-    ## # A tibble: 100 x 3
+    ## # A tibble: 1,723 x 3
     ##    topic   term          beta
     ##    <chr>   <chr>        <dbl>
-    ##  1 Topic 1 human      0.0171 
-    ##  2 Topic 1 study      0.0132 
-    ##  3 Topic 1 theory     0.0131 
-    ##  4 Topic 1 psychology 0.0118 
-    ##  5 Topic 1 social     0.0110 
-    ##  6 Topic 1 cuss       0.0101 
-    ##  7 Topic 1 gender     0.00878
-    ##  8 Topic 1 process    0.00751
-    ##  9 Topic 1 cell       0.00706
-    ## 10 Topic 1 role       0.00609
-    ## # ... with 90 more rows
+    ##  1 Topic 1 process     0.0504
+    ##  2 Topic 1 human       0.0504
+    ##  3 Topic 1 information 0.0420
+    ##  4 Topic 1 psychology  0.0336
+    ##  5 Topic 1 topic       0.0252
+    ##  6 Topic 1 study       0.0252
+    ##  7 Topic 1 century     0.0252
+    ##  8 Topic 1 machine     0.0252
+    ##  9 Topic 1 mind        0.0252
+    ## 10 Topic 1 cognitive   0.0168
+    ## # ... with 1,713 more rows
 
 ``` r
 # Gamma Distribution
-LDA_description_10 %>% prepare_data_LDA_gamma(level = Cluster)
+LDA_description_120 %>% prepare_data_LDA_gamma(level = Cluster)
 ```
 
     ## Warning: `overscope_eval_next()` is soft-deprecated as of rlang 0.2.0.
@@ -371,20 +374,20 @@ LDA_description_10 %>% prepare_data_LDA_gamma(level = Cluster)
     ## Warning: `chr_along()` is soft-deprecated as of rlang 0.2.0.
     ## This warning is displayed once per session.
 
-    ## # A tibble: 101 x 3
-    ##    facet               topic   gamma
-    ##    <chr>               <chr>   <dbl>
-    ##  1 Biomedical Sciences Topic 9 7.23 
-    ##  2 Biomedical Sciences Topic 1 6.09 
-    ##  3 Biomedical Sciences Topic 3 1.42 
-    ##  4 Biomedical Sciences Topic 2 0.926
-    ##  5 Biomedical Sciences Topic 6 0.224
-    ##  6 Biomedical Sciences Topic 4 0.115
-    ##  7 Business            Topic 6 2.00 
-    ##  8 Business            Topic 8 2.00 
-    ##  9 Business            Topic 3 2.00 
-    ## 10 Business            Topic 7 1.85 
-    ## # ... with 91 more rows
+    ## # A tibble: 173 x 3
+    ##    facet               topic     gamma
+    ##    <chr>               <chr>     <dbl>
+    ##  1 Biomedical Sciences Topic 118 2.00 
+    ##  2 Biomedical Sciences Topic 69  1.78 
+    ##  3 Biomedical Sciences Topic 39  1.64 
+    ##  4 Biomedical Sciences Topic 23  1.06 
+    ##  5 Biomedical Sciences Topic 44  0.999
+    ##  6 Biomedical Sciences Topic 120 0.999
+    ##  7 Biomedical Sciences Topic 86  0.999
+    ##  8 Biomedical Sciences Topic 109 0.998
+    ##  9 Biomedical Sciences Topic 43  0.998
+    ## 10 Biomedical Sciences Topic 26  0.998
+    ## # ... with 163 more rows
 
 ``` r
 visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
@@ -497,17 +500,11 @@ visualize_LDA_all_level <- function(data, id_plot = "test"){
 ### Plots
 
 ``` r
-LDA_description_10 %>% visualize_LDA_all_level(id_plot = "description_k10")
-LDA_description_17 %>% visualize_LDA_all_level(id_plot = "description_k17")
-LDA_description_25 %>% visualize_LDA_all_level(id_plot = "description_k25")
+LDA_description_120 %>% visualize_LDA_all_level(id_plot = "description_k120")
 
-LDA_overview_10 %>% visualize_LDA_all_level(id_plot = "overview_k10")
-LDA_overview_17 %>% visualize_LDA_all_level(id_plot = "overview_k17")
-LDA_overview_25 %>% visualize_LDA_all_level(id_plot = "overview_k25")
+LDA_overview_120 %>% visualize_LDA_all_level(id_plot = "overview_k120")
 
-LDA_manual_10 %>% visualize_LDA_all_level(id_plot = "manual_k10")
-LDA_manual_17 %>% visualize_LDA_all_level(id_plot = "manual_k17")
-LDA_manual_25 %>% visualize_LDA_all_level(id_plot = "manual_k25")
+LDA_manual_120 %>% visualize_LDA_all_level(id_plot = "manual_k120")
 ```
 
 ``` r
