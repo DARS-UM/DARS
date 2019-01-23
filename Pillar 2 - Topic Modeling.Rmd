@@ -222,14 +222,24 @@ rm(my_cast_tdm)
 ```
 
 ```{r LDA fit, cache = TRUE}
-n_topics <- 120
+n_topics <- 5
 levels   <- c("description", "overview", "manual")
 list_nam <- character(0)
 
 for(level in levels){
   
   dataset   <- get(paste("d", level, "cast", sep = "_"))
-  LDA_model <- LDA(dataset, k = n_topics, control = list(seed = 123))
+  LDA_model <- LDA(
+    x = dataset,
+    k = n_topics,
+    method = "Gibbs",
+    control = list(
+      nstart = 10,
+      seed = c(1:10),
+      best = TRUE,
+      burnin = 4000,
+      iter = 2000,
+      thin = 500))
   nam <- paste("LDA", level, n_topics, sep = "_")
   
   assign(
@@ -406,11 +416,13 @@ visualize_LDA_all_level <- function(data, id_plot = "test"){
 
 ### Plots
 ```{r LDA plot, cache = TRUE}
-LDA_description_120 %>% visualize_LDA_all_level(id_plot = "description_k120")
+load("LDA.RDATA")
 
-LDA_overview_120 %>% visualize_LDA_all_level(id_plot = "overview_k120")
+LDA_description_5 %>% visualize_LDA_all_level(id_plot = "description_k5")
 
-LDA_manual_120 %>% visualize_LDA_all_level(id_plot = "manual_k120")
+LDA_overview_5 %>% visualize_LDA_all_level(id_plot = "overview_k5")
+
+LDA_manual_5 %>% visualize_LDA_all_level(id_plot = "manual_k5")
 ```
 
 ```{r label, eval = FALSE}
