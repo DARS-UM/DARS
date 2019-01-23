@@ -15,6 +15,8 @@ library(arules)
 library(arulesSequences)
 
 library(rlang)
+
+library(ggplot2)
 ```
 
 # Setup
@@ -146,13 +148,6 @@ has_na <- d_transcript %>%
   filter(is.na(What))
 ```
 
-
-#Getting graphics
-```{r}
-
-```
-
-
 #Getting dates
 For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
@@ -258,7 +253,7 @@ maxwin:   an integer value specifying the maximum time difference between any tw
 ```{r}
 fail_threshold <- 6.5
 
-category <-quo(Discrete_grade) #Outcome or Low_grade or Discrete_grade or #None
+category <-quo(Low_grade) #Outcome or Low_grade or Discrete_grade or #None
 
 
 d_sequence_transactions <- d_course %>%
@@ -273,12 +268,12 @@ d_sequence_transactions <- d_course %>%
   
   left_join(d_transcript, by = "Course ID") %>%
   
-    mutate(
-      Grade = case_when(
-        Grade == "NG"~ "-1",
-        T            ~ Grade),
-      Grade = str_replace(string = Grade, pattern = ",",replace = "."),
-      Grade = as.numeric(Grade)) %>%
+    # mutate(
+    #   Grade = case_when(
+    #     Grade == "NG"~ "-1",
+    #     T            ~ Grade),
+    #   Grade = str_replace(string = Grade, pattern = ",",replace = "."),
+    #   Grade = as.numeric(Grade)) %>% #this was already done in data preparation
   
   # filter(!is.na(Grade)) %>% #remove NaN
   # filter(Grade != -1) %>% #remove NG
@@ -345,28 +340,98 @@ string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
                            quo_name(category)=="None"           ~ "_" #useless filter
                            )
 
-frequent_trajectories <- cspade(transactions, parameter = list(support = 0.01), control   = list(verbose = TRUE))
+frequent_trajectories <- cspade(transactions, parameter = list(support = 0,
+                                                               maxsize = 1,
+                                                               maxlen = 2), control   = list(verbose = TRUE))
 
 
 summary(frequent_trajectories)
+as(frequent_trajectories, "data.frame")
 
 
-rules <- ruleInduction(frequent_trajectories, confidence = 0.1, #we need to play with the parameters.
-                    control    = list(verbose = TRUE))
+rules <- ruleInduction(frequent_trajectories,
+                       confidence = 0, #we need to play with the parameters.
+                       control    = list(verbose = TRUE))
 
 
 pass_rules_df <- as(rules, "data.frame") %>%
   
   separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
   
-  filter(str_detect(RHS, string_filter)) %>% #FILTER (YES) --> uncomment, (NO)-->comment
+#  filter(str_detect(RHS, string_filter)) %>% #FILTER (YES) --> uncomment, (NO)-->comment
   
-  arrange(desc(confidence), desc(lift))
+  arrange(
+    LHS, RHS,
+    desc(confidence), desc(lift))
 
-pass_rules_df
+n_students <- length(unique(d_sequence_transactions$`Student ID`))
+
+manual_confidence_rules <- pass_rules_df %>%
+  separate(LHS, into=c("LHS Course ID", "LHS Score"), sep="_", remove= FALSE) %>%
+  separate(RHS, into=c("RHS Course ID", "RHS Score"), sep="_", remove= FALSE) %>%
+  mutate(`RHS Course ID`= substr(`RHS Course ID`, start=4, stop=10))%>%
+  left_join(lookup_table, by = c("RHS Course ID"="Course ID")) %>%
+  
+  # Compute statistics
+  group_by(LHS,`RHS Course ID`) %>%
+  mutate(Prob_both = sum(support), 
+         Conf_corr = support/Prob_both,
+         n_rule = support * n_students,
+         n_both =Prob_both * n_students,
+         lift_diff= Conf_corr - Prop_low,
+         lift_corr=Conf_corr / Prop_low) %>%
+  ungroup() %>%
+  
+  # Filter and edit output
+  filter(str_detect(`RHS Score`, pattern = "low"),
+         str_detect(`LHS Score`, pattern = "low"),
+         n_rule >= 5,
+         Conf_corr > 0.2) %>%
+  select(LHS, RHS, support, n_rule, Prob_both, n_both, Prop_low, Conf_corr, lift_corr, lift_diff) %>%
+  mutate(support = round(support,3),
+         Prob_both =round(Prob_both,3),
+         Prop_low =round(Prop_low,3),
+         Conf_corr= round(Conf_corr,3),
+         lift_diff= round(lift_diff,3),
+         lift_corr= round(lift_corr,3)) %>%
+  arrange(lift_diff)
+
+
+
+#FOR PLOTTING
+for_plots <-  manual_confidence_rules %>%
+  group_by(LHS)%>%
+  mutate(LHS_count=n())
+  
 
 ```
+#Visualizing rules
+```{r}
+#look at counts
+ggplot(for_plots, aes(LHS))+
+  geom_bar()
 
+#jitter
+ggplot(manual_confidence_rules)+
+  geom_jitter(mapping=aes(x=Conf_corr, y=log(support), color=lift_corr))
+
+ggplot(manual_confidence_rules)+
+  geom_jitter(mapping=aes(x=log(support), y=lift_corr, color = Conf_corr))
+
+#heatmap
+ggplot(select(manual_confidence_rules,LHS,RHS, n_rule), aes(x=RHS,y=LHS, fill=n_rule))+
+  geom_raster() +
+  theme(
+    axis.text.x = element_text(angle=90)
+  )
+
+gglot(table(select(manual_confidence_rules,LHS,RHS)))
+
+
+hi <- table(select(manual_confidence_rules,LHS,RHS))
+#ggnetwork
+
+```
 
 
 
@@ -396,6 +461,84 @@ table(test$PFN)
 
 ```
 
+We want to change the calculation of confidence and support. The new rules are:
+confidence: number of transactions of RHS/ number of transactions of RHS and compliment= p(A^B)/P(BUBc)
+support:number of transactions of right hand side/number of transactions of RHS and compliment= p(A^B)/p(AUBUBc)
+lift: 
+
+#Experimenting with transactions
+```{r}
+fail_threshold <- 6.5
+
+category <-quo(Low_grade) #Outcome or Low_grade or Discrete_grade or #None
 
 
+lookup_table <- d_course %>%
+  
+  select(Type, `Course ID`, Letters) %>%
+  
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  
+  select(`Course ID`) %>%
+  
+  left_join(d_transcript, by = "Course ID") %>%
+  mutate(
+    Outcome = 
+           case_when( Grade == -1   ~"Fail", #if we don't do this NG satisfies the condition for pass v
+                      Grade  > 5.5 ~"Pass",
+                               T~"Fail"),
+    Low_grade =
+           case_when(Grade == -1 ~"low score", #if we don't do this NG satisfies the condition for pass v
+                      Grade > fail_threshold ~"high score",
+                               T~"low score"),
+    Discrete_grade =
+           case_when(Grade <= 5.4             ~ 5.0,
+                     between(Grade, 5.5, 6.4) ~ 6.0,
+                     between(Grade, 6.5, 7.4) ~ 7.0,
+                     between(Grade, 7.5, 8.4) ~ 8.0,
+                     between(Grade, 8.5, 9.4) ~ 9.0,
+                     Grade >= 9.5             ~ 10.0,
+                     T ~ -99999    #this is a control, we should not have any grades here
+                     ),
+    None= "" # this might not be optimal
+         ) %>%
+  
+  #mutate(Item = paste(`Course ID`, !!category, sep = "_")) %>% #Change for Outcome/Low_grade/Discrete_grade
+  
+  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
+  
+  mutate( Time = paste(Year_numerical, Period, sep = ""),
+          Time = as.double(Time)) %>%
+  
+  select(`Student ID`, #Item, 
+         `Course ID`, !!category, Time) %>% # Course ID and Time may not be necessary
+  
+  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
+  
+  group_by(`Course ID`, !!category) %>% ##this makes no sense we should just group id and low_grade
+  
+  summarize(Count = n()) %>%
+  #separate(Item, into= c("Course ID", quo_name(category)), sep="_", remove = F) %>%
+  ungroup() %>%
+  group_by(`Course ID`) %>%
+  mutate(Total= sum(Count))%>%
+  filter(Low_grade=="low score")%>%
+  mutate(Prop_low= Count/Total)
+
+lookup_table
+```
+
+```{r}
+pass_rules_df
+test <- pass_rules_df %>%
+  separate(LHS, into=c("c1","c2", "c3", "c4", "c5", "c6","c7", "c8", "c9", "c10"), sep= ",", remove=F) #has values until c6
+
+```
+
+```{r}
+
+length(unique(d_transcript$`Student ID`))
+```
 
