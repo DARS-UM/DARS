@@ -511,14 +511,17 @@ It might be a nice idea to visualise using Sankey diagrams, although I don't kno
 ```{r}
 
 probabilities_manipulated <- d_transcript %>%
-  select(-Course, -Year_numerical,-Period,-`Number Repeated Attempt`,-`Academic Year`)%>% #remove this before expanding grades
-  mutate(Round_grade= round(Grade,0))
+  transmute(tmp_id=paste(`Student ID`,`Course ID`,Year_numerical,Period,`Number Repeated Attempt`,sep="_"),
+            Round_grade= round(Grade,0))
+student_set <- unique(probabilities_manipulated$tmp_id)
+
+for student %in% student_set
+
 ```
 
 ##Puting students into take and not take. 
 ```{r}
-
-#this df has 731,676 rows:
+#This df has 731,676 rows:
 test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`= unique(d_course$`Course ID`)) %>%
   left_join(d_transcript, by=c("Course ID", "Student ID")) %>%
   select(`Course ID`, `Student ID`, Grade, Year_numerical, Period) %>%
