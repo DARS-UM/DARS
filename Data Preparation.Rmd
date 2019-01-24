@@ -61,7 +61,7 @@ print(d_ILO)
 ### Course Catalogues
 In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.
 ```{r import corpus_catalogues, cache = TRUE}
-corpus_catalogues <- Corpus(x             = DirSource("Catalogues"),
+corpus_catalogues <- Corpus(x             = DirSource("./Input/Catalogues"),
                             readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 
@@ -69,7 +69,7 @@ corpus_catalogues <- Corpus(x             = DirSource("Catalogues"),
 To expand our topic modeling of course content, we analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
 
 ```{r import corpus_manuals, cache = TRUE}
-corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
+corpus_manuals <- Corpus(x             = DirSource("./Input/Manuals 2017-18"),
                          readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 ## Student Data
@@ -78,7 +78,7 @@ The tibble `d_transcript` contains the transcript information of students as was
 ```{r import d_transcript, cache = TRUE}
 d_transcript <- rbind(
   read_csv(
-    "Raw Grades/grades1.csv",
+    "./Input/Raw Grades/grades1.csv",
     col_types = cols(
       `Program (Abbreviation)` = col_character(),
       `Appraisal Status` = col_character(),
@@ -89,7 +89,7 @@ d_transcript <- rbind(
       )
     ),
   read_csv(
-    "Raw Grades/grades2.csv",
+    "./Input/Raw Grades/grades2.csv",
     col_types = cols(
       `Program (Abbreviation)` = col_character(),
       `Appraisal Status` = col_character(),
