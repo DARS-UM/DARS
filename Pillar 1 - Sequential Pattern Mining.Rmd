@@ -21,7 +21,7 @@ library(ggplot2)
 
 # Setup
 load previous data and create function to find courses
-```{r}
+```{r loading data}
 load("data_pillar_1.RDATA")
 
 find_course <- function(code){ #can be modified to accept other data that is not d_transcript
@@ -33,8 +33,8 @@ find_course <- function(code){ #can be modified to accept other data that is not
 }
 
 ```
-
-#Data Exploration of Transcripts
+#Simple Rule Mining
+##Data Exploration of Transcripts
 ```{r}
 exploration <- d_transcript %>%
   mutate(Grade = case_when(Grade == "NG"~ "-1", #"0,0", #maybe we could just remove these from the analysis and treat them separately?
@@ -148,12 +148,12 @@ has_na <- d_transcript %>%
   filter(is.na(What))
 ```
 
-#Getting dates
+##Getting dates
 For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
 item = course
 
-##Data preparation
+###Data preparation
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
 ```{r}
@@ -242,14 +242,13 @@ results_passed %>%
 #Mining-sequences:
 The parameter values are: 
 support:  a numeric value specifying the minimum support of a sequence (default 0.1, range [0,1]).
-
 maxsize:  an integer value specifying the maximum number of items of an element of a sequence (default 10, range > 0).
 maxlen:   an integer value specifying the maximum number of elements of a sequence (default 10, range > 0).
 mingap:   an integer value specifying the minimum time difference between consecutive elements of a sequence (default none, range >= 1).
 maxgap:   an integer value specifying the maximum time difference between consecutive elements of a sequence (default none, range >= 0).
 maxwin:   an integer value specifying the maximum time difference between any two elements of a sequence (default none, range >= 0).
 
-#Preparing data frame:
+##Preparing data frame:
 ```{r}
 fail_threshold <- 6.5
 
@@ -267,14 +266,6 @@ d_sequence_transactions <- d_course %>%
   select(`Course ID`) %>%
   
   left_join(d_transcript, by = "Course ID") %>%
-  
-    # mutate(
-    #   Grade = case_when(
-    #     Grade == "NG"~ "-1",
-    #     T            ~ Grade),
-    #   Grade = str_replace(string = Grade, pattern = ",",replace = "."),
-    #   Grade = as.numeric(Grade)) %>% #this was already done in data preparation
-  
   # filter(!is.na(Grade)) %>% #remove NaN
   # filter(Grade != -1) %>% #remove NG
   mutate(
@@ -332,147 +323,8 @@ as(transactions, "data.frame")
 ```
 
 ##Rule induction
+##Creating look-up table
 ```{r}
-#FURTURE: create filter by function
-string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
-                           quo_name(category)=="Low_grade"      ~ "low score",
-                           quo_name(category)=="Discrete_grade" ~ "5",
-                           quo_name(category)=="None"           ~ "_" #useless filter
-                           )
-
-frequent_trajectories <- cspade(transactions, parameter = list(support = 0,
-                                                               maxsize = 1,
-                                                               maxlen = 2), control   = list(verbose = TRUE))
-
-
-summary(frequent_trajectories)
-as(frequent_trajectories, "data.frame")
-
-
-rules <- ruleInduction(frequent_trajectories,
-                       confidence = 0, #we need to play with the parameters.
-                       control    = list(verbose = TRUE))
-
-
-pass_rules_df <- as(rules, "data.frame") %>%
-  
-  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
-  
-#  filter(str_detect(RHS, string_filter)) %>% #FILTER (YES) --> uncomment, (NO)-->comment
-  
-  arrange(
-    LHS, RHS,
-    desc(confidence), desc(lift))
-
-n_students <- length(unique(d_sequence_transactions$`Student ID`))
-
-manual_confidence_rules <- pass_rules_df %>%
-  separate(LHS, into=c("LHS Course ID", "LHS Score"), sep="_", remove= FALSE) %>%
-  separate(RHS, into=c("RHS Course ID", "RHS Score"), sep="_", remove= FALSE) %>%
-  mutate(`RHS Course ID`= substr(`RHS Course ID`, start=4, stop=10))%>%
-  left_join(lookup_table, by = c("RHS Course ID"="Course ID")) %>%
-  
-  # Compute statistics
-  group_by(LHS,`RHS Course ID`) %>%
-  mutate(Prob_both = sum(support), 
-         Conf_corr = support/Prob_both,
-         n_rule = support * n_students,
-         n_both =Prob_both * n_students,
-         lift_diff= Conf_corr - Prop_low,
-         lift_corr=Conf_corr / Prop_low) %>%
-  ungroup() %>%
-  
-  # Filter and edit output
-  filter(str_detect(`RHS Score`, pattern = "low"),
-         str_detect(`LHS Score`, pattern = "low"),
-         n_rule >= 5,
-         Conf_corr > 0.2) %>%
-  select(LHS, RHS, support, n_rule, Prob_both, n_both, Prop_low, Conf_corr, lift_corr, lift_diff) %>%
-  mutate(support = round(support,3),
-         Prob_both =round(Prob_both,3),
-         Prop_low =round(Prop_low,3),
-         Conf_corr= round(Conf_corr,3),
-         lift_diff= round(lift_diff,3),
-         lift_corr= round(lift_corr,3)) %>%
-  arrange(lift_diff)
-
-
-
-#FOR PLOTTING
-for_plots <-  manual_confidence_rules %>%
-  group_by(LHS)%>%
-  mutate(LHS_count=n())
-  
-
-```
-#Visualizing rules
-```{r}
-#look at counts
-ggplot(for_plots, aes(LHS))+
-  geom_bar()
-
-#jitter
-ggplot(manual_confidence_rules)+
-  geom_jitter(mapping=aes(x=Conf_corr, y=log(support), color=lift_corr))
-
-ggplot(manual_confidence_rules)+
-  geom_jitter(mapping=aes(x=log(support), y=lift_corr, color = Conf_corr))
-
-#heatmap
-ggplot(select(manual_confidence_rules,LHS,RHS, n_rule), aes(x=RHS,y=LHS, fill=n_rule))+
-  geom_raster() +
-  theme(
-    axis.text.x = element_text(angle=90)
-  )
-
-gglot(table(select(manual_confidence_rules,LHS,RHS)))
-
-
-hi <- table(select(manual_confidence_rules,LHS,RHS))
-#ggnetwork
-
-```
-
-
-
-#Visualisation
-It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
-
-
-#Puting students into take and not take. 
-
-```{r}
-test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`= unique(d_course$`Course ID`)) %>%
-  left_join(d_transcript, by=c("Course ID", "Student ID")) %>%
-  select(`Course ID`, `Student ID`, Grade, Year_numerical, Period) %>%
-  mutate(
-    take_course = case_when(
-      is.na(Grade)  ~ FALSE,
-      T             ~ TRUE
-      ),
-    PFN = case_when(
-      is.na(Grade)  ~ "not",
-      Grade >= 5.5  ~ "pass",
-      Grade < 5.5   ~ "fail"
-      )
-    )
-
-table(test$PFN)
-
-```
-
-We want to change the calculation of confidence and support. The new rules are:
-confidence: number of transactions of RHS/ number of transactions of RHS and compliment= p(A^B)/P(BUBc)
-support:number of transactions of right hand side/number of transactions of RHS and compliment= p(A^B)/p(AUBUBc)
-lift: 
-
-#Experimenting with transactions
-```{r}
-fail_threshold <- 6.5
-
-category <-quo(Low_grade) #Outcome or Low_grade or Discrete_grade or #None
-
-
 lookup_table <- d_course %>%
   
   select(Type, `Course ID`, Letters) %>%
@@ -526,19 +378,160 @@ lookup_table <- d_course %>%
   mutate(Total= sum(Count))%>%
   filter(Low_grade=="low score")%>%
   mutate(Prop_low= Count/Total)
-
-lookup_table
 ```
+
+###NOTE for FURTURE: create filter by function
+##Create filter condition.
+```{r}
+string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
+                           quo_name(category)=="Low_grade"      ~ "low score",
+                           quo_name(category)=="Discrete_grade" ~ "5",
+                           quo_name(category)=="None"           ~ "_" #useless filter
+                           )
+```
+##CSPADE Algorithm:
+```{r}
+frequent_trajectories <- cspade(transactions, parameter = list(support = 0,
+                                                               maxsize = 1,
+                                                               maxlen = 2), control   = list(verbose = TRUE))
+
+#Inspect results CSPADE
+summary(frequent_trajectories)
+as(frequent_trajectories, "data.frame")
+
+```
+##rule induction:
+```{r}
+rules <- ruleInduction(frequent_trajectories,
+                       confidence = 0, #we need to play with the parameters.
+                       control    = list(verbose = TRUE))
+
+
+pass_rules_df <- as(rules, "data.frame") %>%
+  
+  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
+  
+#  filter(str_detect(RHS, string_filter)) %>% #FILTER (YES) --> uncomment, (NO)-->comment
+  
+  arrange(
+    LHS, RHS,
+    desc(confidence), desc(lift))
+
+```
+##calculate appropriate measures:
+```{r}
+n_students <- length(unique(d_sequence_transactions$`Student ID`))
+
+manual_confidence_rules <- pass_rules_df %>%
+  separate(LHS, into=c("LHS Course ID", "LHS Score"), sep="_", remove= FALSE) %>%
+  separate(RHS, into=c("RHS Course ID", "RHS Score"), sep="_", remove= FALSE) %>%
+  mutate(`RHS Course ID`= substr(`RHS Course ID`, start=4, stop=10))%>%
+  left_join(lookup_table, by = c("RHS Course ID"="Course ID")) %>%
+  
+  # Compute statistics
+  group_by(LHS,`RHS Course ID`) %>%
+  mutate(Prob_both = sum(support), 
+         Conf_corr = support/Prob_both,
+         n_rule = support * n_students,
+         n_both =Prob_both * n_students,
+         lift_diff= Conf_corr - Prop_low,
+         lift_corr=Conf_corr / Prop_low) %>%
+  ungroup() %>%
+  
+  # Filter and edit output
+  filter(str_detect(`RHS Score`, pattern = "low"),
+         str_detect(`LHS Score`, pattern = "low"),
+         n_rule >= 5,
+         Conf_corr > 0.2) %>%
+  select(LHS, RHS, support, n_rule, Prob_both, n_both, Prop_low, Conf_corr, lift_corr, lift_diff) %>%
+  mutate(support = round(support,3),
+         Prob_both =round(Prob_both,3),
+         Prop_low =round(Prop_low,3),
+         Conf_corr= round(Conf_corr,3),
+         lift_diff= round(lift_diff,3),
+         lift_corr= round(lift_corr,3)) %>%
+  arrange(lift_diff)
+#Inspect results
+manual_confidence_rules
+```
+##Arrange data for plots:
+```{r}
+for_plots <-  manual_confidence_rules %>%
+  group_by(LHS)%>%
+  mutate(LHS_count=n())
+```
+#Visualizing rules
+```{r}
+#look at counts
+ggplot(for_plots, aes(LHS))+
+  geom_bar()
+
+#jitter
+ggplot(manual_confidence_rules)+
+  geom_jitter(mapping=aes(x=Conf_corr, y=log(support), color=lift_corr))
+
+ggplot(manual_confidence_rules)+
+  geom_jitter(mapping=aes(x=log(support), y=lift_corr, color = Conf_corr))
+
+#heatmap
+ggplot(select(manual_confidence_rules,LHS,RHS, n_rule), aes(x=RHS,y=LHS, fill=n_rule))+
+  geom_raster() +
+  theme(
+    axis.text.x = element_text(angle=90)
+  )
+
+gglot(table(select(manual_confidence_rules,LHS,RHS)))
+
+#ggnetwork
+
+#SEE: http://kateto.net/network-visualization 
+g_net <- graph_from_data_frame(d=head(for_plots,50), directed=T) #I BELIEVE THE COLUMNS SHOULD BE REVERSED.
+
+l <- layout_in_circle(g_net)
+plot(g_net, #vertex.shape="none",
+     vertex.size=.9,
+     #vertex.label=NA,
+     vertex.label.cex=0.5,
+     edge.arrow.size=.1, 
+     edge.curved=.1,
+     layout=l)
+
+```
+#Visualisation
+It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
+
+#Puting students into take and not take. 
+
+```{r}
+test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`= unique(d_course$`Course ID`)) %>%
+  left_join(d_transcript, by=c("Course ID", "Student ID")) %>%
+  select(`Course ID`, `Student ID`, Grade, Year_numerical, Period) %>%
+  mutate(
+    take_course = case_when(
+      is.na(Grade)  ~ FALSE,
+      T             ~ TRUE
+      ),
+    PFN = case_when(
+      is.na(Grade)  ~ "not",
+      Grade >= 5.5  ~ "pass",
+      Grade < 5.5   ~ "fail"
+      )
+    )
+
+table(test$PFN)
+
+```
+
+We want to change the calculation of confidence and support. The new rules are:
+confidence: number of transactions of RHS/ number of transactions of RHS and compliment= p(A^B)/P(BUBc)
+support:number of transactions of right hand side/number of transactions of RHS and compliment= p(A^B)/p(AUBUBc)
+lift: 
+
 
 ```{r}
 pass_rules_df
 test <- pass_rules_df %>%
   separate(LHS, into=c("c1","c2", "c3", "c4", "c5", "c6","c7", "c8", "c9", "c10"), sep= ",", remove=F) #has values until c6
 
-```
-
-```{r}
-
-length(unique(d_transcript$`Student ID`))
 ```
 
