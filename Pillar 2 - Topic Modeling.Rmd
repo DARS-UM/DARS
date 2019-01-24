@@ -229,17 +229,25 @@ list_nam <- character(0)
 for(level in levels){
   
   dataset   <- get(paste("d", level, "cast", sep = "_"))
+  
   LDA_model <- LDA(
-    x = dataset,
-    k = n_topics,
-    method = "Gibbs",
+    x       = dataset,
+    k       = n_topics,
+    method  = "Gibbs",
     control = list(
-      nstart = 10,
-      seed = c(1:10),
-      best = TRUE,
-      burnin = 4000,
-      iter = 2000,
-      thin = 500))
+      nstart  = 10,
+      seed    = c(1:10),
+      best    = TRUE,
+      
+      burnin  = 4000,
+      iter    = 5000,
+      thin    = 500,
+      
+      verbose = 1e3,
+      save    = 1e3,
+      keep    = 1e3)
+    )
+  
   nam <- paste("LDA", level, n_topics, sep = "_")
   
   assign(
