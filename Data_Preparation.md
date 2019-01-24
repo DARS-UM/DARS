@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-01-21
+2019-01-24
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -31,46 +31,11 @@ DARS
 
 ``` r
 library(tidyverse)
-```
-
-    ## Warning: package 'tidyverse' was built under R version 3.4.2
-
-    ## Warning: package 'ggplot2' was built under R version 3.4.4
-
-    ## Warning: package 'tibble' was built under R version 3.4.3
-
-    ## Warning: package 'tidyr' was built under R version 3.4.4
-
-    ## Warning: package 'readr' was built under R version 3.4.4
-
-    ## Warning: package 'purrr' was built under R version 3.4.4
-
-    ## Warning: package 'dplyr' was built under R version 3.4.4
-
-    ## Warning: package 'stringr' was built under R version 3.4.4
-
-    ## Warning: package 'forcats' was built under R version 3.4.3
-
-``` r
 library(tidytext)
-```
-
-    ## Warning: package 'tidytext' was built under R version 3.4.4
-
-``` r
 library(gsheet) # import spreadsheets from google drive
 library(tm)
-```
-
-    ## Warning: package 'tm' was built under R version 3.4.4
-
-    ## Warning: package 'NLP' was built under R version 3.4.4
-
-``` r
 library(hunspell) # Stemmer
 ```
-
-    ## Warning: package 'hunspell' was built under R version 3.4.3
 
 Import Data
 ===========
@@ -179,7 +144,7 @@ Textual Data
 In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.
 
 ``` r
-corpus_catalogues <- Corpus(x             = DirSource("Catalogues"),
+corpus_catalogues <- Corpus(x             = DirSource("./Input/Catalogues"),
                             readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 
@@ -188,7 +153,7 @@ corpus_catalogues <- Corpus(x             = DirSource("Catalogues"),
 To expand our topic modeling of course content, we analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
 
 ``` r
-corpus_manuals <- Corpus(x             = DirSource("Manuals 2017-18"),
+corpus_manuals <- Corpus(x             = DirSource("./Input/Manuals 2017-18"),
                          readerControl = list(reader = readPDF(control = list(text = "-layout"))))
 ```
 
@@ -200,7 +165,7 @@ The tibble `d_transcript` contains the transcript information of students as was
 ``` r
 d_transcript <- rbind(
   read_csv(
-    "Raw Grades/grades1.csv",
+    "./Input/Raw Grades/grades1.csv",
     col_types = cols(
       `Program (Abbreviation)` = col_character(),
       `Appraisal Status` = col_character(),
@@ -211,7 +176,7 @@ d_transcript <- rbind(
       )
     ),
   read_csv(
-    "Raw Grades/grades2.csv",
+    "./Input/Raw Grades/grades2.csv",
     col_types = cols(
       `Program (Abbreviation)` = col_character(),
       `Appraisal Status` = col_character(),
@@ -271,11 +236,6 @@ In order to determine which AoD each course covers with its assessments, we need
 ``` r
 map_assessment_AoD <- as.matrix(gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216')[,lists$AoD] %>%
                                   mutate_all(as.logical))
-```
-
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
-
-``` r
 rownames(map_assessment_AoD) <- lists$Assessment
 
 # Print section of matrix
@@ -314,6 +274,12 @@ for(i in 1 : nrow(d_assessment)){
                                                  as.tibble(cbind(observation,
                                                                  AoD)))
 }
+```
+
+    ## Warning: `as.tibble()` is deprecated, use `as_tibble()` (but mind the new semantics).
+    ## This warning is displayed once per session.
+
+``` r
 rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 ```
 
@@ -913,19 +879,24 @@ d_transcript <- d_transcript %>%
 
 ``` r
 d_transcript <- d_transcript %>%
-  mutate(Grade = case_when(Grade == "NG"~ "-1",
-                           T~ Grade),
-          Grade = str_replace(string = Grade, pattern = ",",replace = "."),
-         Grade = as.numeric(Grade))
+  mutate(Grade = case_when(Grade == "NG" ~ "NA",
+                           TRUE          ~ Grade),
+         Grade = str_replace(string = Grade, pattern = ",",replace = "."),
+         Grade = as.numeric(Grade)) %>%
+  filter(!is.na(Grade)) %>%
+  mutate(Fail = Grade < 5.5)
 ```
+
+    ## Warning in evalq(as.numeric(Grade), <environment>): NAs introduced by
+    ## coercion
 
 ``` r
 print(d_transcript)
 ```
 
-    ## # A tibble: 81,435 x 8
+    ## # A tibble: 79,240 x 9
     ##    `Student ID` `Course ID` `Course Title` Grade Year_numerical Period
-    ##    <chr>        <chr>       <chr>          <dbl>          <int> <chr> 
+    ##    <chr>        <chr>       <chr>          <dbl>          <dbl> <chr> 
     ##  1 6051398      COR1005     Theory Constr~   5.7           2012 1     
     ##  2 6051398      SSC1009     Introduction ~   7.8           2012 1     
     ##  3 6051398      SKI1008     Introduction ~   7.9           2012 1     
@@ -936,18 +907,18 @@ print(d_transcript)
     ##  8 6051398      SKI1004     Research Meth~   4.6           2012 4     
     ##  9 6051398      SKI1004     Research Meth~   5.6           2012 4     
     ## 10 6051398      SCI2012     Globalization~   5.5           2012 4     
-    ## # ... with 81,425 more rows, and 2 more variables: `Number Repeated
-    ## #   Attempt` <int>, `Academic Year` <chr>
+    ## # ... with 79,230 more rows, and 3 more variables: `Number Repeated
+    ## #   Attempt` <dbl>, `Academic Year` <chr>, Fail <lgl>
 
 Save Data
 =========
 
 ``` r
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
-     file = "data_pillar_1.RDATA")
+     file = "Output/data_pillar_1.RDATA")
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
      d_overview, d_description, d_manual,
-     file = "data_pillar_2.RDATA")
+     file = "Output/data_pillar_2.RDATA")
 ```
 
 TODO
