@@ -422,7 +422,7 @@ pass_rules_df <- as(rules, "data.frame") %>%
 ```{r}
 n_students <- length(unique(d_sequence_transactions$`Student ID`))
 
-manual_confidence_rules <- pass_rules_df %>%
+sequence_rules <- pass_rules_df %>%
   separate(LHS, into=c("LHS Course ID", "LHS Score"), sep="_", remove= FALSE) %>%
   separate(RHS, into=c("RHS Course ID", "RHS Score"), sep="_", remove= FALSE) %>%
   mutate(`RHS Course ID`= substr(`RHS Course ID`, start=4, stop=10))%>%
@@ -451,9 +451,14 @@ manual_confidence_rules <- pass_rules_df %>%
          lift_diff= round(lift_diff,3),
          lift_corr= round(lift_corr,3)) %>%
   arrange(lift_diff)
-#Inspect results
-manual_confidence_rules
+
 ```
+##Save data
+```{r}
+save(sequence_rules,
+     file = "sequence_rules.RDATA")
+```
+
 ##Arrange data for plots:
 ```{r}
 for_plots <-  manual_confidence_rules %>%
@@ -500,9 +505,20 @@ plot(g_net, #vertex.shape="none",
 #Visualisation
 It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
 
-#Puting students into take and not take. 
+#EXPERIMENTS:
+##Condensing grades
 
 ```{r}
+
+probabilities_manipulated <- d_transcript %>%
+  select(-Course, -Year_numerical,-Period,-`Number Repeated Attempt`,-`Academic Year`)%>% #remove this before expanding grades
+  mutate(Round_grade= round(Grade,0))
+```
+
+##Puting students into take and not take. 
+```{r}
+
+#this df has 731,676 rows:
 test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`= unique(d_course$`Course ID`)) %>%
   left_join(d_transcript, by=c("Course ID", "Student ID")) %>%
   select(`Course ID`, `Student ID`, Grade, Year_numerical, Period) %>%
@@ -521,17 +537,3 @@ test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`=
 table(test$PFN)
 
 ```
-
-We want to change the calculation of confidence and support. The new rules are:
-confidence: number of transactions of RHS/ number of transactions of RHS and compliment= p(A^B)/P(BUBc)
-support:number of transactions of right hand side/number of transactions of RHS and compliment= p(A^B)/p(AUBUBc)
-lift: 
-
-
-```{r}
-pass_rules_df
-test <- pass_rules_df %>%
-  separate(LHS, into=c("c1","c2", "c3", "c4", "c5", "c6","c7", "c8", "c9", "c10"), sep= ",", remove=F) #has values until c6
-
-```
-
