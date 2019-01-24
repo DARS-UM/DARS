@@ -8,31 +8,34 @@ output:
 ---
 
 ```{r library, message = F}
-#detach(package:tm, unload=TRUE) #there is overlap with tm package in inspect()
-
 library(tidyverse)
+
 library(arules)
 library(arulesSequences)
-
 library(rlang)
-
-library(ggplot2)
 ```
 
 # Setup
 load previous data and create function to find courses
 ```{r loading data}
 load("data_pillar_1.RDATA")
-
-find_course <- function(code){ #can be modified to accept other data that is not d_transcript
-  c = code
-  x <- d_transcript %>%
-    filter(`Course Code`== c)
-  
-  return(x$`Course Title`[1])
-}
-
 ```
+
+Function that returns title of a course given its code.
+```{r}
+find_course <- function(code){ 
+  
+  dataset <- d_transcript %>%
+    filter(`Course ID`== code)
+  
+  title <- dataset$`Course Title`[1]
+  
+  return(title)
+  
+}
+```
+
+
 #Simple Rule Mining
 ##Data Exploration of Transcripts
 ```{r}
