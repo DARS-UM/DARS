@@ -8,144 +8,92 @@ output:
 ---
 
 ```{r library, message = F}
-#detach(package:tm, unload=TRUE) #there is overlap with tm package in inspect()
-
 library(tidyverse)
+
 library(arules)
 library(arulesSequences)
-
 library(rlang)
-
-library(ggplot2)
 ```
 
 # Setup
 load previous data and create function to find courses
 ```{r loading data}
-load("data_pillar_1.RDATA")
+load("Output/data_pillar_1.RDATA")
+```
 
-find_course <- function(code){ #can be modified to accept other data that is not d_transcript
-  c = code
-  x <- d_transcript %>%
-    filter(`Course Code`== c)
+Function that returns title of a course given its code.
+```{r}
+find_course <- function(code){ 
   
-  return(x$`Course Title`[1])
+  dataset <- d_transcript %>%
+    filter(`Course ID`== code)
+  
+  title <- dataset$`Course Title`[1]
+  
+  return(title)
+  
 }
 
+# Example
+find_course("HUM1005")
 ```
+
+
 #Simple Rule Mining
 ##Data Exploration of Transcripts
 ```{r}
-exploration <- d_transcript %>%
-  mutate(Grade = case_when(Grade == "NG"~ "-1", #"0,0", #maybe we could just remove these from the analysis and treat them separately?
-                           T~Grade),
-         Grade = str_replace(string = Grade, pattern = ",",replace = "."),
-         Grade = as.numeric(Grade))%>%
-  filter(!is.na(Grade)) %>%
-  filter(Grade != -1) #remove NG
 
-summary(exploration)
+# For convenience
+provide_statistics <- function(data){
+  data %>%
+    summarise(
+      n      = n(),
+      Min    = min(Grade),
+      Max    = max(Grade), 
+      Mean   = round(mean(Grade), 2), 
+      Median = median(Grade), 
+      SD        = round(sd(Grade), 2),
+      Fail_rate = round(mean(Fail), 2),
+      Fail_n = sum(Fail)
+      )
+}
 
-student_statistics <- exploration %>%
+# Student level
+d_transcript %>%
   group_by(`Student ID`) %>%
-  summarise(n = n(),
-            Min = min(Grade), 
-            Max = max(Grade), 
-            Mean = mean(Grade), 
-            Median = median(Grade), 
-            SD = sd(Grade), 
-            `Proportion Failed` = mean(Grade < 5.5))
+  provide_statistics()
 
-course_statistics <- exploration %>%
-  inner_join(d_course, by = "Course ID") %>%
-  filter(between(Year_numerical, 2015,2016)) %>% #filter year
+# Course level
+d_transcript %>%
+  inner_join(d_course, by = c("Course ID")) %>%
   group_by(`Course ID`) %>%
-  summarise(n = n(),
-            Min = min(Grade), 
-            Max = max(Grade), 
-            Mean = round(mean(Grade), 2), 
-            Median = median(Grade), 
-            SD = sd(Grade), 
-            `Proportion Failed` = mean(Grade < 5.5)) %>%
-  inner_join(select(d_course,`Course ID`, `Course Title`), by = "Course ID")
+  provide_statistics()
 
+# Cluster level
+d_transcript %>%
+  inner_join(d_course, by = "Course ID") %>%
+  filter(!is.na(Cluster)) %>%
+  group_by(Cluster) %>%
+  provide_statistics()
 
-concentration_statistics <- exploration %>%
-  inner_join(select(d_course,-Period, -`Period (additional)`,-`Period (additional bis)`,-`Course Title`), by = "Course ID") %>%
-  #left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
+# Concentration evel
+d_transcript %>%
+  inner_join(d_course, by = "Course ID") %>%
   gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
   group_by(Concentration) %>%
-  summarise(n = n(),
-            Min = min(Grade), 
-            Max = max(Grade), 
-            Mean = round(mean(Grade), 2), 
-            Median = median(Grade), 
-            SD = sd(Grade), 
-            `Proportion Failed` = mean(Grade < 5.5))
-  
-cluster_statistics <- exploration %>%
-  inner_join(d_course, by = "Course ID") %>%
-  group_by(Cluster) %>%
-  summarise(n = n(),
-            Min = min(Grade), 
-            Max = max(Grade), 
-            Mean = round(mean(Grade), 2), 
-            Median = median(Grade), 
-            SD = sd(Grade), 
-            `Proportion Failed` = mean(Grade < 5.5))
+  provide_statistics()
 
-year_statistics <- exploration %>%
-  inner_join(d_course, by = "Course ID") %>%
+# Year level
+d_transcript %>%
   group_by(Year_numerical) %>%
-  summarise(n = n(),
-            Min = min(Grade), 
-            Max = max(Grade), 
-            Mean = round(mean(Grade), 2), 
-            Median = median(Grade), 
-            SD = sd(Grade), 
-            `Proportion Failed` = mean(Grade < 5.5))
+  provide_statistics()
 
-level_statistics <- exploration %>%
-  inner_join(d_course, by = "Course ID") %>%
+# Level level
+d_transcript %>%
+  inner_join(d_course, by = c("Course ID")) %>%
+  filter(!is.na(Level)) %>%
   group_by(Level) %>%
-  summarise(n = n(),
-            Min = min(Grade), 
-            Max = max(Grade), 
-            Mean = round(mean(Grade), 2), 
-            Median = median(Grade), 
-            SD = sd(Grade), 
-            `Proportion Failed` = mean(Grade < 5.5))
-
-percentage_grades_awarded <- d_transcript %>%
-          mutate(Grade = str_replace(string = Grade, pattern = ",",replace = "."),
-                 Grade = as.integer(Grade)) %>%
-  filter(Year_numerical %in% c(2015,2016))%>%
-  mutate(total=n())%>%
-  group_by(Grade) %>%
-  mutate(grade_total=n())%>%
-  select(Grade, grade_total,total)%>%
-  distinct()%>%
-  mutate(Percentage = signif(grade_total/total,digits=2))%>%
-  arrange(Grade)
-
-```
-We have found some NA values for the grades! Students:
-
-0177849 - COR1003 & EMTH0001  +++++++++++++++ Master thesis should not be showing up! +++++++++++++
-0177857
-0222100
-0270148
-0313173
-0317101
-0317349
-
-```{r}
-#We have NA in grades. Something weird is happening. 
-summary(str_detect(d_transcript$Grade, pattern="NA")) #shows NA's = 312 FALSE= 89069 WHY ARE THERE NAs?
-
-has_na <- d_transcript %>%
-  mutate(What = str_detect(Grade, pattern="NA")) %>%
-  filter(is.na(What))
+  provide_statistics()
 ```
 
 ##Getting dates
