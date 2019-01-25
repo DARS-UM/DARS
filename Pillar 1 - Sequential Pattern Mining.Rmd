@@ -163,10 +163,7 @@ AR <- apriori(
     aval = TRUE,
     minval = 0
     ),
-  appearance = list(
-    #lhs = c("HUM1003"),
-    #rhs = c("HUM1007", "HUM1010")
-  ),
+  appearance = NULL,
   control = list(
     verbose = FALSE
   )
