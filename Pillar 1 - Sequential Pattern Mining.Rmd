@@ -101,93 +101,135 @@ item = course
 ## Creating Transactions
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
-```{r AR data prep}
+```{r}
+
 d_transactions <- d_course %>%
   
   # Exclude 
   filter(
-    Type != "Mandatory",              # (i) mandatory courses e.g. COR, CAP, etc
-    ! Letters %in% c("SKI", "PRO",    # (ii) skills & projects (taken by majority of students)
+    Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
+    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
                      "SAS", "SAH", "SAC") # (iii) courses of semester abroad
     ) %>%
   
   # Join with transcripts.
-  left_join(d_transcript, by = "Course ID") %>%
-  
-  # Create transactions (student level)
+  inner_join(d_transcript, by = "Course ID")
+```
+
+
+```{r AR data prep}
+# Create transactions (student level)
+transactions <- d_transactions %>%
   group_by(`Student ID`) %>%
     summarize(list_course = list(`Course ID`)) %>%
   ungroup
 
-transactions <- as(d_transactions$list_course, "transactions")
+transactions <- as(transactions$list_course, "transactions")
+```
+
+```{r AR data prep PF}
+d_transactions_PF <- d_transactions %>%
+  
+  # Take outcome of course into account (pass or fail)
+  mutate(PF = case_when(Grade <  5.5 ~ "fail",
+                        Grade >= 5.5 ~ "pass"),
+         `Course ID` = paste(`Course ID`, PF, sep = "_"))
+  
+  # Create transactions (student level)
+transactions_PF <- d_transactions_PF %>%
+  group_by(`Student ID`) %>%
+    summarize(list_course = list(`Course ID`)) %>%
+  ungroup
+
+transactions_PF <- as(transactions_PF$list_course, "transactions")
 ```
 
 ## Apriori Algorithm
 We apply Apriori algorithm:
-```{r}
-results <- apriori(
+```{r AR apriori}
+
+# TODO: conmpute support RHS
+
+AR <- apriori(
   data = transactions, 
   parameter = list(
-    supp = 0.02,
-    smax = 1, # max support
-    conf = 0.4,
-    minlen = 2,
-    maxlen = 2
+    supp = 0, # min support
+    smax = 1,    # max support
+    conf = 0,    # min confidence
+    minlen = 2,  # min length of rule
+    maxlen = 2,  # max length of rule
+    ext = TRUE,
+    arem = "diff",
+    aval = TRUE,
+    minval = 0
     ),
-  appearance = NULL,
-  control = NULL
+  appearance = list(
+    #lhs = c("HUM1003"),
+    #rhs = c("HUM1007", "HUM1010")
+  ),
+  control = list(
+    verbose = FALSE
+  )
   ) %>%
-  inspect
+  inspect 
 
-colnames(results)[2] <- "association"
-
-results %>%
-  arrange(desc(confidence))
+colnames(AR)[2] <- "=>"
 ```
+
 Now we include data for pass and fail:
-```{r}
-d_transaction_passed <- d_course %>%
-  select(Type, Code, Letters) %>%
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  select(Code) %>%
-  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
-  mutate(Outcome = case_when(Grade=="NG"~"Fail",
-                             Grade > 5.5 ~"Pass",
-                             T~"Fail")) %>%
-  mutate(Item= paste(Code, Outcome, sep = "_")) %>%
-  select(`Student ID Number`, Item) %>%
-  group_by(`Student ID Number`) %>%
-  summarize(list_course = list(Item)) %>%
-  group_by()
+```{r apriori PF}
 
-transactions_passed <- as(d_transaction_passed$list_course, "transactions")
+# creating vector of fail course
+course_id_fail <- d_transactions_PF %>%
+  filter(PF == "fail") %>%
+  distinct(`Course ID`)
 
-```
-We apply Apriori algorithm:
-```{r}
-results_passed <- apriori(
-  data = transactions_passed, 
+# Apply apriori
+AR_PF <- apriori(
+  data = transactions_PF, 
   parameter = list(
-    supp = 0,
-    smax = 1, # max support
-    conf = 0.4,
-    minlen = 2,
-    maxlen = 2
+    supp = 0, # min support
+    smax = 1,    # max support
+    conf = 0,    # min confidence
+    minlen = 2,  # min length of rule
+    maxlen = 2,  # max length of rule
+    ext = TRUE,
+    arem = "diff",
+    aval = TRUE,
+    minval = 0
     ),
-  appearance = NULL,
-  control = NULL
+  appearance = list(
+    both = course_id_fail$`Course ID` # only include rules with fail on LHS and RHS
+    ),
+  control = list(
+    verbose = FALSE
+    )
   ) %>%
-  inspect
+  inspect 
 
-colnames(results_passed)[2] <- "association"
+colnames(AR_PF)[2] <- "=>"
+```
 
-results_passed %>%
-  separate(lhs, into = c("LHS", "LHS_pass"), sep= "_", remove = F) %>%
-  separate(rhs, into = c("RHS", "RHS_pass"), sep= "_", remove = F) %>%
-  filter(RHS_pass == "Fail}") %>%
-  arrange(desc(count))
+```{r AR exploration}
+
+# TODO: MAKE APP
+
+data_rules <- AR
+data_rules <- AR_PF
+
+# Best support
+data_rules %>%
+  arrange(desc(support))
+
+# Best confidence
+data_rules %>%
+  filter(count >= 5) %>%
+  arrange(desc(confidence))
+
+# Best lift
+data_rules %>%
+  filter(count >= 5) %>%
+  arrange(desc(lift))
 ```
 
 #Mining-sequences:
