@@ -244,7 +244,9 @@ fail_threshold <- 6.5
 
 category <-quo(Low_grade) #Outcome or Low_grade or Discrete_grade or #None
 
-
+#this is new-----
+transcript_to_use <- quo(distributed_transcript) #d_transcript or distributed_transcript 
+#----------------
 d_sequence_transactions <- d_course %>%
   
   select(Type, `Course ID`, Letters) %>%
@@ -498,15 +500,107 @@ It might be a nice idea to visualise using Sankey diagrams, although I don't kno
 #EXPERIMENTS:
 ##Condensing grades
 
+```{r, cache = TRUE}
+tmp_distributed_transcript <- d_transcript %>%
+  filter(!is.na(Grade), Grade>=0) %>%
+  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
+         Values = T)
+#This is the transcript with cumulative error gap.
+distributed_transcript <- spread(tmp_distributed_transcript, key = "Round_grade", value = Values #, fill = F
+               )%>%
+  mutate(g1  = g0|g1,
+         g2  = g1|g2,
+         g3  = g2|g3,
+         g4  = g3|g4,
+         g5  = g4|g5,
+         g6  = g5|g6,
+         g7  = g6|g7,
+         g8  = g7|g8,
+         g9  = g8|g9,
+         g10 = g9|g10,
+         ) %>%
+  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
+  select(-Gr_bool )%>%
+  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
+  select(-Trash) %>%
+  mutate(Grade= as.numeric(Grade_new))%>% #can put this into Grade and have just one grade value.
+  select(-Grade_new)%>%
+  arrange(`Course ID`, `Student ID`) 
+  
+```
+#puting everything into quasi-function
+
 ```{r}
 
-probabilities_manipulated <- d_transcript %>%
-  transmute(tmp_id=paste(`Student ID`,`Course ID`,Year_numerical,Period,`Number Repeated Attempt`,sep="_"),
-            Round_grade= round(Grade,0))
-student_set <- unique(probabilities_manipulated$tmp_id)
+#parameters for analysis
+category <-quo(Low_grade) #Outcome or Low_grade or Discrete_grade or #None
+transcript_to_use <- quo(distributed_transcript) #d_transcript or distributed_transcript 
+fail_threshold <- 6.5
 
-for student %in% student_set
+#Preparing data
+d_sequence_transactions <- d_course %>%
+  
+  select(Type, `Course ID`, Letters) %>%
+  
+  filter(Type == "Elective",
+         ! Letters %in% c("SKI", "PRO"),
+         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
+  
+  select(`Course ID`) %>%
+  
+  left_join(!!transcript_to_use, by = "Course ID") %>%
+  mutate(
+    Outcome = 
+           case_when( Grade == -1   ~"Fail", #if we don't do this NG satisfies the condition for pass v
+                      Grade  > 5.5 ~"Pass",
+                               T~"Fail"),
+    Low_grade =
+           case_when(Grade == -1 ~"low score", #if we don't do this NG satisfies the condition for pass v
+                      Grade > fail_threshold ~"high score",
+                               T~"low score"),
+    Discrete_grade =
+           case_when(Grade <= 5.4             ~ 5.0,
+                     between(Grade, 5.5, 6.4) ~ 6.0,
+                     between(Grade, 6.5, 7.4) ~ 7.0,
+                     between(Grade, 7.5, 8.4) ~ 8.0,
+                     between(Grade, 8.5, 9.4) ~ 9.0,
+                     Grade >= 9.5             ~ 10.0,
+                     T ~ -99999    #this is a control, we should not have any grades here
+                     ),
+    None= "" # this might not be optimal
+         ) %>%
+  
+  mutate(Item = paste(`Course ID`, !!category, sep = "_")) %>% #Change for Outcome/Low_grade/Discrete_grade
+  
+  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
+  
+  mutate( Time = paste(Year_numerical, Period, sep = ""),
+          Time = as.double(Time)) %>%
+  
+  select(`Student ID`, Item, Time) %>%
+  
+  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
+  
+  group_by(`Student ID`, Time) %>%
+  
+  summarize(list_course = list(Item)) %>%
+  
+  mutate(TransactionID = paste(`Student ID`, Time, sep = "_"))
 
+```
+
+##to transaction
+```{r}
+transaction_list_course <- d_sequence_transactions$list_course
+names(transaction_list_course) <- d_sequence_transactions$TransactionID
+
+transactions <- as(transaction_list_course, "transactions")
+transactionInfo(transactions)$sequenceID <- d_sequence_transactions$`Student ID`
+transactionInfo(transactions)$eventID <- d_sequence_transactions$Time
+transactionInfo(transactions)$transactionID <- NULL
+
+#checking results
+as(transactions, "data.frame")
 ```
 
 ##Puting students into take and not take. 

@@ -1,0 +1,32 @@
+---
+title: "Untitled"
+author: "DARS"
+date: "1/24/2019"
+output: pdf_document
+---
+
+
+```{r pressure, echo=FALSE}
+test <- d_transcript %>%
+  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
+         Values = T) %>%
+  filter(!is.na(Round_grade), Grade>=0)
+
+spread(test, key = "Round_grade", value = Values #, fill = F
+               )%>%
+  mutate(g1  = g0|g1,
+         g2  = g1|g2,
+         g3  = g2|g3,
+         g4  = g3|g4,
+         g5  = g4|g5,
+         g6  = g5|g6,
+         g7  = g6|g7,
+         g8  = g7|g8,
+         g9  = g8|g9,
+         g10 = g9|g10,
+         )%>%
+  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
+  arrange(`Course ID`, `Student ID`)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
