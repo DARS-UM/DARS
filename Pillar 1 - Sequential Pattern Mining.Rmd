@@ -10,9 +10,7 @@ output:
 ```{r library, message = F}
 library(tidyverse)
 
-library(arules)
 library(arulesSequences)
-library(rlang)
 ```
 
 # Setup
@@ -38,23 +36,22 @@ find_course <- function(code){
 find_course("HUM1005")
 ```
 
+# Data Exploration
 
-#Simple Rule Mining
-##Data Exploration of Transcripts
-```{r}
+```{r statistic summary}
 
 # For convenience
 provide_statistics <- function(data){
   data %>%
     summarise(
-      n      = n(),
-      Min    = min(Grade),
-      Max    = max(Grade), 
-      Mean   = round(mean(Grade), 2), 
-      Median = median(Grade), 
+      Min       = min(Grade),
+      Max       = max(Grade), 
+      Mean      = round(mean(Grade), 2), 
+      Median    = median(Grade), 
       SD        = round(sd(Grade), 2),
       Fail_rate = round(mean(Fail), 2),
-      Fail_n = sum(Fail)
+      Fail_n    = sum(Fail),
+      n         = n()
       )
 }
 
@@ -96,30 +93,36 @@ d_transcript %>%
   provide_statistics()
 ```
 
-##Getting dates
+# Association Rules
 For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
 item = course
 
-###Data preparation
+## Creating Transactions
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
-```{r}
+```{r AR data prep}
 d_transactions <- d_course %>%
-  select(Type, Code, Letters) %>%
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  select(Code) %>%
-  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
-  select(`Student ID Number`, Code) %>%
-  group_by(`Student ID Number`) %>%
-  summarize(list_course = list(Code)) %>%
-  group_by()
+  
+  # Exclude 
+  filter(
+    Type != "Mandatory",              # (i) mandatory courses e.g. COR, CAP, etc
+    ! Letters %in% c("SKI", "PRO",    # (ii) skills & projects (taken by majority of students)
+                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad
+    ) %>%
+  
+  # Join with transcripts.
+  left_join(d_transcript, by = "Course ID") %>%
+  
+  # Create transactions (student level)
+  group_by(`Student ID`) %>%
+    summarize(list_course = list(`Course ID`)) %>%
+  ungroup
 
 transactions <- as(d_transactions$list_course, "transactions")
 ```
 
+## Apriori Algorithm
 We apply Apriori algorithm:
 ```{r}
 results <- apriori(
