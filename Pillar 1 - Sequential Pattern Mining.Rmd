@@ -508,14 +508,37 @@ It might be a nice idea to visualise using Sankey diagrams, although I don't kno
 #EXPERIMENTS:
 ##Condensing grades
 
+```{r, cache = TRUE}
+tmp_distributed_transcript <- d_transcript %>%
+  filter(!is.na(Grade), Grade>=0) %>%
+  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
+         Values = T)
+#This is the transcript with cumulative error gap.
+distributed_transcript <- spread(tmp_distributed_transcript, key = "Round_grade", value = Values #, fill = F
+               )%>%
+  mutate(g1  = g0|g1,
+         g2  = g1|g2,
+         g3  = g2|g3,
+         g4  = g3|g4,
+         g5  = g4|g5,
+         g6  = g5|g6,
+         g7  = g6|g7,
+         g8  = g7|g8,
+         g9  = g8|g9,
+         g10 = g9|g10,
+         ) %>%
+  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
+  select(-Gr_bool )%>%
+  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
+  select(-Trash) %>%
+  mutate(Grade= as.numeric(Grade_new))%>% #can put this into Grade and have just one grade value.
+  select(-Grade_new)%>%
+  arrange(`Course ID`, `Student ID`) 
+  
+```
+#Condensing grade
+
 ```{r}
-
-probabilities_manipulated <- d_transcript %>%
-  transmute(tmp_id=paste(`Student ID`,`Course ID`,Year_numerical,Period,`Number Repeated Attempt`,sep="_"),
-            Round_grade= round(Grade,0))
-student_set <- unique(probabilities_manipulated$tmp_id)
-
-for student %in% student_set
 
 ```
 
