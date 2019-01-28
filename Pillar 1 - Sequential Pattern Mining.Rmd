@@ -200,26 +200,8 @@ AR <- apriori(
 ```
 
 Now we include data for pass and fail:
-<<<<<<< HEAD
-```{r}
-d_transaction_passed <- d_course %>%
-  select(Type,`Course ID`, Letters) %>%
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  select(`Course ID`) %>%
-  left_join(d_transcript, by = "Course ID") %>%
-  mutate(Outcome = case_when(Grade=="NG"~"Fail",
-                             Grade > 5.5 ~"Pass",
-                             T~"Fail")) %>%
-  mutate(Item= paste(`Course ID`, Outcome, sep = "_")) %>%
-  select(`Student ID`, Item) %>%
-  group_by(`Student ID`) %>%
-  summarize(list_course = list(Item)) %>%
-  group_by()
-=======
+
 ```{r apriori PF}
->>>>>>> 79721cc591cd8396d6e83c9c8339a7940948aea4
 
 # creating vector of fail course
 course_id_fail <- d_transactions_PF %>%
