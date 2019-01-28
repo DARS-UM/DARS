@@ -20,7 +20,7 @@ load("Output/data_pillar_1.RDATA")
 ```
 
 Function that returns title of a course given its code.
-```{r}
+```{r function find_course}
 find_course <- function(code){ 
   
   dataset <- d_transcript %>%
@@ -101,7 +101,7 @@ item = course
 ## Creating Transactions
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
-```{r}
+```{r AR data prep 1}
 d_transactions <- d_course %>%
   
   # Exclude 
@@ -115,7 +115,7 @@ d_transactions <- d_course %>%
   inner_join(d_transcript, by = "Course ID")
 ```
 
-```{r AR data prep}
+```{r AR data prep 2}
 # Create transactions (student level)
 transactions <- d_transactions %>%
   group_by(`Student ID`) %>%
@@ -125,7 +125,7 @@ transactions <- d_transactions %>%
 transactions <- as(transactions$list_course, "transactions")
 ```
 
-```{r AR data prep PF}
+```{r AR data prep 3 (PF)}
 d_transactions_PF <- d_transactions %>%
   
   # Take outcome of course into account (pass or fail)
