@@ -93,7 +93,7 @@ d_transcript %>%
   provide_statistics()
 ```
 
-# Association Rules
+# Association Rules and Sequence Rules
 For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
 item = course
@@ -102,6 +102,14 @@ item = course
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
 ```{r AR data prep 1}
+
+#
+# Threshold: low vs high grade
+low_grade <- 6.5
+
+
+#
+# Transactions
 d_transactions <- d_course %>%
   
   # Exclude 
@@ -112,35 +120,138 @@ d_transactions <- d_course %>%
     ) %>%
   
   # Join with transcripts.
-  inner_join(d_transcript, by = "Course ID")
+  select(- Period) %>%
+  inner_join(d_transcript, by = "Course ID") %>%
+  
+  # Identifying sequences
+  rename(sequenceID = `Student ID`) %>%
+  
+  # Identifying time of event (sequence)
+  mutate(
+    Period  = substr(Period, 1, 1),
+    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
+    ) %>%
+
+  # Identifying item
+  mutate(
+    PF = case_when( Grade <  5.5 ~ "fail",
+                    Grade >= 5.5 ~ "pass"),
+    HL = case_when( Grade <  low_grade ~ "low",
+                    Grade >= low_grade ~ "high"),
+    
+    item_PF = paste(`Course ID`, PF, sep = "_"),
+    item_HL = paste(`Course ID`, HL, sep = "_")
+    ) %>%
+  rename(
+    item = `Course ID`
+  )
 ```
 
+### Transactions for Apriori
 ```{r AR data prep 2}
-# Create transactions (student level)
 transactions <- d_transactions %>%
-  group_by(`Student ID`) %>%
-    summarize(list_course = list(`Course ID`)) %>%
+  group_by(
+    sequenceID
+    ) %>%
+  summarize(
+    list_item = list(item)
+    ) %>%
   ungroup
 
-transactions <- as(transactions$list_course, "transactions")
+transactions <- as(transactions$list_item, "transactions")
 ```
 
 ```{r AR data prep 3 (PF)}
-d_transactions_PF <- d_transactions %>%
-  
-  # Take outcome of course into account (pass or fail)
-  mutate(PF = case_when(Grade <  5.5 ~ "fail",
-                        Grade >= 5.5 ~ "pass"),
-         `Course ID` = paste(`Course ID`, PF, sep = "_"))
-  
-  # Create transactions with pass/fail
-transactions_PF <- d_transactions_PF %>%
-  group_by(`Student ID`) %>%
-    summarize(list_course = list(`Course ID`)) %>%
+transactions_PF <- d_transactions %>%
+  group_by(
+    sequenceID
+    ) %>%
+  summarize(
+    list_item = list(item_PF)
+    ) %>%
   ungroup
 
-transactions_PF <- as(transactions_PF$list_course, "transactions")
+transactions_PF <- as(transactions_PF$list_item, "transactions")
 ```
+
+```{r AR data prep 4 (HL)}
+transactions_HL <- d_transactions %>%
+  group_by(
+    sequenceID
+    ) %>%
+  summarize(
+    list_item = list(item_HL)
+    ) %>%
+  ungroup
+
+transactions_HL <- as(transactions_HL$list_item, "transactions")
+```
+
+
+### Sequences for CSPADE
+```{r}
+sequences_temp <- d_transactions %>%
+  group_by(
+    sequenceID,
+    eventID
+    ) %>%
+  summarize(
+    list_item = list(item)
+    ) %>%
+  arrange(
+    sequenceID,
+    eventID
+    )
+
+sequences             <- as(sequences_temp$list_item, "transactions")
+sequences@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
+
+#checking results
+#inspect(head(sequences, 10))
+```
+
+```{r}
+sequences_temp <- d_transactions %>%
+  group_by(
+    sequenceID,
+    eventID
+    ) %>%
+  summarize(
+    list_item = list(item_PF)
+    ) %>%
+  arrange(
+    sequenceID,
+    eventID
+    )
+
+sequences_PF             <- as(sequences_temp$list_item, "transactions")
+sequences_PF@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
+
+#checking results
+#inspect(head(sequences_PF, 10))
+```
+
+```{r}
+sequences_temp <- d_transactions %>%
+  group_by(
+    sequenceID,
+    eventID
+    ) %>%
+  summarize(
+    list_item = list(item_HL)
+    ) %>%
+  arrange(
+    sequenceID,
+    eventID
+    )
+
+sequences_HL             <- as(sequences_temp$list_item, "transactions")
+sequences_HL@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
+
+#checking results
+#inspect(head(sequences_HL, 10))
+```
+
 
 ## Apriori Algorithm
 ```{r}
@@ -173,7 +284,6 @@ clean_AR <- function(AR){
   
 }
 ```
-
 
 We apply Apriori algorithm:
 ```{r AR apriori}
@@ -251,7 +361,9 @@ data_rules %>%
   arrange(desc(lift))
 ```
 
-#Mining-sequences:
+
+## CSPADE Algorithm
+
 The parameter values are: 
 support:  a numeric value specifying the minimum support of a sequence (default 0.1, range [0,1]).
 maxsize:  an integer value specifying the maximum number of items of an element of a sequence (default 10, range > 0).
@@ -260,83 +372,6 @@ mingap:   an integer value specifying the minimum time difference between consec
 maxgap:   an integer value specifying the maximum time difference between consecutive elements of a sequence (default none, range >= 0).
 maxwin:   an integer value specifying the maximum time difference between any two elements of a sequence (default none, range >= 0).
 
-##Preparing data frame:
-```{r}
-fail_threshold <- 6.5
-
-category <-quo(Low_grade) #Outcome or Low_grade or Discrete_grade or #None
-
-#this is new-----
-transcript_to_use <- quo(distributed_transcript) #d_transcript or distributed_transcript 
-#----------------
-d_sequence_transactions <- d_course %>%
-  
-  select(Type, `Course ID`, Letters) %>%
-  
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  
-  select(`Course ID`) %>%
-  
-  left_join(d_transcript, by = "Course ID") %>%
-  # filter(!is.na(Grade)) %>% #remove NaN
-  # filter(Grade != -1) %>% #remove NG
-  mutate(
-    Outcome = 
-           case_when( Grade == -1   ~"Fail", #if we don't do this NG satisfies the condition for pass v
-                      Grade  > 5.5 ~"Pass",
-                               T~"Fail"),
-    Low_grade =
-           case_when(Grade == -1 ~"low score", #if we don't do this NG satisfies the condition for pass v
-                      Grade > fail_threshold ~"high score",
-                               T~"low score"),
-    Discrete_grade =
-           case_when(Grade <= 5.4             ~ 5.0,
-                     between(Grade, 5.5, 6.4) ~ 6.0,
-                     between(Grade, 6.5, 7.4) ~ 7.0,
-                     between(Grade, 7.5, 8.4) ~ 8.0,
-                     between(Grade, 8.5, 9.4) ~ 9.0,
-                     Grade >= 9.5             ~ 10.0,
-                     T ~ -99999    #this is a control, we should not have any grades here
-                     ),
-    None= "" # this might not be optimal
-         ) %>%
-  
-  mutate(Item = paste(`Course ID`, !!category, sep = "_")) %>% #Change for Outcome/Low_grade/Discrete_grade
-  
-  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
-  
-  mutate( Time = paste(Year_numerical, Period, sep = ""),
-          Time = as.double(Time)) %>%
-  
-  select(`Student ID`, Item, Time) %>%
-  
-  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  
-  group_by(`Student ID`, Time) %>%
-  
-  summarize(list_course = list(Item)) %>%
-  
-  mutate(TransactionID = paste(`Student ID`, Time, sep = "_"))
-
-```
-
-##to transaction
-```{r}
-transaction_list_course <- d_sequence_transactions$list_course
-names(transaction_list_course) <- d_sequence_transactions$TransactionID
-
-transactions <- as(transaction_list_course, "transactions")
-transactionInfo(transactions)$sequenceID <- d_sequence_transactions$`Student ID`
-transactionInfo(transactions)$eventID <- d_sequence_transactions$Time
-transactionInfo(transactions)$transactionID <- NULL
-
-#checking results
-as(transactions, "data.frame")
-```
-
-##Rule induction
 ##Creating look-up table
 ```{r}
 lookup_table <- d_course %>%
