@@ -102,20 +102,18 @@ item = course
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
 ```{r}
-
 d_transactions <- d_course %>%
   
   # Exclude 
   filter(
     Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
     ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
-                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad
+                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
     ) %>%
   
   # Join with transcripts.
   inner_join(d_transcript, by = "Course ID")
 ```
-
 
 ```{r AR data prep}
 # Create transactions (student level)
@@ -135,7 +133,7 @@ d_transactions_PF <- d_transactions %>%
                         Grade >= 5.5 ~ "pass"),
          `Course ID` = paste(`Course ID`, PF, sep = "_"))
   
-  # Create transactions (student level)
+  # Create transactions with pass/fail
 transactions_PF <- d_transactions_PF %>%
   group_by(`Student ID`) %>%
     summarize(list_course = list(`Course ID`)) %>%
@@ -145,15 +143,44 @@ transactions_PF <- as(transactions_PF$list_course, "transactions")
 ```
 
 ## Apriori Algorithm
+```{r}
+clean_AR <- function(AR){
+  
+  AR %>%
+    as("data.frame") %>%
+    filter(
+      count >= 1
+    ) %>%
+    mutate(
+      rules = str_remove(rules, pattern = "_fail"),
+      lhs = substr(rules, 2, 8),
+      rhs = substr(rules, 15, 21),
+      `rhs.support` = confidence / lift
+      ) %>%
+    mutate_at(
+      c("support", "lhs.support", "confidence", "rhs.support", "lift"),
+      funs(round(., 5))
+      ) %>%
+    select(
+      lhs, rhs,
+      support, count, lhs.support,
+      confidence, rhs.support,
+      lift
+      ) %>%
+    arrange(
+      desc(count)
+    )
+  
+}
+```
+
+
 We apply Apriori algorithm:
 ```{r AR apriori}
-
-# TODO: conmpute support RHS
-
 AR <- apriori(
   data = transactions, 
   parameter = list(
-    supp = 0, # min support
+    supp = 0,    # min support
     smax = 1,    # max support
     conf = 0,    # min confidence
     minlen = 2,  # min length of rule
@@ -166,11 +193,10 @@ AR <- apriori(
   appearance = NULL,
   control = list(
     verbose = FALSE
-  )
+    )
   ) %>%
-  inspect 
+  clean_AR
 
-colnames(AR)[2] <- "=>"
 ```
 
 Now we include data for pass and fail:
@@ -202,9 +228,7 @@ AR_PF <- apriori(
     verbose = FALSE
     )
   ) %>%
-  inspect 
-
-colnames(AR_PF)[2] <- "=>"
+  clean_AR
 ```
 
 ```{r AR exploration}
