@@ -199,10 +199,7 @@ AR <- apriori(
 
 ```
 
-Now we include data for pass and fail:
-
 ```{r apriori PF}
-
 # creating vector of fail course
 course_id_fail <- d_transactions_PF %>%
   filter(PF == "fail") %>%
