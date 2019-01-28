@@ -364,16 +364,8 @@ data_rules %>%
 
 ## CSPADE Algorithm
 
-The parameter values are: 
-support:  a numeric value specifying the minimum support of a sequence (default 0.1, range [0,1]).
-maxsize:  an integer value specifying the maximum number of items of an element of a sequence (default 10, range > 0).
-maxlen:   an integer value specifying the maximum number of elements of a sequence (default 10, range > 0).
-mingap:   an integer value specifying the minimum time difference between consecutive elements of a sequence (default none, range >= 1).
-maxgap:   an integer value specifying the maximum time difference between consecutive elements of a sequence (default none, range >= 0).
-maxwin:   an integer value specifying the maximum time difference between any two elements of a sequence (default none, range >= 0).
-
-##Creating look-up table
 ```{r}
+<<<<<<< HEAD
 lookup_table <- d_course %>%
   
   select(Type, `Course ID`, Letters) %>%
@@ -443,12 +435,28 @@ string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
 frequent_trajectories <- cspade(sequences, parameter = list(support = 0,
                                                                maxsize = 1,
                                                                maxlen = 2), control   = list(verbose = TRUE))
+=======
+subsequences <- sequences %>%
+  cspade(
+    parameter = list(
+      support = 0, # min support of a sequence
+      maxsize = 1, # max number of items of an element of a sequence
+      maxlen  = 2, # max number of element of a sequence
+      mingap  = 1, # min time difference between consecutive element of a sequence
+      maxgap  = 1e4, # max time difference between consecutive element of a sequence
+      maxwin  = 1e4  # max time difference between any two elements of a sequence
+      ),
+    control = list(
+      verbose = FALSE
+      )
+    )
+>>>>>>> cd3b80a5ba609cf9b69c04544af975694a6bd136
 
 #Inspect results CSPADE
-summary(frequent_trajectories)
-as(frequent_trajectories, "data.frame")
-
+summary(subsequences)
+as(subsequences, "data.frame")
 ```
+
 ##rule induction:
 ```{r}
 rules <- ruleInduction(frequent_trajectories,
@@ -779,6 +787,10 @@ sequence_rules <- pass_rules_df %>%
   
   # Compute statistics
   group_by(LHS,`RHS Course ID`) %>%
+<<<<<<< HEAD
+=======
+  arrange(LHS,`RHS Course ID`) %>%
+>>>>>>> cd3b80a5ba609cf9b69c04544af975694a6bd136
   mutate(
     Prob_both = sum(support))%>%
   ungroup()%>%

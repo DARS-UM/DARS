@@ -489,9 +489,9 @@ d_transcript <- d_transcript %>%
 Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes (the correspondance between calendars was given to us by R. Vos) and save it under a variable `Period`. We also create another variable:
 ```{r}
 d_transcript <- d_transcript %>%
-  mutate(Period = case_when(Period == 1 ~ "1 to 6"  ,
-                            Period == 2 ~ "1 to 3"  ,
-                            Period == 3 ~ "4 to 6"  ,
+  mutate(Period = case_when(Period == 1   ~ "1 to 6"  ,
+                            Period == 2   ~ "1 to 3"  ,
+                            Period == 3   ~ "4 to 6"  ,
                             Period == 680 ~ "5"     , # exception
                             Period == 350 ~ "3 to 5", # exception
                             Period == 403 ~ "4 to 5", # exception
@@ -502,7 +502,8 @@ d_transcript <- d_transcript %>%
                             between(Period, 400, 499) ~ "4",
                             between(Period, 500, 599) ~ "5",
                             between(Period, 600, 660) ~ "6",
-                            between(Period, 901, 999) ~ "1")) %>%
+                            between(Period, 901, 999) ~ "1")
+         ) %>%
   mutate(`Academic Year`= paste(Year_numerical, Year_numerical + 1, sep = "-"))
 ```
 
