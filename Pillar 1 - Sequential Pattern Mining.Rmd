@@ -440,7 +440,7 @@ string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
 ```
 ##CSPADE Algorithm:
 ```{r}
-frequent_trajectories <- cspade(transactions, parameter = list(support = 0,
+frequent_trajectories <- cspade(sequences, parameter = list(support = 0,
                                                                maxsize = 1,
                                                                maxlen = 2), control   = list(verbose = TRUE))
 
@@ -596,6 +596,7 @@ distributed_transcript <- spread(tmp_distributed_transcript, key = "Round_grade"
   
 ```
 
+Excluding manatory courses.
 ```{r}
 
 tmp_distributed_transcript <- d_course %>%
@@ -767,6 +768,7 @@ lookup_table <- d_course %>%
 
 
 ```{r}
+category
 n_students <- length(unique(d_sequence_transactions$`Student ID`))
 
 sequence_rules <- pass_rules_df %>%
@@ -777,16 +779,16 @@ sequence_rules <- pass_rules_df %>%
   
   # Compute statistics
   group_by(LHS,`RHS Course ID`) %>%
-  arrange(LHS,`RHS Course ID`)
   mutate(
-    Prob_both = sum(support), 
+    Prob_both = sum(support))%>%
+  ungroup()%>%
+  mutate( 
     Conf_corr = support/Prob_both,
     n_rule    = support * n_students,
     n_both    = Prob_both * n_students,
     lift_diff = Conf_corr - Prop_low,
     lift_corr = Conf_corr / Prop_low
-    ) %>%
-  ungroup() %>%
+    )
   
   # Filter and edit output
   filter(str_detect(`RHS Score`, pattern = "low"),
