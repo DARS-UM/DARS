@@ -534,7 +534,7 @@ print(d_transcript)
 
 # Save Data
 ```{r}
-save(lists, d_course, d_AoD, d_assessment, d_transcript,
+save(d_course, d_transcript,
      file = "Output/data_pillar_1.RDATA")
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
      d_overview, d_description, d_manual,

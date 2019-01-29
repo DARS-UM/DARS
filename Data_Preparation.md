@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-01-28
+2019-01-29
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -850,9 +850,9 @@ Each faculty had a different code for their calendars, we want to standardise th
 
 ``` r
 d_transcript <- d_transcript %>%
-  mutate(Period = case_when(Period == 1 ~ "1 to 6"  ,
-                            Period == 2 ~ "1 to 3"  ,
-                            Period == 3 ~ "4 to 6"  ,
+  mutate(Period = case_when(Period == 1   ~ "1 to 6"  ,
+                            Period == 2   ~ "1 to 3"  ,
+                            Period == 3   ~ "4 to 6"  ,
                             Period == 680 ~ "5"     , # exception
                             Period == 350 ~ "3 to 5", # exception
                             Period == 403 ~ "4 to 5", # exception
@@ -863,7 +863,8 @@ d_transcript <- d_transcript %>%
                             between(Period, 400, 499) ~ "4",
                             between(Period, 500, 599) ~ "5",
                             between(Period, 600, 660) ~ "6",
-                            between(Period, 901, 999) ~ "1")) %>%
+                            between(Period, 901, 999) ~ "1")
+         ) %>%
   mutate(`Academic Year`= paste(Year_numerical, Year_numerical + 1, sep = "-"))
 ```
 
@@ -914,7 +915,7 @@ Save Data
 =========
 
 ``` r
-save(lists, d_course, d_AoD, d_assessment, d_transcript,
+save(d_course, d_transcript,
      file = "Output/data_pillar_1.RDATA")
 save(lists, d_course, d_AoD, d_assessment, d_transcript,
      d_overview, d_description, d_manual,
