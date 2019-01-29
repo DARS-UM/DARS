@@ -106,7 +106,7 @@ For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
 item = course
 
-## Creating Transactions
+## Data Prep: Creating Transactions and Sequences
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
 ```{r AR data prep 1}
@@ -193,6 +193,8 @@ transactions_HL <- make_transaction(item = item_HL)
 #
 # Checking transactions
 inspect(head(transactions, 10))
+
+rm(make_transaction)
 ```
 
 ### Sequences for CSPADE
@@ -243,11 +245,18 @@ sequences_HL <- make_sequence(item = item_HL)
 #
 # Checking sequences
 inspect(head(sequences, 10))
+
+
+rm(make_transaction)
 ```
 
 
-## Apriori Algorithm
+## Mining Rules
+
+### Apriori Algorithm
 ```{r}
+
+# Transform AR from apriori into a readable data frame
 clean_AR <- function(AR){
   
   AR %>%
@@ -257,6 +266,7 @@ clean_AR <- function(AR){
     ) %>%
     mutate(
       rules = str_remove(rules, pattern = "_fail"),
+      rules = str_remove(rules, pattern = "_low"),
       lhs = substr(rules, 2, 8),
       rhs = substr(rules, 15, 21),
       `rhs.support` = confidence / lift
@@ -280,78 +290,68 @@ clean_AR <- function(AR){
 
 We apply Apriori algorithm:
 ```{r AR apriori}
-AR <- apriori(
-  data = transactions, 
-  parameter = list(
-    supp = 0,    # min support
-    smax = 1,    # max support
-    conf = 0,    # min confidence
-    minlen = 2,  # min length of rule
-    maxlen = 2,  # max length of rule
-    ext = TRUE,
-    arem = "diff",
-    aval = TRUE,
-    minval = 0
-    ),
-  appearance = NULL,
-  control = list(
-    verbose = FALSE
-    )
-  ) %>%
-  clean_AR
 
-```
+# Run the apriori algorithm with desired parameters
+my_apriori <- function(data, appearance = NULL){
+  
+  data %>%
+    apriori(
+      parameter = list(
+        supp = 0,    # min support
+        smax = 1,    # max support
+        conf = 0,    # min confidence
+        minlen = 2,  # min length of 
+        maxlen = 2,  # max length of rule
+        ext = TRUE,
+        arem = "diff",
+        aval = TRUE,
+        minval = 0
+        ),
+      appearance = appearance,
+      control = list(
+        verbose = FALSE
+        )
+      ) %>%
+    clean_AR
+  
+}
 
-```{r apriori PF}
+
+#
+# Generating asocciation rules
+AR <- my_apriori(transactions)
+
 # creating vector of fail course
-course_id_fail <- d_transactions_PF %>%
+course_id_fail <- d_transactions %>%
   filter(PF == "fail") %>%
-  distinct(`Course ID`)
+  distinct(`item_PF`)
 
-# Apply apriori
-AR_PF <- apriori(
-  data = transactions_PF, 
-  parameter = list(
-    supp = 0, # min support
-    smax = 1,    # max support
-    conf = 0,    # min confidence
-    minlen = 2,  # min length of rule
-    maxlen = 2,  # max length of rule
-    ext = TRUE,
-    arem = "diff",
-    aval = TRUE,
-    minval = 0
-    ),
-  appearance = list(
-    both = course_id_fail$`Course ID` # only include rules with fail on LHS and RHS
-    ),
-  control = list(
-    verbose = FALSE
-    )
-  ) %>%
-  clean_AR
-```
+AR_PF <- my_apriori(transactions_PF,
+                    appearance = list(both = course_id_fail$`item_PF`))
 
-```{r AR exploration}
+# creating vector of fail course
+course_id_low <- d_transactions %>%
+  filter(HL == "low") %>%
+  distinct(`item_HL`)
+
+AR_HL <- my_apriori(transactions_HL,
+                    appearance = list(both = course_id_low$`item_HL`))
+
+
+#
+# Save association rules
+save(AR, AR_PF, AR_HL,
+     file = "Output/AS.RDATA")
 
 # TODO: MAKE APP
 
-data_rules <- AR
-data_rules <- AR_PF
 
-# Best support
-data_rules %>%
-  arrange(desc(support))
 
-# Best confidence
-data_rules %>%
-  filter(count >= 5) %>%
-  arrange(desc(confidence))
+rm(clean_AR, my_apriori,
+   transactions, transactions_PF, transactions_HL,
+   course_id_fail, course_id_low
+   AR, AR_PF, AR_HL)
 
-# Best lift
-data_rules %>%
-  filter(count >= 5) %>%
-  arrange(desc(lift))
 ```
 
 
