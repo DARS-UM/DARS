@@ -157,6 +157,7 @@ d_transactions <- d_course %>%
   )
 ```
 
+
 ### Transactions for Apriori
 ```{r making transactions}
 
@@ -355,7 +356,7 @@ rm(clean_AR, my_apriori,
 ```
 
 
-## CSPADE Algorithm
+### CSPADE Algorithm
 
 ```{r}
 
