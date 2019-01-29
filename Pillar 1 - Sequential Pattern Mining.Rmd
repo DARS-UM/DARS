@@ -156,6 +156,26 @@ d_transactions <- d_course %>%
     item = `Course ID`
   )
 ```
+### SOFIA---Take not take courses
+```{r}
+#item and sequenceID
+
+d_transactions_tmp <- expand.grid(sequenceID = unique(d_transactions$sequenceID),item = unique(d_transactions$item)) %>%
+  left_join(d_transactions, by = c("sequenceID","item")) %>%
+  mutate(
+    Taken= case_when(
+     is.na(Grade)  ~ "not taken",
+      T             ~ "taken"),
+    item_Taken= paste(item,Taken, sep = "_")
+     )
+
+#ARRANGE PROPERLY
+
+d_transactions <- d_transactions_tmp
+
+rm(d_transactions_tmp)
+```
+
 
 ### Transactions for Apriori
 ```{r making transactions}
@@ -185,14 +205,14 @@ make_transaction <- function(data = d_transactions, item = item){
 
 #
 # Making transactions
-transactions    <- make_transaction(item = item   )
-transactions_PF <- make_transaction(item = item_PF)
-transactions_HL <- make_transaction(item = item_HL)
-
+transactions       <- make_transaction(item = item   )
+transactions_PF    <- make_transaction(item = item_PF)
+transactions_HL    <- make_transaction(item = item_HL)
+transactions_Taken <- make_transaction(item=item_Taken)
 
 #
 # Checking transactions
-inspect(head(transactions, 10))
+#inspect(head(transactions, 10))
 
 rm(make_transaction)
 ```
@@ -244,10 +264,10 @@ sequences_HL <- make_sequence(item = item_HL)
 
 #
 # Checking sequences
-inspect(head(sequences, 10))
+#inspect(head(sequences, 10))
 
 
-rm(make_transaction)
+rm(make_sequence)
 ```
 
 
@@ -265,22 +285,23 @@ clean_AR <- function(AR){
       count >= 1
     ) %>%
     mutate(
-      rules = str_remove(rules, pattern = "_fail"),
-      rules = str_remove(rules, pattern = "_low"),
-      lhs = substr(rules, 2, 8),
-      rhs = substr(rules, 15, 21),
+      rules = str_remove(rules, pattern = "[{]"),
+      rules = str_remove(rules, pattern = "[}]"),
+      rules = str_remove(rules, pattern = "[{]"),
+      rules = str_remove(rules, pattern = "[}]"), #this is needed 4 times, because it only removes the first instance
       `rhs.support` = confidence / lift
-      ) %>%
+    ) %>%
+    separate(rules, into = c("lhs", "rhs"), sep="=>") %>%
     mutate_at(
       c("support", "lhs.support", "confidence", "rhs.support", "lift"),
       funs(round(., 5))
-      ) %>%
+    ) %>%
     select(
       lhs, rhs,
       support, count, lhs.support,
       confidence, rhs.support,
       lift
-      ) %>%
+    ) %>%
     arrange(
       desc(count)
     )
@@ -329,7 +350,7 @@ course_id_fail <- d_transactions %>%
 AR_PF <- my_apriori(transactions_PF,
                     appearance = list(both = course_id_fail$`item_PF`))
 
-# creating vector of fail course
+# creating vector of low score course
 course_id_low <- d_transactions %>%
   filter(HL == "low") %>%
   distinct(`item_HL`)
@@ -338,9 +359,13 @@ AR_HL <- my_apriori(transactions_HL,
                     appearance = list(both = course_id_low$`item_HL`))
 
 
+
+AR_Taken <- my_apriori(transactions_Taken)
+
+
 #
 # Save association rules
-save(AR, AR_PF, AR_HL,
+save(AR, AR_PF, AR_HL, AR_Taken,
      file = "Output/AS.RDATA")
 
 # TODO: MAKE APP
@@ -349,8 +374,8 @@ save(AR, AR_PF, AR_HL,
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
-   course_id_fail, course_id_low
-   AR, AR_PF, AR_HL)
+   course_id_fail, course_id_low,
+   AR, AR_PF, AR_HL, AR_Taken)
 
 ```
 
@@ -516,273 +541,22 @@ distributed_transcript <- d_transcript %>%
   #arrange(`Student ID`, `Course ID`) 
 ```
 
-#TRASH:
-##Condensing grades
-
-```{r}
-tmp_distributed_transcript <- d_transcript %>%
-  filter(!is.na(Grade), Grade>=0) %>%
-  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
-         Values = T)
-#This is the transcript with cumulative error gap.
-distributed_transcript <- spread(tmp_distributed_transcript, key = "Round_grade", value = Values #, fill = F
-               )%>%
-  mutate(g1  = g0|g1,
-         g2  = g1|g2,
-         g3  = g2|g3,
-         g4  = g3|g4,
-         g5  = g4|g5,
-         g6  = g5|g6,
-         g7  = g6|g7,
-         g8  = g7|g8,
-         g9  = g8|g9,
-         g10 = g9|g10,
-         ) %>%
-  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
-  select(-Gr_bool )%>%
-  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
-  select(-Trash) %>%
-  mutate(Grade= as.numeric(Grade_new))%>%
-  select(-Grade_new)%>%
-  filter(!str_detect(Period, " to "))%>% #Crutch FILTER
-  mutate(Item=paste(`Course ID`,Grade, sep="_"))%>%
-  mutate( Time = paste(Year_numerical, Period, sep = ""),
-          Time = as.double(Time))%>%
-  select(`Student ID`, Item, Time) %>%
-  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  group_by(`Student ID`, Time) %>%
-  summarize(list_course = list(Item)) %>%
-  mutate(TransactionID = paste(`Student ID`, Time, sep = "_"))
-
-
-  
-```
-
-Excluding manatory courses.
-```{r}
-
-tmp_distributed_transcript <- d_course %>%
-  select(`Course ID`, Type, Letters)   %>%
-  # Exclude 
-  filter(
-    Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
-    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
-                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
-    ) %>%
-  
-  # Join with transcripts.
-  inner_join(d_transcript, by = "Course ID") %>%
-  filter(!is.na(Grade), Grade>=0)            %>%
-  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
-         Values = T)
-#This is the transcript with cumulative error gap.
-
-distributed_transcript <- spread(tmp_distributed_transcript, key = "Round_grade", value = Values #, fill = F
-               ) %>%
-  mutate(g1  = g0|g1,
-         g2  = g1|g2,
-         g3  = g2|g3,
-         g4  = g3|g4,
-         g5  = g4|g5,
-         g6  = g5|g6,
-         g7  = g6|g7,
-         g8  = g7|g8,
-         g9  = g8|g9,
-         g10 = g9|g10,
-         ) %>%
-  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
-  select(-Gr_bool )%>%
-  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
-  select(-Trash) %>%
-  mutate(Grade= as.numeric(Grade_new))%>%
-  select(-Grade_new)%>%
-  filter(!str_detect(Period, " to "))%>% #Crutch FILTER
-  mutate(Item=paste(`Course ID`,Grade, sep="_"))%>%
-  mutate( Time = paste(Year_numerical, Period, sep = ""),
-          Time = as.double(Time))%>%
-  select(`Student ID`, Item, Time) %>%
-  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  group_by(`Student ID`, Time) %>%
-  summarize(list_course = list(Item)) %>%
-  mutate(TransactionID = paste(`Student ID`, Time, sep = "_"))
-
-```
-
-
-
-
-
-#puting everything into quasi-function
---------------------------------------------------
-##to transaction
-```{r}
-transaction_list_course <- distributed_transcript$list_course
-names(transaction_list_course) <- distributed_transcript$TransactionID
-
-transactions <- as(transaction_list_course, "transactions")
-transactionInfo(transactions)$sequenceID <- distributed_transcript$`Student ID`
-transactionInfo(transactions)$eventID <- distributed_transcript$Time
-transactionInfo(transactions)$transactionID <- NULL
-
-#checking results
-as(transactions, "data.frame")
-```
-
-##Create filter condition.
-```{r}
-# string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
-#                            quo_name(category)=="Low_grade"      ~ "low score",
-#                            quo_name(category)=="Discrete_grade" ~ "5",
-#                            quo_name(category)=="None"           ~ "_" #useless filter
-#                            )
-```
-##CSPADE Algorithm:
-
-```{r}
-frequent_trajectories <- cspade(transactions, parameter = list(support = 0.1,
-                                                               maxsize = 1,
-                                                               maxlen = 2 #,
-                                                               #mingap=, #gap between consecutive elements
-                                                               #maxgap=, #hap between consecutive elements
-                                                               #maxwin=  #gap between ANY two elements
-                                                                 ), control   = list(verbose = TRUE))
-
-#Inspect results CSPADE
-summary(frequent_trajectories)
-as(frequent_trajectories, "data.frame")
-
-```
-##rule induction:
-```{r}
-rules <- ruleInduction(frequent_trajectories,
-                       confidence = 0, #we need to play with the parameters.
-                       control    = list(verbose = TRUE))
-
-
-pass_rules_df <- as(rules, "data.frame") %>%
-  
-  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
-  
-  #filter(str_detect(RHS, string_filter)) %>% #FILTER (YES) --> uncomment, (NO)-->comment
-  
-  arrange(
-    LHS, RHS,
-    desc(confidence), desc(lift))
-
-support(frequent_trajectories,transactions, control=list(verbose=T))
-
-```
-here I'l playing around with the correct confidence:
-
-#correcting lookup for this case:
-First we find out raw proportions per course (how many were low grade/high grade, out of a particular course, and the percentage this represents from the total)
-```{r}
-lookup_table <- d_course %>%
-  
-  select(Type, `Course ID`, Letters) %>%
-  
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  
-  select(`Course ID`) %>%
-  
-  left_join(d_transcript, by = "Course ID") %>%
-  mutate(
-    Outcome = 
-           case_when( Grade == -1   ~"Fail", #if we don't do this NG satisfies the condition for pass v
-                      Grade  > 5.5 ~"Pass",
-                               T~"Fail"),
-    Low_grade =
-           case_when(Grade == -1 ~"low score", #if we don't do this NG satisfies the condition for pass v
-                      Grade > fail_threshold ~"high score",
-                               T~"low score"),
-    Discrete_grade =
-           case_when(Grade <= 5.4             ~ 5.0,
-                     between(Grade, 5.5, 6.4) ~ 6.0,
-                     between(Grade, 6.5, 7.4) ~ 7.0,
-                     between(Grade, 7.5, 8.4) ~ 8.0,
-                     between(Grade, 8.5, 9.4) ~ 9.0,
-                     Grade >= 9.5             ~ 10.0,
-                     T ~ -99999    #this is a control, we should not have any grades here
-                     ),
-    None= "" # this might not be optimal
-         ) %>%
-  
-  #mutate(Item = paste(`Course ID`, !!category, sep = "_")) %>% #Change for Outcome/Low_grade/Discrete_grade
-  
-  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
-  
-  mutate( Time = paste(Year_numerical, Period, sep = ""),
-          Time = as.double(Time)) %>%
-  
-  select(`Student ID`, #Item,  #************************************ <- 
-         `Course ID`, !!category, Time) %>% # Course ID and Time may not be necessary
-  
-  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  
-  group_by(`Course ID`, !!category) %>% ##this makes no sense we should just group id and low_grade
-  
-  summarize(Count = n()) %>%
-  #separate(Item, into= c("Course ID", quo_name(category)), sep="_", remove = F) %>%
-  ungroup() %>%
-  group_by(`Course ID`) %>%
-  mutate(Total= sum(Count))%>%
-  filter(Low_grade=="low score")%>%
-  mutate(Prop_low= Count/Total)
-```
-
-
-```{r}
-category
-n_students <- length(unique(d_sequence_transactions$`Student ID`))
-
-sequence_rules <- pass_rules_df %>%
-  separate(LHS, into=c("LHS Course ID", "LHS Score"), sep="_", remove= FALSE) %>%
-  separate(RHS, into=c("RHS Course ID", "RHS Score"), sep="_", remove= FALSE) %>%
-  mutate(`RHS Course ID`= substr(`RHS Course ID`, start=4, stop=10))%>% #add more
-  left_join(lookup_table, by = c("RHS Course ID"="Course ID")) %>%
-  
-  # Compute statistics
-  group_by(LHS,`RHS Course ID`) %>%
-  mutate(
-    Prob_both = sum(support))%>%
-  ungroup()%>%
-  mutate( 
-    Conf_corr = support/Prob_both,
-    n_rule    = support * n_students,
-    n_both    = Prob_both * n_students,
-    lift_diff = Conf_corr - Prop_low,
-    lift_corr = Conf_corr / Prop_low
-    )
-  
-  # Filter and edit output
-  filter(str_detect(`RHS Score`, pattern = "low"),
-         str_detect(`LHS Score`, pattern = "low"),
-         n_rule >= 5,
-         Conf_corr > 0.2) %>%
-  select(LHS, RHS, support, n_rule, Prob_both, n_both, Prop_low, Conf_corr, lift_corr, lift_diff) %>%
-  mutate(support = round(support,3),
-         Prob_both =round(Prob_both,3),
-         Prop_low =round(Prop_low,3),
-         Conf_corr= round(Conf_corr,3),
-         lift_diff= round(lift_diff,3),
-         lift_corr= round(lift_corr,3)) %>%
-  arrange(lift_diff)
-
-```
-
-
+##Not ready to move up:
 ##Puting students into take and not take. 
 ```{r}
 #This df has 731,676 rows:
 test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`= unique(d_course$`Course ID`)) %>%
   left_join(d_transcript, by=c("Course ID", "Student ID")) %>%
+  filter(
+     Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
+    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
+                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
+  )%>%
   select(`Course ID`, `Student ID`, Grade, Year_numerical, Period) %>%
   mutate(
     take_course = case_when(
-      is.na(Grade)  ~ FALSE,
-      T             ~ TRUE
+      is.na(Grade)  ~ "not taken",
+      T             ~ "taken"
       ),
      PFN = case_when(
        is.na(Grade)  ~ "not",
@@ -793,21 +567,67 @@ test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`=
     )
 
 
-table(test$PFN)
-
 ```
 
 ```{r}
-test %>%
+trans <- test %>%
  mutate(
     Period  = substr(Period, 1, 1),
-    eventID = as.numeric(paste(Year_numerical, Period, sep = "")),
-    Item = paste(`Course ID`,Grade, sep="_")
+    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
     ) %>%
-  select(`Student ID`, Item, eventID) %>%
-  arrange(`Student ID`, eventID) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  group_by(`Student ID`, Time) %>%
-  summarize(list_course = list(Item)) %>%
-  mutate(TransactionID = paste(`Student ID`, Time, sep = "_"))
+   rename(sequenceID = `Student ID`)%>%
+  select(sequenceID, eventID, Item) %>%
+  make_transaction(item=Item)
+
+
+
+
+  
 ```
+
+
+
+```{r}
+# Run the apriori algorithm with desired parameters
+my_apriori <- function(data, appearance = NULL){
+  
+  data %>%
+    apriori(
+      parameter = list(
+        supp = 0,    # min support
+        smax = 1,    # max support
+        conf = 0,    # min confidence
+        minlen = 2,  # min length of 
+        maxlen = 2,  # max length of rule
+        ext = TRUE,
+        arem = "diff",
+        aval = TRUE,
+        minval = 0
+        ),
+      appearance = appearance,
+      control = list(
+        verbose = FALSE
+        )
+      ) #%>%
+    #clean_AR
+  
+}
+
+
+#
+# Generating asocciation rules
+AR <- my_apriori(trans)
+
+
+AR %>%
+    as("data.frame") %>%
+    filter(
+      count >= 1
+    )
+
+# TODO: MAKE APP
+
+```
+```
+
 
