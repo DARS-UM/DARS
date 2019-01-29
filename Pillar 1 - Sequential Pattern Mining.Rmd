@@ -56,41 +56,49 @@ provide_statistics <- function(data){
 }
 
 # Student level
-d_transcript %>%
+statistics_student <- d_transcript %>%
   group_by(`Student ID`) %>%
   provide_statistics()
 
 # Course level
-d_transcript %>%
+statistics_course <- d_transcript %>%
   inner_join(d_course, by = c("Course ID")) %>%
   group_by(`Course ID`) %>%
   provide_statistics()
 
 # Cluster level
-d_transcript %>%
+statistics_cluster <- d_transcript %>%
   inner_join(d_course, by = "Course ID") %>%
   filter(!is.na(Cluster)) %>%
   group_by(Cluster) %>%
   provide_statistics()
 
 # Concentration evel
-d_transcript %>%
+statistics_concentration <- d_transcript %>%
   inner_join(d_course, by = "Course ID") %>%
   gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
   group_by(Concentration) %>%
   provide_statistics()
 
 # Year level
-d_transcript %>%
+statistics_year <- d_transcript %>%
   group_by(Year_numerical) %>%
   provide_statistics()
 
 # Level level
-d_transcript %>%
+statistics_level <- d_transcript %>%
+  # TODO: filter for student who completed their studies
   inner_join(d_course, by = c("Course ID")) %>%
   filter(!is.na(Level)) %>%
   group_by(Level) %>%
   provide_statistics()
+
+#
+# output
+save(statistics_student, statistics_course, statistics_cluster,
+     statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
+rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
+     statistics_concentration, statistics_year, statistics_level)
 ```
 
 # Association Rules and Sequence Rules
@@ -98,14 +106,16 @@ For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
 item = course
 
-## Creating Transactions
+## Data Prep: Creating Transactions and Sequences
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
 ```{r AR data prep 1}
 
 #
-# Threshold: low vs high grade
-low_grade <- 6.5
+# Threshold: pass grade, high grade
+pass_grade <- 5.5
+high_grade <- 6.5
+
 
 
 #
@@ -134,10 +144,10 @@ d_transactions <- d_course %>%
 
   # Identifying item
   mutate(
-    PF = case_when( Grade <  5.5 ~ "fail",
-                    Grade >= 5.5 ~ "pass"),
-    HL = case_when( Grade <  low_grade ~ "low",
-                    Grade >= low_grade ~ "high"),
+    PF = case_when( Grade <  pass_grade ~ "fail",
+                    Grade >= pass_grade ~ "pass"),
+    HL = case_when( Grade <  high_grade ~ "low",
+                    Grade >= high_grade ~ "high"),
     
     item_PF = paste(`Course ID`, PF, sep = "_"),
     item_HL = paste(`Course ID`, HL, sep = "_")
@@ -148,113 +158,105 @@ d_transactions <- d_course %>%
 ```
 
 ### Transactions for Apriori
-```{r AR data prep 2}
-transactions <- d_transactions %>%
-  group_by(
-    sequenceID
-    ) %>%
-  summarize(
-    list_item = list(item)
-    ) %>%
-  ungroup
+```{r making transactions}
 
-transactions <- as(transactions$list_item, "transactions")
+#
+# For convenience
+make_transaction <- function(data = d_transactions, item = item){
+  
+  data <- data %>%
+    group_by(
+      sequenceID
+    ) %>%
+    summarise(
+      list_item = list(!!enquo(item))
+    ) %>%
+    ungroup
+  
+  transactions <- as(
+    data$list_item,
+    "transactions"
+    )
+  
+  return(transactions)
+  
+}
+
+
+#
+# Making transactions
+transactions    <- make_transaction(item = item   )
+transactions_PF <- make_transaction(item = item_PF)
+transactions_HL <- make_transaction(item = item_HL)
+
+
+#
+# Checking transactions
+inspect(head(transactions, 10))
+
+rm(make_transaction)
 ```
-
-```{r AR data prep 3 (PF)}
-transactions_PF <- d_transactions %>%
-  group_by(
-    sequenceID
-    ) %>%
-  summarize(
-    list_item = list(item_PF)
-    ) %>%
-  ungroup
-
-transactions_PF <- as(transactions_PF$list_item, "transactions")
-```
-
-```{r AR data prep 4 (HL)}
-transactions_HL <- d_transactions %>%
-  group_by(
-    sequenceID
-    ) %>%
-  summarize(
-    list_item = list(item_HL)
-    ) %>%
-  ungroup
-
-transactions_HL <- as(transactions_HL$list_item, "transactions")
-```
-
 
 ### Sequences for CSPADE
 ```{r}
-sequences_temp <- d_transactions %>%
-  group_by(
-    sequenceID,
-    eventID
+
+#
+# For convenience
+make_sequence <- function(data = d_transactions, item = item){
+  
+  data <- data %>%
+    group_by(
+      sequenceID,
+      eventID
     ) %>%
-  summarize(
-    list_item = list(item)
+    summarise(
+      list_item = list(!!enquo(item))
     ) %>%
-  arrange(
-    sequenceID,
-    eventID
+    arrange(
+      sequenceID,
+      eventID
+    ) %>%
+    ungroup
+  
+  sequences <- as(
+    data$list_item,
+    "transactions"
     )
-
-sequences             <- as(sequences_temp$list_item, "transactions")
-sequences@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
-
-#checking results
-#inspect(head(sequences, 10))
-```
-
-```{r}
-sequences_temp <- d_transactions %>%
-  group_by(
+  
+  sequences@itemsetInfo <- select(
+    data,
     sequenceID,
     eventID
     ) %>%
-  summarize(
-    list_item = list(item_PF)
-    ) %>%
-  arrange(
-    sequenceID,
-    eventID
-    )
+    as.data.frame()
+  
+  return(sequences)
+  
+}
 
-sequences_PF             <- as(sequences_temp$list_item, "transactions")
-sequences_PF@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
 
-#checking results
-#inspect(head(sequences_PF, 10))
-```
+#
+# Making sequences
+sequences    <- make_sequence(item = item   )
+sequences_PF <- make_sequence(item = item_PF)
+sequences_HL <- make_sequence(item = item_HL)
 
-```{r}
-sequences_temp <- d_transactions %>%
-  group_by(
-    sequenceID,
-    eventID
-    ) %>%
-  summarize(
-    list_item = list(item_HL)
-    ) %>%
-  arrange(
-    sequenceID,
-    eventID
-    )
 
-sequences_HL             <- as(sequences_temp$list_item, "transactions")
-sequences_HL@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
+#
+# Checking sequences
+inspect(head(sequences, 10))
 
-#checking results
-#inspect(head(sequences_HL, 10))
+
+rm(make_transaction)
 ```
 
 
-## Apriori Algorithm
+## Mining Rules
+
+### Apriori Algorithm
 ```{r}
+
+# Transform AR from apriori into a readable data frame
 clean_AR <- function(AR){
   
   AR %>%
@@ -264,6 +266,7 @@ clean_AR <- function(AR){
     ) %>%
     mutate(
       rules = str_remove(rules, pattern = "_fail"),
+      rules = str_remove(rules, pattern = "_low"),
       lhs = substr(rules, 2, 8),
       rhs = substr(rules, 15, 21),
       `rhs.support` = confidence / lift
@@ -287,155 +290,75 @@ clean_AR <- function(AR){
 
 We apply Apriori algorithm:
 ```{r AR apriori}
-AR <- apriori(
-  data = transactions, 
-  parameter = list(
-    supp = 0,    # min support
-    smax = 1,    # max support
-    conf = 0,    # min confidence
-    minlen = 2,  # min length of rule
-    maxlen = 2,  # max length of rule
-    ext = TRUE,
-    arem = "diff",
-    aval = TRUE,
-    minval = 0
-    ),
-  appearance = NULL,
-  control = list(
-    verbose = FALSE
-    )
-  ) %>%
-  clean_AR
 
-```
+# Run the apriori algorithm with desired parameters
+my_apriori <- function(data, appearance = NULL){
+  
+  data %>%
+    apriori(
+      parameter = list(
+        supp = 0,    # min support
+        smax = 1,    # max support
+        conf = 0,    # min confidence
+        minlen = 2,  # min length of 
+        maxlen = 2,  # max length of rule
+        ext = TRUE,
+        arem = "diff",
+        aval = TRUE,
+        minval = 0
+        ),
+      appearance = appearance,
+      control = list(
+        verbose = FALSE
+        )
+      ) %>%
+    clean_AR
+  
+}
 
-```{r apriori PF}
+
+#
+# Generating asocciation rules
+AR <- my_apriori(transactions)
+
 # creating vector of fail course
-course_id_fail <- d_transactions_PF %>%
+course_id_fail <- d_transactions %>%
   filter(PF == "fail") %>%
-  distinct(`Course ID`)
+  distinct(`item_PF`)
 
-# Apply apriori
-AR_PF <- apriori(
-  data = transactions_PF, 
-  parameter = list(
-    supp = 0, # min support
-    smax = 1,    # max support
-    conf = 0,    # min confidence
-    minlen = 2,  # min length of rule
-    maxlen = 2,  # max length of rule
-    ext = TRUE,
-    arem = "diff",
-    aval = TRUE,
-    minval = 0
-    ),
-  appearance = list(
-    both = course_id_fail$`Course ID` # only include rules with fail on LHS and RHS
-    ),
-  control = list(
-    verbose = FALSE
-    )
-  ) %>%
-  clean_AR
-```
+AR_PF <- my_apriori(transactions_PF,
+                    appearance = list(both = course_id_fail$`item_PF`))
 
-```{r AR exploration}
+# creating vector of fail course
+course_id_low <- d_transactions %>%
+  filter(HL == "low") %>%
+  distinct(`item_HL`)
+
+AR_HL <- my_apriori(transactions_HL,
+                    appearance = list(both = course_id_low$`item_HL`))
+
+
+#
+# Save association rules
+save(AR, AR_PF, AR_HL,
+     file = "Output/AS.RDATA")
 
 # TODO: MAKE APP
 
-data_rules <- AR
-data_rules <- AR_PF
 
-# Best support
-data_rules %>%
-  arrange(desc(support))
 
-# Best confidence
-data_rules %>%
-  filter(count >= 5) %>%
-  arrange(desc(confidence))
+rm(clean_AR, my_apriori,
+   transactions, transactions_PF, transactions_HL,
+   course_id_fail, course_id_low
+   AR, AR_PF, AR_HL)
 
-# Best lift
-data_rules %>%
-  filter(count >= 5) %>%
-  arrange(desc(lift))
 ```
 
 
 ## CSPADE Algorithm
 
 ```{r}
-<<<<<<< HEAD
-lookup_table <- d_course %>%
-  
-  select(Type, `Course ID`, Letters) %>%
-  
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  
-  select(`Course ID`) %>%
-  
-  left_join(d_transcript, by = "Course ID") %>%
-  mutate(
-    Outcome = 
-           case_when( Grade == -1   ~"Fail", #if we don't do this NG satisfies the condition for pass v
-                      Grade  > 5.5 ~"Pass",
-                               T~"Fail"),
-    Low_grade =
-           case_when(Grade == -1 ~"low score", #if we don't do this NG satisfies the condition for pass v
-                      Grade > fail_threshold ~"high score",
-                               T~"low score"),
-    Discrete_grade =
-           case_when(Grade <= 5.4             ~ 5.0,
-                     between(Grade, 5.5, 6.4) ~ 6.0,
-                     between(Grade, 6.5, 7.4) ~ 7.0,
-                     between(Grade, 7.5, 8.4) ~ 8.0,
-                     between(Grade, 8.5, 9.4) ~ 9.0,
-                     Grade >= 9.5             ~ 10.0,
-                     T ~ -99999    #this is a control, we should not have any grades here
-                     ),
-    None= "" # this might not be optimal
-         ) %>%
-  
-  #mutate(Item = paste(`Course ID`, !!category, sep = "_")) %>% #Change for Outcome/Low_grade/Discrete_grade
-  
-  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
-  
-  mutate( Time = paste(Year_numerical, Period, sep = ""),
-          Time = as.double(Time)) %>%
-  
-  select(`Student ID`, #Item, 
-         `Course ID`, !!category, Time) %>% # Course ID and Time may not be necessary
-  
-  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  
-  group_by(`Course ID`, !!category) %>% ##this makes no sense we should just group id and low_grade
-  
-  summarize(Count = n()) %>%
-  #separate(Item, into= c("Course ID", quo_name(category)), sep="_", remove = F) %>%
-  ungroup() %>%
-  group_by(`Course ID`) %>%
-  mutate(Total= sum(Count))%>%
-  filter(Low_grade=="low score")%>%
-  mutate(Prop_low= Count/Total)
-```
 
-###NOTE for FURTURE: create filter by function
-##Create filter condition.
-```{r}
-string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
-                           quo_name(category)=="Low_grade"      ~ "low score",
-                           quo_name(category)=="Discrete_grade" ~ "5",
-                           quo_name(category)=="None"           ~ "_" #useless filter
-                           )
-```
-##CSPADE Algorithm:
-```{r}
-frequent_trajectories <- cspade(sequences, parameter = list(support = 0,
-                                                               maxsize = 1,
-                                                               maxlen = 2), control   = list(verbose = TRUE))
-=======
 subsequences <- sequences %>%
   cspade(
     parameter = list(
@@ -450,7 +373,6 @@ subsequences <- sequences %>%
       verbose = FALSE
       )
     )
->>>>>>> cd3b80a5ba609cf9b69c04544af975694a6bd136
 
 #Inspect results CSPADE
 summary(subsequences)
