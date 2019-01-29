@@ -156,10 +156,8 @@ d_transactions <- d_course %>%
     item = `Course ID`
   )
 ```
-### SOFIA---Take not take courses
+### Adding not taken courses
 ```{r}
-#item and sequenceID
-
 d_transactions_tmp <- expand.grid(sequenceID = unique(d_transactions$sequenceID),item = unique(d_transactions$item)) %>%
   left_join(d_transactions, by = c("sequenceID","item")) %>%
   mutate(
@@ -542,92 +540,5 @@ distributed_transcript <- d_transcript %>%
 ```
 
 ##Not ready to move up:
-##Puting students into take and not take. 
-```{r}
-#This df has 731,676 rows:
-test <- expand.grid(`Student ID`= unique(d_transcript$`Student ID`),`Course ID`= unique(d_course$`Course ID`)) %>%
-  left_join(d_transcript, by=c("Course ID", "Student ID")) %>%
-  filter(
-     Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
-    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
-                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
-  )%>%
-  select(`Course ID`, `Student ID`, Grade, Year_numerical, Period) %>%
-  mutate(
-    take_course = case_when(
-      is.na(Grade)  ~ "not taken",
-      T             ~ "taken"
-      ),
-     PFN = case_when(
-       is.na(Grade)  ~ "not",
-       Grade >= 5.5  ~ "pass",
-       Grade < 5.5   ~ "fail"
-       ),
-    Item = paste(`Course ID`, take_course, sep="_")
-    )
-
-
-```
-
-```{r}
-trans <- test %>%
- mutate(
-    Period  = substr(Period, 1, 1),
-    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
-    ) %>%
-   rename(sequenceID = `Student ID`)%>%
-  select(sequenceID, eventID, Item) %>%
-  make_transaction(item=Item)
-
-
-
-
-  
-```
-
-
-
-```{r}
-# Run the apriori algorithm with desired parameters
-my_apriori <- function(data, appearance = NULL){
-  
-  data %>%
-    apriori(
-      parameter = list(
-        supp = 0,    # min support
-        smax = 1,    # max support
-        conf = 0,    # min confidence
-        minlen = 2,  # min length of 
-        maxlen = 2,  # max length of rule
-        ext = TRUE,
-        arem = "diff",
-        aval = TRUE,
-        minval = 0
-        ),
-      appearance = appearance,
-      control = list(
-        verbose = FALSE
-        )
-      ) #%>%
-    #clean_AR
-  
-}
-
-
-#
-# Generating asocciation rules
-AR <- my_apriori(trans)
-
-
-AR %>%
-    as("data.frame") %>%
-    filter(
-      count >= 1
-    )
-
-# TODO: MAKE APP
-
-```
-```
 
 
