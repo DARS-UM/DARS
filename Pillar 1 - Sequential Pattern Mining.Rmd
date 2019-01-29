@@ -8,9 +8,9 @@ output:
 ---
 
 ```{r library, message = F}
-library(tidyverse)
-
 library(arulesSequences)
+
+library(tidyverse)
 ```
 
 # Setup
@@ -362,7 +362,7 @@ rm(clean_AR, my_apriori,
 subsequences <- sequences %>%
   cspade(
     parameter = list(
-      support = 0, # min support of a sequence
+      support = 0.2, # min support of a sequence
       maxsize = 1, # max number of items of an element of a sequence
       maxlen  = 2, # max number of element of a sequence
       mingap  = 1, # min time difference between consecutive element of a sequence
