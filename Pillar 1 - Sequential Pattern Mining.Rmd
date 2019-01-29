@@ -224,6 +224,7 @@ rm(make_transaction)
 make_sequence <- function(data = d_transactions, item = item){
   
   data <- data %>%
+    filter(!is.na(eventID))%>% #this is here casue we have courses that were never taken.
     group_by(
       sequenceID,
       eventID
@@ -271,7 +272,6 @@ rm(make_sequence)
 
 
 ## Mining Rules
-
 ### Apriori Algorithm
 ```{r}
 
@@ -405,7 +405,7 @@ as(subsequences, "data.frame")
 
 ##rule induction:
 ```{r}
-rules <- ruleInduction(frequent_trajectories,
+rules <- ruleInduction(subsequences,
                        confidence = 0, #we need to play with the parameters.
                        control    = list(verbose = TRUE))
 
@@ -421,6 +421,7 @@ pass_rules_df <- as(rules, "data.frame") %>%
     desc(confidence), desc(lift))
 
 ```
+
 ##calculate appropriate measures:
 ```{r}
 n_students <- length(unique(d_sequence_transactions$`Student ID`))
