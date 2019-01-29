@@ -358,77 +358,7 @@ rm(clean_AR, my_apriori,
 ## CSPADE Algorithm
 
 ```{r}
-<<<<<<< HEAD
-lookup_table <- d_course %>%
-  
-  select(Type, `Course ID`, Letters) %>%
-  
-  filter(Type == "Elective",
-         ! Letters %in% c("SKI", "PRO"),
-         ! Letters %in% c("SAS", "SAH", "SAC")) %>%
-  
-  select(`Course ID`) %>%
-  
-  left_join(d_transcript, by = "Course ID") %>%
-  mutate(
-    Outcome = 
-           case_when( Grade == -1   ~"Fail", #if we don't do this NG satisfies the condition for pass v
-                      Grade  > 5.5 ~"Pass",
-                               T~"Fail"),
-    Low_grade =
-           case_when(Grade == -1 ~"low score", #if we don't do this NG satisfies the condition for pass v
-                      Grade > fail_threshold ~"high score",
-                               T~"low score"),
-    Discrete_grade =
-           case_when(Grade <= 5.4             ~ 5.0,
-                     between(Grade, 5.5, 6.4) ~ 6.0,
-                     between(Grade, 6.5, 7.4) ~ 7.0,
-                     between(Grade, 7.5, 8.4) ~ 8.0,
-                     between(Grade, 8.5, 9.4) ~ 9.0,
-                     Grade >= 9.5             ~ 10.0,
-                     T ~ -99999    #this is a control, we should not have any grades here
-                     ),
-    None= "" # this might not be optimal
-         ) %>%
-  
-  #mutate(Item = paste(`Course ID`, !!category, sep = "_")) %>% #Change for Outcome/Low_grade/Discrete_grade
-  
-  filter(!str_detect(Period, " to ")) %>% #filter courses that spann more than one period
-  
-  mutate( Time = paste(Year_numerical, Period, sep = ""),
-          Time = as.double(Time)) %>%
-  
-  select(`Student ID`, #Item, 
-         `Course ID`, !!category, Time) %>% # Course ID and Time may not be necessary
-  
-  arrange(`Student ID`, Time) %>% #Note that integer identifiers must be positive and that transactions must be ordered by sequenceID and eventID.
-  
-  group_by(`Course ID`, !!category) %>% ##this makes no sense we should just group id and low_grade
-  
-  summarize(Count = n()) %>%
-  #separate(Item, into= c("Course ID", quo_name(category)), sep="_", remove = F) %>%
-  ungroup() %>%
-  group_by(`Course ID`) %>%
-  mutate(Total= sum(Count))%>%
-  filter(Low_grade=="low score")%>%
-  mutate(Prop_low= Count/Total)
-```
 
-###NOTE for FURTURE: create filter by function
-##Create filter condition.
-```{r}
-string_filter <- case_when(quo_name(category)=="Outcome"        ~ "Fail",
-                           quo_name(category)=="Low_grade"      ~ "low score",
-                           quo_name(category)=="Discrete_grade" ~ "5",
-                           quo_name(category)=="None"           ~ "_" #useless filter
-                           )
-```
-##CSPADE Algorithm:
-```{r}
-frequent_trajectories <- cspade(sequences, parameter = list(support = 0,
-                                                               maxsize = 1,
-                                                               maxlen = 2), control   = list(verbose = TRUE))
-=======
 subsequences <- sequences %>%
   cspade(
     parameter = list(
@@ -443,7 +373,6 @@ subsequences <- sequences %>%
       verbose = FALSE
       )
     )
->>>>>>> cd3b80a5ba609cf9b69c04544af975694a6bd136
 
 #Inspect results CSPADE
 summary(subsequences)
