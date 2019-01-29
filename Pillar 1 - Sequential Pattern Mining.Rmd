@@ -56,41 +56,49 @@ provide_statistics <- function(data){
 }
 
 # Student level
-d_transcript %>%
+statistics_student <- d_transcript %>%
   group_by(`Student ID`) %>%
   provide_statistics()
 
 # Course level
-d_transcript %>%
+statistics_course <- d_transcript %>%
   inner_join(d_course, by = c("Course ID")) %>%
   group_by(`Course ID`) %>%
   provide_statistics()
 
 # Cluster level
-d_transcript %>%
+statistics_cluster <- d_transcript %>%
   inner_join(d_course, by = "Course ID") %>%
   filter(!is.na(Cluster)) %>%
   group_by(Cluster) %>%
   provide_statistics()
 
 # Concentration evel
-d_transcript %>%
+statistics_concentration <- d_transcript %>%
   inner_join(d_course, by = "Course ID") %>%
   gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
   group_by(Concentration) %>%
   provide_statistics()
 
 # Year level
-d_transcript %>%
+statistics_year <- d_transcript %>%
   group_by(Year_numerical) %>%
   provide_statistics()
 
 # Level level
-d_transcript %>%
+statistics_level <- d_transcript %>%
+  # TODO: filter for student who completed their studies
   inner_join(d_course, by = c("Course ID")) %>%
   filter(!is.na(Level)) %>%
   group_by(Level) %>%
   provide_statistics()
+
+#
+# output
+save(statistics_student, statistics_course, statistics_cluster,
+     statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
+rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
+     statistics_concentration, statistics_year, statistics_level)
 ```
 
 # Association Rules and Sequence Rules
@@ -104,8 +112,10 @@ First we transform our data into transaction data. For this, we first create a v
 ```{r AR data prep 1}
 
 #
-# Threshold: low vs high grade
-low_grade <- 6.5
+# Threshold: pass grade, high grade
+pass_grade <- 5.5
+high_grade <- 6.5
+
 
 
 #
@@ -134,10 +144,10 @@ d_transactions <- d_course %>%
 
   # Identifying item
   mutate(
-    PF = case_when( Grade <  5.5 ~ "fail",
-                    Grade >= 5.5 ~ "pass"),
-    HL = case_when( Grade <  low_grade ~ "low",
-                    Grade >= low_grade ~ "high"),
+    PF = case_when( Grade <  pass_grade ~ "fail",
+                    Grade >= pass_grade ~ "pass"),
+    HL = case_when( Grade <  high_grade ~ "low",
+                    Grade >= high_grade ~ "high"),
     
     item_PF = paste(`Course ID`, PF, sep = "_"),
     item_HL = paste(`Course ID`, HL, sep = "_")
@@ -148,108 +158,91 @@ d_transactions <- d_course %>%
 ```
 
 ### Transactions for Apriori
-```{r AR data prep 2}
-transactions <- d_transactions %>%
-  group_by(
-    sequenceID
-    ) %>%
-  summarize(
-    list_item = list(item)
-    ) %>%
-  ungroup
+```{r making transactions}
 
-transactions <- as(transactions$list_item, "transactions")
+#
+# For convenience
+make_transaction <- function(data = d_transactions, item = item){
+  
+  data <- data %>%
+    group_by(
+      sequenceID
+    ) %>%
+    summarise(
+      list_item = list(!!enquo(item))
+    ) %>%
+    ungroup
+  
+  transactions <- as(
+    data$list_item,
+    "transactions"
+    )
+  
+  return(transactions)
+  
+}
+
+
+#
+# Making transactions
+transactions    <- make_transaction(item = item   )
+transactions_PF <- make_transaction(item = item_PF)
+transactions_HL <- make_transaction(item = item_HL)
+
+
+#
+# Checking transactions
+inspect(head(transactions, 10))
 ```
-
-```{r AR data prep 3 (PF)}
-transactions_PF <- d_transactions %>%
-  group_by(
-    sequenceID
-    ) %>%
-  summarize(
-    list_item = list(item_PF)
-    ) %>%
-  ungroup
-
-transactions_PF <- as(transactions_PF$list_item, "transactions")
-```
-
-```{r AR data prep 4 (HL)}
-transactions_HL <- d_transactions %>%
-  group_by(
-    sequenceID
-    ) %>%
-  summarize(
-    list_item = list(item_HL)
-    ) %>%
-  ungroup
-
-transactions_HL <- as(transactions_HL$list_item, "transactions")
-```
-
 
 ### Sequences for CSPADE
 ```{r}
-sequences_temp <- d_transactions %>%
-  group_by(
-    sequenceID,
-    eventID
+
+#
+# For convenience
+make_sequence <- function(data = d_transactions, item = item){
+  
+  data <- data %>%
+    group_by(
+      sequenceID,
+      eventID
     ) %>%
-  summarize(
-    list_item = list(item)
+    summarise(
+      list_item = list(!!enquo(item))
     ) %>%
-  arrange(
-    sequenceID,
-    eventID
+    arrange(
+      sequenceID,
+      eventID
+    ) %>%
+    ungroup
+  
+  sequences <- as(
+    data$list_item,
+    "transactions"
     )
-
-sequences             <- as(sequences_temp$list_item, "transactions")
-sequences@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
-
-#checking results
-#inspect(head(sequences, 10))
-```
-
-```{r}
-sequences_temp <- d_transactions %>%
-  group_by(
+  
+  sequences@itemsetInfo <- select(
+    data,
     sequenceID,
     eventID
     ) %>%
-  summarize(
-    list_item = list(item_PF)
-    ) %>%
-  arrange(
-    sequenceID,
-    eventID
-    )
+    as.data.frame()
+  
+  return(sequences)
+  
+}
 
-sequences_PF             <- as(sequences_temp$list_item, "transactions")
-sequences_PF@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
 
-#checking results
-#inspect(head(sequences_PF, 10))
-```
+#
+# Making sequences
+sequences    <- make_sequence(item = item   )
+sequences_PF <- make_sequence(item = item_PF)
+sequences_HL <- make_sequence(item = item_HL)
 
-```{r}
-sequences_temp <- d_transactions %>%
-  group_by(
-    sequenceID,
-    eventID
-    ) %>%
-  summarize(
-    list_item = list(item_HL)
-    ) %>%
-  arrange(
-    sequenceID,
-    eventID
-    )
 
-sequences_HL             <- as(sequences_temp$list_item, "transactions")
-sequences_HL@itemsetInfo <- as.data.frame(select(sequences_temp, sequenceID, eventID))
-
-#checking results
-#inspect(head(sequences_HL, 10))
+#
+# Checking sequences
+inspect(head(sequences, 10))
 ```
 
 
