@@ -1,0 +1,644 @@
+Pillar 1 - Sequential Pattern Mining
+================
+DARS
+2019-01-30
+
+-   [Setup](#setup)
+-   [Data Exploration](#data-exploration)
+-   [Association Rules and Sequence Rules](#association-rules-and-sequence-rules)
+    -   [Data Prep: Creating Transactions and Sequences](#data-prep-creating-transactions-and-sequences)
+        -   [Adding not taken courses](#adding-not-taken-courses)
+        -   [Expanded Transcripts](#expanded-transcripts)
+        -   [Transactions for Apriori](#transactions-for-apriori)
+        -   [Sequences for CSPADE](#sequences-for-cspade)
+    -   [Mining Rules](#mining-rules)
+        -   [Apriori Algorithm](#apriori-algorithm)
+        -   [CSPADE Algorithm](#cspade-algorithm)
+-   [EXPERIMENTS:](#experiments)
+    -   [TO MOVE UP (These are ready:)](#to-move-up-these-are-ready)
+
+``` r
+library(arulesSequences)
+```
+
+    ## Warning: package 'arulesSequences' was built under R version 3.4.4
+
+    ## Warning: package 'arules' was built under R version 3.4.4
+
+    ## Warning: package 'Matrix' was built under R version 3.4.4
+
+``` r
+library(tidyverse)
+```
+
+    ## Warning: package 'tidyverse' was built under R version 3.4.2
+
+    ## Warning: package 'ggplot2' was built under R version 3.4.4
+
+    ## Warning: package 'tibble' was built under R version 3.4.4
+
+    ## Warning: package 'tidyr' was built under R version 3.4.4
+
+    ## Warning: package 'readr' was built under R version 3.4.4
+
+    ## Warning: package 'purrr' was built under R version 3.4.4
+
+    ## Warning: package 'dplyr' was built under R version 3.4.4
+
+    ## Warning: package 'stringr' was built under R version 3.4.4
+
+    ## Warning: package 'forcats' was built under R version 3.4.3
+
+Setup
+=====
+
+load previous data and create function to find courses
+
+``` r
+load("Output/data_pillar_1.RDATA")
+```
+
+Function that returns title of a course given its code.
+
+``` r
+find_course <- function(code){ 
+  
+  dataset <- d_transcript %>%
+    filter(`Course ID`== code)
+  
+  title <- dataset$`Course Title`[1]
+  
+  return(title)
+  
+}
+
+# Example
+find_course("HUM1005")
+```
+
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
+
+    ## [1] "Songs and Poetry: Theory and Analysis"
+
+Data Exploration
+================
+
+``` r
+# For convenience
+provide_statistics <- function(data){
+  data %>%
+    summarise(
+      Min       = min(Grade),
+      Max       = max(Grade), 
+      Mean      = round(mean(Grade), 2), 
+      Median    = median(Grade), 
+      SD        = round(sd(Grade), 2),
+      Fail_rate = round(mean(Fail), 2),
+      Fail_n    = sum(Fail),
+      n         = n()
+      )
+}
+
+# Student level
+statistics_student <- d_transcript %>%
+  group_by(`Student ID`) %>%
+  provide_statistics()
+
+# Course level
+statistics_course <- d_transcript %>%
+  inner_join(d_course, by = c("Course ID")) %>%
+  group_by(`Course ID`) %>%
+  provide_statistics()
+
+# Cluster level
+statistics_cluster <- d_transcript %>%
+  inner_join(d_course, by = "Course ID") %>%
+  filter(!is.na(Cluster)) %>%
+  group_by(Cluster) %>%
+  provide_statistics()
+
+# Concentration evel
+statistics_concentration <- d_transcript %>%
+  inner_join(d_course, by = "Course ID") %>%
+  gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
+  group_by(Concentration) %>%
+  provide_statistics()
+
+# Year level
+statistics_year <- d_transcript %>%
+  group_by(Year_numerical) %>%
+  provide_statistics()
+
+# Level level
+statistics_level <- d_transcript %>%
+  # TODO: filter for student who completed their studies
+  inner_join(d_course, by = c("Course ID")) %>%
+  filter(!is.na(Level)) %>%
+  group_by(Level) %>%
+  provide_statistics()
+
+#
+# output
+save(statistics_student, statistics_course, statistics_cluster,
+     statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
+rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
+     statistics_concentration, statistics_year, statistics_level)
+```
+
+Association Rules and Sequence Rules
+====================================
+
+For a first exploration of arules, we conceptualise our framework like this: transaction = student item = course
+
+Data Prep: Creating Transactions and Sequences
+----------------------------------------------
+
+First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts.
+
+``` r
+#
+# Threshold: pass grade, high grade
+pass_grade <- 5.5
+high_grade <- 6.5
+
+
+
+#
+# Transactions
+d_transactions <- d_course %>%
+  
+  # Exclude 
+  filter(
+    Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
+    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
+                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
+    ) %>%
+  
+  # Join with transcripts.
+  select(- Period) %>%
+  inner_join(d_transcript, by = "Course ID") %>%
+  
+  # Identifying sequences
+  rename(sequenceID = `Student ID`) %>%
+  
+  # Identifying time of event (sequence)
+  mutate(
+    Period  = substr(Period, 1, 1),
+    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
+    ) %>%
+
+  # Identifying item
+  mutate(
+    PF = case_when( Grade <  pass_grade ~ "fail",
+                    Grade >= pass_grade ~ "pass"),
+    HL = case_when( Grade <  high_grade ~ "low",
+                    Grade >= high_grade ~ "high"),
+    
+    item_PF = paste(`Course ID`, PF, sep = "_"),
+    item_HL = paste(`Course ID`, HL, sep = "_")
+    ) %>%
+  rename(
+    item = `Course ID`
+  )
+```
+
+### Adding not taken courses
+
+``` r
+d_transactions_not_taken <- expand.grid(
+  
+  # Expand along students (sequenceID) and courses (itemID)
+  sequenceID = unique(d_transactions$sequenceID),
+  item       = unique(d_transactions$item),
+  stringsAsFactors = FALSE
+  ) %>%
+  
+  # Join with d_transactions
+  left_join(
+    d_transactions, 
+    by = c("sequenceID", "item")
+    ) %>%
+  
+  # Create 
+  mutate(
+    
+    taken = case_when(
+      is.na(Grade) ~ "not taken",
+      TRUE         ~ "taken"),
+    
+    item_taken= paste(item, taken, sep = "_")
+    
+     )
+```
+
+### Expanded Transcripts
+
+``` r
+d_transcript_expanded <- d_transcript %>%
+  filter(!is.na(Grade), Grade>=0) %>%
+  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
+         Values = T) %>%
+  spread(key = "Round_grade", value = Values) %>%
+  mutate(g1  = g0|g1,
+         g2  = g1|g2,
+         g3  = g2|g3,
+         g4  = g3|g4,
+         g5  = g4|g5,
+         g6  = g5|g6,
+         g7  = g6|g7,
+         g8  = g7|g8,
+         g9  = g8|g9,
+         g10 = g9|g10
+         ) %>%
+  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
+  select(-Gr_bool )%>%
+  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
+  select(-Trash) %>%
+  mutate(Grade= as.numeric(Grade_new))%>%
+  select(-Grade_new) #%>%
+  #to check that the grades appear from original grade to 10.
+  #arrange(`Student ID`, `Course ID`) 
+
+
+#changing to transactions
+
+d_transactions_expanded <- d_course %>%
+  
+  # Exclude 
+  filter(
+    Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
+    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
+                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
+    ) %>%
+  
+  # Join with transcripts.
+  select(- Period) %>%
+  inner_join(d_transcript_expanded, by = "Course ID") %>%
+  
+  # Identifying sequences
+  rename(sequenceID = `Student ID`) %>%
+  
+  # Identifying time of event (sequence)
+  mutate(
+    Period  = substr(Period, 1, 1),
+    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
+    ) %>%
+
+  # Identifying item
+  mutate(
+    PF = case_when( Grade <  pass_grade ~ "fail",
+                    Grade >= pass_grade ~ "pass"),
+    HL = case_when( Grade <  high_grade ~ "low",
+                    Grade >= high_grade ~ "high"),
+    
+    item_PF = paste(`Course ID`, PF, sep = "_"),
+    item_HL = paste(`Course ID`, HL, sep = "_")
+    ) %>%
+  rename(
+    item = `Course ID`
+  ) 
+#%>%
+  #arrange(sequenceID, item) %>%
+  #select(sequenceID, item, Grade, everything())
+```
+
+### Transactions for Apriori
+
+``` r
+#
+# For convenience
+make_transaction <- function(data = d_transactions, item = item){
+  
+  data <- data %>%
+    group_by(
+      sequenceID
+    ) %>%
+    summarise(
+      list_item = list(!!enquo(item))
+    ) %>%
+    ungroup
+  
+  transactions <- as(
+    data$list_item,
+    "transactions"
+    )
+  
+  return(transactions)
+  
+}
+
+
+#
+# Making transactions
+transactions       <- make_transaction(item = item   )
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_PF    <- make_transaction(item = item_PF)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_HL    <- make_transaction(item = item_HL)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_Taken <- make_transaction(data = d_transactions_not_taken, item = item_taken)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+#
+# Checking transactions
+#inspect(head(transactions, 10))
+
+rm(make_transaction)
+```
+
+### Sequences for CSPADE
+
+``` r
+#
+# For convenience
+make_sequence <- function(data = d_transactions, item = item){
+  
+  data <- data %>%
+    filter(!is.na(eventID))%>% #this is here casue we have courses that were never taken.
+    group_by(
+      sequenceID,
+      eventID
+    ) %>%
+    summarise(
+      list_item = list(!!enquo(item))
+    ) %>%
+    arrange(
+      sequenceID,
+      eventID
+    ) %>%
+    ungroup
+  
+  sequences <- as(
+    data$list_item,
+    "transactions"
+    )
+  
+  sequences@itemsetInfo <- select(
+    data,
+    sequenceID,
+    eventID
+    ) %>%
+    as.data.frame()
+  
+  return(sequences)
+  
+}
+
+
+#
+# Making sequences
+sequences    <- make_sequence(item = item   )
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+sequences_PF <- make_sequence(item = item_PF)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+sequences_HL <- make_sequence(item = item_HL)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+#
+# Checking sequences
+#inspect(head(sequences, 10))
+
+
+rm(make_sequence)
+```
+
+Mining Rules
+------------
+
+### Apriori Algorithm
+
+``` r
+# Transform AR from apriori into a readable data frame
+clean_AR <- function(AR){
+  
+  AR %>%
+    as("data.frame") %>%
+    filter(
+      count >= 1
+    ) %>%
+    mutate(
+      rules = str_remove_all(rules, pattern = "[{]"),
+      rules = str_remove_all(rules, pattern = "[}]"),
+      `rhs.support` = confidence / lift
+    ) %>%
+    separate(rules, into = c("lhs", "rhs"), sep="=>") %>%
+    mutate_at(
+      c("support", "lhs.support", "confidence", "rhs.support", "lift"),
+      funs(round(., 5))
+    ) %>%
+    select(
+      lhs, rhs,
+      support, count, lhs.support,
+      confidence, rhs.support,
+      lift
+    ) %>%
+    arrange(
+      desc(count)
+    )
+  
+}
+```
+
+We apply Apriori algorithm:
+
+``` r
+# Run the apriori algorithm with desired parameters
+my_apriori <- function(data, appearance = NULL){
+  
+  data %>%
+    apriori(
+      parameter = list(
+        supp = 0,    # min support
+        smax = 1,    # max support
+        conf = 0,    # min confidence
+        minlen = 2,  # min length of 
+        maxlen = 2,  # max length of rule
+        ext = TRUE,
+        arem = "diff",
+        aval = TRUE,
+        minval = 0
+        ),
+      appearance = appearance,
+      control = list(
+        verbose = FALSE
+        )
+      ) %>%
+    clean_AR
+  
+}
+
+
+#
+# Generating asocciation rules
+AR_taken <- my_apriori(transactions)
+
+# creating vector of fail course
+course_id_fail <- d_transactions %>%
+  filter(PF == "fail") %>%
+  distinct(`item_PF`)
+
+AR_PF <- my_apriori(transactions_PF,
+                    appearance = list(both = course_id_fail$`item_PF`))
+
+# creating vector of low score course
+course_id_low <- d_transactions %>%
+  filter(HL == "low") %>%
+  distinct(`item_HL`)
+
+AR_HL <- my_apriori(transactions_HL,
+                    appearance = list(both = course_id_low$`item_HL`))
+
+
+
+AR_not_taken <- my_apriori(transactions_Taken)
+
+
+#
+# Save association rules
+save(AR_taken, AR_PF, AR_HL, AR_not_taken,
+     file = "App/AR.RDATA")
+
+rm(clean_AR, my_apriori,
+   transactions, transactions_PF, transactions_HL,
+   course_id_fail, course_id_low,
+   AR_taken, AR_PF, AR_HL, AR_not_taken)
+```
+
+### CSPADE Algorithm
+
+``` r
+# Transform rules from ruleInduction into a readable data frame
+n_students <- length(unique(d_transactions$sequenceID))
+
+clean_SR<- function(rules){
+  
+  rules %>%
+    as("data.frame") %>%
+    mutate(
+      rule = str_remove_all(rule, pattern = "[<]"),
+      rule = str_remove_all(rule, pattern = "[{]"),
+      rule = str_remove_all(rule, pattern = "[}]"),
+      rule = str_remove_all(rule, pattern = "[>]")
+      ) %>%
+    separate(rule, into = c("lhs", "rhs"), sep="=")  %>%
+    select(
+      lhs, rhs,
+      support,
+      confidence,
+      lift
+    ) %>%
+    separate(lhs, into=c("LHS Course ID", "LHS Quality"), sep="_", remove= F) %>%
+    separate(rhs, into=c("RHS Course ID", "RHS Quality"), sep="_", remove= F) %>%
+    # Compute statistic
+    group_by(lhs,`RHS Course ID`) %>%
+    mutate(
+      lhs.rhsCourse.support = sum(support),
+      confidence.corr = support / lhs.rhsCourse.support,
+      count = support * n_students,
+      lhs.rhsCourse.count = lhs.rhsCourse.support * n_students
+      
+      # TODO: coñpute rhs.support
+      # lift.corr = confidence.corr / rhs.support
+     
+  ) %>%
+  ungroup() %>%
+    mutate_at(
+      c("support",
+        "confidence", "lift"),
+      funs(round(., 5))
+    )
+    
+}
+```
+
+We apply cspade followed by rule induction
+
+``` r
+# Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
+my_SR<- function(data){
+ data %>%
+  cspade(
+    parameter = list(
+      support = 0, # min support of a sequence
+      maxsize = 1, # max number of items of an element of a sequence
+      maxlen  = 2, # max number of element of a sequence
+      mingap  = 1, # min time difference between consecutive element of a sequence
+      maxgap  = 1e4 # max time difference between consecutive element of a sequence
+      #maxwin  = 1e4  # max time difference between any two elements of a sequence # WARNING: 'maxwin' disabled
+      ),
+    control = list(
+      verbose = FALSE
+      )
+    ) %>%
+    ruleInduction(
+      confidence = 0, #we need to play with the parameters.
+      control    = list(verbose = FALSE)
+      ) %>%
+    clean_SR
+}
+
+#Generating sequence rules
+SR   <- my_SR(data = sequences   )
+```
+
+    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
+    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ## 20, ...].
+
+    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
+    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ## 20, ...].
+
+``` r
+SR_PF <- my_SR(data = sequences_PF)
+SR_HL <- my_SR(data = sequences_HL)
+
+#Saving sequence rules
+SR <- list(
+    SR = SR,
+    SR_PF = SR_PF,
+    SR_HL = SR_HL
+    )
+
+save(SR, file = "App/SR.RDATA")
+
+#clean unnecessary objects
+rm(clean_SR, my_SR, 
+   sequences, sequences_PF, sequences_HL, 
+   n_students,
+   SR, SR_PF, SR_HL)
+```
+
+EXPERIMENTS:
+============
+
+TO MOVE UP (These are ready:)
+-----------------------------
+
+Rounds grades and add new row from original grade up to 10. NOTE: includes mandatory courses.
