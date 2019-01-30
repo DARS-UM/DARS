@@ -185,7 +185,76 @@ d_transactions_not_taken <- expand.grid(
      )
 
 ```
+###Expanded Transcripts
+```{r}
 
+d_transcript_expanded <- d_transcript %>%
+  filter(!is.na(Grade), Grade>=0) %>%
+  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
+         Values = T) %>%
+  spread(key = "Round_grade", value = Values) %>%
+  mutate(g1  = g0|g1,
+         g2  = g1|g2,
+         g3  = g2|g3,
+         g4  = g3|g4,
+         g5  = g4|g5,
+         g6  = g5|g6,
+         g7  = g6|g7,
+         g8  = g7|g8,
+         g9  = g8|g9,
+         g10 = g9|g10
+         ) %>%
+  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
+  select(-Gr_bool )%>%
+  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
+  select(-Trash) %>%
+  mutate(Grade= as.numeric(Grade_new))%>%
+  select(-Grade_new) #%>%
+  #to check that the grades appear from original grade to 10.
+  #arrange(`Student ID`, `Course ID`) 
+
+
+#changing to transactions
+
+d_transactions_expanded <- d_course %>%
+  
+  # Exclude 
+  filter(
+    Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
+    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
+                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
+    ) %>%
+  
+  # Join with transcripts.
+  select(- Period) %>%
+  inner_join(d_transcript_expanded, by = "Course ID") %>%
+  
+  # Identifying sequences
+  rename(sequenceID = `Student ID`) %>%
+  
+  # Identifying time of event (sequence)
+  mutate(
+    Period  = substr(Period, 1, 1),
+    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
+    ) %>%
+
+  # Identifying item
+  mutate(
+    PF = case_when( Grade <  pass_grade ~ "fail",
+                    Grade >= pass_grade ~ "pass"),
+    HL = case_when( Grade <  high_grade ~ "low",
+                    Grade >= high_grade ~ "high"),
+    
+    item_PF = paste(`Course ID`, PF, sep = "_"),
+    item_HL = paste(`Course ID`, HL, sep = "_")
+    ) %>%
+  rename(
+    item = `Course ID`
+  ) 
+#%>%
+  #arrange(sequenceID, item) %>%
+  #select(sequenceID, item, Grade, everything())
+```
 ### Transactions for Apriori
 ```{r making transactions}
 
@@ -474,77 +543,9 @@ rm(clean_SR, my_SR,
    SR, SR_PF, SR_HL)
 
 ```
-#Experiments
-#Visualizing rules
-```{r}
-#look at counts
-ggplot(for_plots, aes(LHS))+
-  geom_bar()
-
-#jitter
-ggplot(manual_confidence_rules)+
-  geom_jitter(mapping=aes(x=Conf_corr, y=log(support), color=lift_corr))
-
-ggplot(manual_confidence_rules)+
-  geom_jitter(mapping=aes(x=log(support), y=lift_corr, color = Conf_corr))
-
-#heatmap
-ggplot(select(manual_confidence_rules,LHS,RHS, n_rule), aes(x=RHS,y=LHS, fill=n_rule))+
-  geom_raster() +
-  theme(
-    axis.text.x = element_text(angle=90)
-  )
-
-gglot(table(select(manual_confidence_rules,LHS,RHS)))
-
-#ggnetwork
-
-#SEE: http://kateto.net/network-visualization 
-g_net <- graph_from_data_frame(d=head(for_plots,50), directed=T) #I BELIEVE THE COLUMNS SHOULD BE REVERSED.
-
-l <- layout_in_circle(g_net)
-plot(g_net, #vertex.shape="none",
-     vertex.size=.9,
-     #vertex.label=NA,
-     vertex.label.cex=0.5,
-     edge.arrow.size=.1, 
-     edge.curved=.1,
-     layout=l)
-
-```
-#Visualisation
-It might be a nice idea to visualise using Sankey diagrams, although I don't know if there will be too many courses for it to be meaningful. We might need to sample. See https://analyzecore.com/2014/10/31/sequence-carts-analysis-sankey/ 
 
 #EXPERIMENTS:
-
 ##TO MOVE UP (These are ready:)
 Rounds grades and add new row from original grade up to 10.
 NOTE: includes mandatory courses.
-```{r}
 
-distributed_transcript <- d_transcript %>%
-  filter(!is.na(Grade), Grade>=0) %>%
-  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
-         Values = T) %>%
-  spread(key = "Round_grade", value = Values) %>%
-  mutate(g1  = g0|g1,
-         g2  = g1|g2,
-         g3  = g2|g3,
-         g4  = g3|g4,
-         g5  = g4|g5,
-         g6  = g5|g6,
-         g7  = g6|g7,
-         g8  = g7|g8,
-         g9  = g8|g9,
-         g10 = g9|g10
-         ) %>%
-  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
-  select(-Gr_bool )%>%
-  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
-  select(-Trash) %>%
-  mutate(Grade= as.numeric(Grade_new))%>%
-  select(-Grade_new) #%>%
-  #to check that the grades appear from original grade to 10.
-  #arrange(`Student ID`, `Course ID`) 
-
-```
