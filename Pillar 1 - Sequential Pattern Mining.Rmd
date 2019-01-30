@@ -362,8 +362,14 @@ AR_Taken <- my_apriori(transactions_Taken)
 
 #
 # Save association rules
-save(AR, AR_PF, AR_HL, AR_Taken,
-     file = "Output/AS.RDATA")
+save(
+  AR = list(
+    AR = AR,
+    AR_PF = AR_PF,
+    AR_HL = AR_HL,
+    AR_Taken = AR_Taken
+    ),
+  file = "Output/AR.RDATA")
 
 # TODO: MAKE APP
 
