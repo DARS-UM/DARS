@@ -14,40 +14,12 @@ DARS
     -   [Mining Rules](#mining-rules)
         -   [Apriori Algorithm](#apriori-algorithm)
         -   [CSPADE Algorithm](#cspade-algorithm)
--   [EXPERIMENTS:](#experiments)
-    -   [TO MOVE UP (These are ready:)](#to-move-up-these-are-ready)
 
 ``` r
 library(arulesSequences)
-```
 
-    ## Warning: package 'arulesSequences' was built under R version 3.4.4
-
-    ## Warning: package 'arules' was built under R version 3.4.4
-
-    ## Warning: package 'Matrix' was built under R version 3.4.4
-
-``` r
 library(tidyverse)
 ```
-
-    ## Warning: package 'tidyverse' was built under R version 3.4.2
-
-    ## Warning: package 'ggplot2' was built under R version 3.4.4
-
-    ## Warning: package 'tibble' was built under R version 3.4.4
-
-    ## Warning: package 'tidyr' was built under R version 3.4.4
-
-    ## Warning: package 'readr' was built under R version 3.4.4
-
-    ## Warning: package 'purrr' was built under R version 3.4.4
-
-    ## Warning: package 'dplyr' was built under R version 3.4.4
-
-    ## Warning: package 'stringr' was built under R version 3.4.4
-
-    ## Warning: package 'forcats' was built under R version 3.4.3
 
 Setup
 =====
@@ -234,72 +206,38 @@ d_transactions_not_taken <- expand.grid(
 ### Expanded Transcripts
 
 ``` r
-d_transcript_expanded <- d_transcript %>%
-  filter(!is.na(Grade), Grade>=0) %>%
-  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
+d_transactions_expanded <- d_transactions %>%
+  mutate(Round_grade = round(Grade, 0),
          Values = T) %>%
   spread(key = "Round_grade", value = Values) %>%
-  mutate(g1  = g0|g1,
-         g2  = g1|g2,
-         g3  = g2|g3,
-         g4  = g3|g4,
-         g5  = g4|g5,
-         g6  = g5|g6,
-         g7  = g6|g7,
-         g8  = g7|g8,
-         g9  = g8|g9,
-         g10 = g9|g10
+  mutate(`1`  = `0`|`1`,
+         `2`  = `1`|`2`,
+         `3`  = `2`|`3`,
+         `4`  = `3`|`4`,
+         `5`  = `4`|`5`,
+         `6`  = `5`|`6`,
+         `7`  = `6`|`7`,
+         `8`  = `7`|`8`,
+         `9`  = `8`|`9`,
+         `10`  = `9`|`10`
          ) %>%
-  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
-  select(-Gr_bool )%>%
-  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
-  select(-Trash) %>%
-  mutate(Grade= as.numeric(Grade_new))%>%
-  select(-Grade_new) #%>%
-  #to check that the grades appear from original grade to 10.
-  #arrange(`Student ID`, `Course ID`) 
-
-
-#changing to transactions
-
-d_transactions_expanded <- d_course %>%
-  
-  # Exclude 
-  filter(
-    Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
-    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
-                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
-    ) %>%
-  
-  # Join with transcripts.
-  select(- Period) %>%
-  inner_join(d_transcript_expanded, by = "Course ID") %>%
-  
-  # Identifying sequences
-  rename(sequenceID = `Student ID`) %>%
-  
-  # Identifying time of event (sequence)
-  mutate(
-    Period  = substr(Period, 1, 1),
-    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
-    ) %>%
+  gather(key = "Grade_round", value = "Gr_bool", `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, na.rm = TRUE, convert = TRUE) %>%
+  select(-Gr_bool) %>%
+  arrange(
+    sequenceID,
+    item
+  ) %>%
 
   # Identifying item
   mutate(
-    PF = case_when( Grade <  pass_grade ~ "fail",
-                    Grade >= pass_grade ~ "pass"),
-    HL = case_when( Grade <  high_grade ~ "low",
-                    Grade >= high_grade ~ "high"),
+    PF = case_when( Grade_round <  pass_grade ~ "fail",
+                    Grade_round >= pass_grade ~ "pass"),
+    HL = case_when( Grade_round <  high_grade ~ "low",
+                    Grade_round >= high_grade ~ "high"),
     
-    item_PF = paste(`Course ID`, PF, sep = "_"),
-    item_HL = paste(`Course ID`, HL, sep = "_")
-    ) %>%
-  rename(
-    item = `Course ID`
-  ) 
-#%>%
-  #arrange(sequenceID, item) %>%
-  #select(sequenceID, item, Grade, everything())
+    item_PF = paste(item, PF, sep = "_"),
+    item_HL = paste(item, HL, sep = "_")
+    )
 ```
 
 ### Transactions for Apriori
@@ -330,25 +268,43 @@ make_transaction <- function(data = d_transactions, item = item){
 
 #
 # Making transactions
-transactions       <- make_transaction(item = item   )
+transactions                  <- make_transaction(item = item   )
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-transactions_PF    <- make_transaction(item = item_PF)
+transactions_PF               <- make_transaction(item = item_PF)
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-transactions_HL    <- make_transaction(item = item_HL)
+transactions_HL               <- make_transaction(item = item_HL)
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-transactions_Taken <- make_transaction(data = d_transactions_not_taken, item = item_taken)
+transactions_Taken            <- make_transaction(data = d_transactions_not_taken, item = item_taken)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_expanded         <- make_transaction(data = d_transactions_expanded, item = item)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_expanded_PF      <- make_transaction(data = d_transactions_expanded, item = item_PF)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_expanded_HL      <- make_transaction(data = d_transactions_expanded, item = item_HL)
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
@@ -402,19 +358,37 @@ make_sequence <- function(data = d_transactions, item = item){
 
 #
 # Making sequences
-sequences    <- make_sequence(item = item   )
+sequences          <- make_sequence(item = item   )
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-sequences_PF <- make_sequence(item = item_PF)
+sequences_PF       <- make_sequence(item = item_PF)
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-sequences_HL <- make_sequence(item = item_HL)
+sequences_HL       <- make_sequence(item = item_HL)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+sequences_expanded     <- make_sequence(data = d_transactions_expanded, item = item)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+sequences_expanded_PF  <- make_sequence(data = d_transactions_expanded, item = item_PF)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+sequences_expanded_HL  <- make_sequence(data = d_transactions_expanded, item = item_HL)
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
@@ -519,15 +493,35 @@ AR_HL <- my_apriori(transactions_HL,
 AR_not_taken <- my_apriori(transactions_Taken)
 
 
+AR_expanded <- my_apriori(transactions_expanded)
+# creating vector of fail course
+course_id_fail <- d_transactions_expanded %>%
+  filter(PF == "fail") %>%
+  distinct(`item_PF`)
+
+AR_expanded_PF <- my_apriori(transactions_expanded_PF,
+                    appearance = list(both = course_id_fail$`item_PF`))
+
+# creating vector of low score course
+course_id_low <- d_transactions_expanded %>%
+  filter(HL == "low") %>%
+  distinct(`item_HL`)
+
+AR_expanded_HL <- my_apriori(transactions_expanded_HL,
+                    appearance = list(both = course_id_low$`item_HL`))
+
+
+
 #
 # Save association rules
-save(AR_taken, AR_PF, AR_HL, AR_not_taken,
+save(AR_taken, AR_PF, AR_HL, AR_not_taken, 
+     AR_expanded, AR_expanded_PF, AR_expanded_HL,
      file = "App/AR.RDATA")
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
    course_id_fail, course_id_low,
-   AR_taken, AR_PF, AR_HL, AR_not_taken)
+   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded, AR_expanded_PF, AR_expanded_HL)
 ```
 
 ### CSPADE Algorithm
@@ -619,26 +613,38 @@ SR   <- my_SR(data = sequences   )
 SR_PF <- my_SR(data = sequences_PF)
 SR_HL <- my_SR(data = sequences_HL)
 
+SR_expanded   <- my_SR(data = sequences_expanded   )
+```
+
+    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
+    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ## 20, ...].
+
+    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
+    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ## 20, ...].
+
+``` r
+SR_expanded_PF <- my_SR(data = sequences_expanded_PF)
+SR_expanded_HL <- my_SR(data = sequences_expanded_HL)
 #Saving sequence rules
 SR <- list(
     SR = SR,
     SR_PF = SR_PF,
-    SR_HL = SR_HL
+    SR_HL = SR_HL,
+    
+    SR_expanded    = SR_expanded,
+    SR_expanded_PF = SR_expanded_PF,
+    SR_expanded_HL = SR_expanded_HL
     )
 
 save(SR, file = "App/SR.RDATA")
 
 #clean unnecessary objects
 rm(clean_SR, my_SR, 
-   sequences, sequences_PF, sequences_HL, 
+   sequences, sequences_PF, sequences_HL,
+   sequences_expanded, sequences_expanded_PF, sequences_expanded_HL,
    n_students,
-   SR, SR_PF, SR_HL)
+   SR, SR_PF, SR_HL,
+   SR_expanded, SR_expanded_PF, SR_expanded_HL)
 ```
-
-EXPERIMENTS:
-============
-
-TO MOVE UP (These are ready:)
------------------------------
-
-Rounds grades and add new row from original grade up to 10. NOTE: includes mandatory courses.

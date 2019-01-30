@@ -7,7 +7,7 @@ output:
     toc: TRUE
 ---
 
-```{r library, message = F}
+```{r library, message = FALSE, warning = FALSE}
 library(arulesSequences)
 
 library(tidyverse)
@@ -157,7 +157,7 @@ d_transactions <- d_course %>%
 ```
 
 ### Adding not taken courses
-```{r}
+```{r transactions not taken}
 d_transactions_not_taken <- expand.grid(
   
   # Expand along students (sequenceID) and courses (itemID)
@@ -185,72 +185,40 @@ d_transactions_not_taken <- expand.grid(
 
 ```
 ###Expanded Transcripts
-```{r}
+```{r transactions expanded}
 
-d_transcript_expanded <- d_transcript %>%
-  filter(!is.na(Grade), Grade>=0) %>%
-  mutate(Round_grade = paste("g", round(Grade,0),sep=""),
+d_transactions_expanded <- d_transactions %>%
+  mutate(Round_grade = round(Grade, 0),
          Values = T) %>%
   spread(key = "Round_grade", value = Values) %>%
-  mutate(g1  = g0|g1,
-         g2  = g1|g2,
-         g3  = g2|g3,
-         g4  = g3|g4,
-         g5  = g4|g5,
-         g6  = g5|g6,
-         g7  = g6|g7,
-         g8  = g7|g8,
-         g9  = g8|g9,
-         g10 = g9|g10
+  mutate(`1`  = `0`|`1`,
+         `2`  = `1`|`2`,
+         `3`  = `2`|`3`,
+         `4`  = `3`|`4`,
+         `5`  = `4`|`5`,
+         `6`  = `5`|`6`,
+         `7`  = `6`|`7`,
+         `8`  = `7`|`8`,
+         `9`  = `8`|`9`,
+         `10`  = `9`|`10`
          ) %>%
-  gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
-  select(-Gr_bool )%>%
-  separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
-  select(-Trash) %>%
-  mutate(Grade= as.numeric(Grade_new))%>%
-  select(-Grade_new)
-
-
-#changing to transactions
-d_transactions_expanded <- d_course %>%
-  
-  # Exclude 
-  filter(
-    Type != "Mandatory",                  # (i) mandatory courses e.g. COR, CAP, etc
-    ! Letters %in% c("SKI", "PRO",        # (ii) skills & projects (taken by majority of students)
-                     "SAS", "SAH", "SAC") # (iii) courses of semester abroad (uninformative)
-    ) %>%
-  
-  # Join with transcripts.
-  select(- Period) %>%
-  inner_join(d_transcript_expanded, by = "Course ID") %>%
-  
-  # Identifying sequences
-  rename(sequenceID = `Student ID`) %>%
-  
-  # Identifying time of event (sequence)
-  mutate(
-    Period  = substr(Period, 1, 1),
-    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
-    ) %>%
+  gather(key = "Grade_round", value = "Gr_bool", `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, na.rm = TRUE, convert = TRUE) %>%
+  select(-Gr_bool) %>%
+  arrange(
+    sequenceID,
+    item
+  ) %>%
 
   # Identifying item
   mutate(
-    PF = case_when( Grade <  pass_grade ~ "fail",
-                    Grade >= pass_grade ~ "pass"),
-    HL = case_when( Grade <  high_grade ~ "low",
-                    Grade >= high_grade ~ "high"),
+    PF = case_when( Grade_round <  pass_grade ~ "fail",
+                    Grade_round >= pass_grade ~ "pass"),
+    HL = case_when( Grade_round <  high_grade ~ "low",
+                    Grade_round >= high_grade ~ "high"),
     
-    item_PF = paste(`Course ID`, PF, sep = "_"),
-    item_HL = paste(`Course ID`, HL, sep = "_")
-    ) %>%
-  rename(
-    item = `Course ID`
-  ) 
-
-
-
-rm(d_transcript_expanded)
+    item_PF = paste(item, PF, sep = "_"),
+    item_HL = paste(item, HL, sep = "_")
+    )
 ```
 ### Transactions for Apriori
 ```{r making transactions}
@@ -280,10 +248,14 @@ make_transaction <- function(data = d_transactions, item = item){
 
 #
 # Making transactions
-transactions       <- make_transaction(item = item   )
-transactions_PF    <- make_transaction(item = item_PF)
-transactions_HL    <- make_transaction(item = item_HL)
-transactions_Taken <- make_transaction(data = d_transactions_not_taken, item = item_taken)
+transactions                  <- make_transaction(item = item   )
+transactions_PF               <- make_transaction(item = item_PF)
+transactions_HL               <- make_transaction(item = item_HL)
+transactions_Taken            <- make_transaction(data = d_transactions_not_taken, item = item_taken)
+
+transactions_expanded         <- make_transaction(data = d_transactions_expanded, item = item)
+transactions_expanded_PF      <- make_transaction(data = d_transactions_expanded, item = item_PF)
+transactions_expanded_HL      <- make_transaction(data = d_transactions_expanded, item = item_HL)
 
 #
 # Checking transactions
@@ -293,7 +265,7 @@ rm(make_transaction)
 ```
 
 ### Sequences for CSPADE
-```{r}
+```{r making sequences}
 
 #
 # For convenience
@@ -333,10 +305,13 @@ make_sequence <- function(data = d_transactions, item = item){
 
 #
 # Making sequences
-sequences    <- make_sequence(item = item   )
-sequences_PF <- make_sequence(item = item_PF)
-sequences_HL <- make_sequence(item = item_HL)
+sequences          <- make_sequence(item = item   )
+sequences_PF       <- make_sequence(item = item_PF)
+sequences_HL       <- make_sequence(item = item_HL)
 
+sequences_expanded     <- make_sequence(data = d_transactions_expanded, item = item)
+sequences_expanded_PF  <- make_sequence(data = d_transactions_expanded, item = item_PF)
+sequences_expanded_HL  <- make_sequence(data = d_transactions_expanded, item = item_HL)
 
 #
 # Checking sequences
@@ -349,7 +324,7 @@ rm(make_sequence)
 
 ## Mining Rules
 ### Apriori Algorithm
-```{r}
+```{r function clean AR}
 
 # Transform AR from apriori into a readable data frame
 clean_AR <- function(AR){
@@ -436,20 +411,40 @@ AR_HL <- my_apriori(transactions_HL,
 AR_not_taken <- my_apriori(transactions_Taken)
 
 
+AR_expanded <- my_apriori(transactions_expanded)
+# creating vector of fail course
+course_id_fail <- d_transactions_expanded %>%
+  filter(PF == "fail") %>%
+  distinct(`item_PF`)
+
+AR_expanded_PF <- my_apriori(transactions_expanded_PF,
+                    appearance = list(both = course_id_fail$`item_PF`))
+
+# creating vector of low score course
+course_id_low <- d_transactions_expanded %>%
+  filter(HL == "low") %>%
+  distinct(`item_HL`)
+
+AR_expanded_HL <- my_apriori(transactions_expanded_HL,
+                    appearance = list(both = course_id_low$`item_HL`))
+
+
+
 #
 # Save association rules
-save(AR_taken, AR_PF, AR_HL, AR_not_taken,
+save(AR_taken, AR_PF, AR_HL, AR_not_taken, 
+     AR_expanded, AR_expanded_PF, AR_expanded_HL,
      file = "App/AR.RDATA")
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
    course_id_fail, course_id_low,
-   AR_taken, AR_PF, AR_HL, AR_not_taken)
+   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded, AR_expanded_PF, AR_expanded_HL)
 
 ```
 
 ### CSPADE Algorithm
-```{r}
+```{r function clean SR}
 # Transform rules from ruleInduction into a readable data frame
 n_students <- length(unique(d_transactions$sequenceID))
 
@@ -495,7 +490,7 @@ clean_SR<- function(rules){
 
 ```
 We apply cspade followed by rule induction
-```{r}
+```{r cspade and rule induction, cache = TRUE}
 # Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
 my_SR<- function(data){
  data %>%
@@ -524,20 +519,29 @@ SR   <- my_SR(data = sequences   )
 SR_PF <- my_SR(data = sequences_PF)
 SR_HL <- my_SR(data = sequences_HL)
 
+SR_expanded   <- my_SR(data = sequences_expanded   )
+SR_expanded_PF <- my_SR(data = sequences_expanded_PF)
+SR_expanded_HL <- my_SR(data = sequences_expanded_HL)
 #Saving sequence rules
 SR <- list(
     SR = SR,
     SR_PF = SR_PF,
-    SR_HL = SR_HL
+    SR_HL = SR_HL,
+    
+    SR_expanded    = SR_expanded,
+    SR_expanded_PF = SR_expanded_PF,
+    SR_expanded_HL = SR_expanded_HL
     )
 
 save(SR, file = "App/SR.RDATA")
 
 #clean unnecessary objects
 rm(clean_SR, my_SR, 
-   sequences, sequences_PF, sequences_HL, 
+   sequences, sequences_PF, sequences_HL,
+   sequences_expanded, sequences_expanded_PF, sequences_expanded_HL,
    n_students,
-   SR, SR_PF, SR_HL)
+   SR, SR_PF, SR_HL,
+   SR_expanded, SR_expanded_PF, SR_expanded_HL)
 
 ```
 
