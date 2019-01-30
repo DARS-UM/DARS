@@ -2,20 +2,22 @@
 # Setup
 library(shiny)
 library(dplyr)
-load("sequence_rules.RDATA")
+load("AR.RDATA")
 
 # Server
 function(input, output) {
   
   output$rules <- renderDataTable({
     
-    dataset <- sequence_rules
+    rules <- get(
+      paste(input$rules, input$item, sep = "_")
+      )
       
-    dataset %>%
+    rules %>%
       filter(
-        between(support  , input$support[1]   , input$support[2]),
-        between(Conf_corr, input$confidence[1], input$confidence[2]),
-        between(lift_corr, input$lift[1]      , input$lift[2]      )
+        between(count     , input$count[1]     , input$count[2]),
+        between(confidence, input$confidence[1], input$confidence[2]),
+        between(lift      , input$lift[1]      , input$lift[2]      )
       )
     
   })
