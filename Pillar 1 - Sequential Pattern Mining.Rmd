@@ -534,17 +534,16 @@ SR_expanded   <- my_SR(data = sequences_expanded   )
 SR_expanded_PF <- my_SR(data = sequences_expanded_PF)
 SR_expanded_HL <- my_SR(data = sequences_expanded_HL)
 #Saving sequence rules
-SR <- list(
+save(
     SR = SR,
     SR_PF = SR_PF,
     SR_HL = SR_HL,
     
     SR_expanded    = SR_expanded,
     SR_expanded_PF = SR_expanded_PF,
-    SR_expanded_HL = SR_expanded_HL
-    )
-
-save(SR, file = "App/SR.RDATA")
+    SR_expanded_HL = SR_expanded_HL,
+    
+    file = "App/SR.RDATA")
 
 #clean unnecessary objects
 rm(clean_SR, my_SR, 
