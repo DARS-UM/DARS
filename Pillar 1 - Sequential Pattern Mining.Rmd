@@ -284,10 +284,10 @@ clean_AR <- function(AR){
       count >= 1
     ) %>%
     mutate(
-      rules = str_remove(rules, pattern = "[{]"),
-      rules = str_remove(rules, pattern = "[}]"),
-      rules = str_remove(rules, pattern = "[{]"),
-      rules = str_remove(rules, pattern = "[}]"), #this is needed 4 times, because it only removes the first instance
+      rules = str_remove_all(rules, pattern = "[{]"),
+      rules = str_remove_all(rules, pattern = "[}]"),
+      # rules = str_remove(rules, pattern = "[{]"),
+      # rules = str_remove(rules, pattern = "[}]"), #this is needed 4 times, because it only removes the first instance
       `rhs.support` = confidence / lift
     ) %>%
     separate(rules, into = c("lhs", "rhs"), sep="=>") %>%
@@ -433,27 +433,17 @@ clean_rules <- function(rules){
     # filter(
     #   count >= 1
     # ) %>%
-    mutate(
-      rule = str_remove(rule, pattern = "[<]"),
-      rule = str_remove(rule, pattern = "[{]"),
-      rule = str_remove(rule, pattern = "[}]"),
-      rule = str_remove(rule, pattern = "[>]"),
-      rule = str_remove(rule, pattern = "[<]"),
-      rule = str_remove(rule, pattern = "[{]"),
-      rule = str_remove(rule, pattern = "[}]"),  #this is repeated, because it only removes the first instance
-     # rule = str_remove(rule, pattern = "[>]"), #this is taken out because the rules is marked with a => so it removes that one. 
-      `rhs.support` = confidence / lift
-    ) %>%
+    mutate(`rhs.support` = confidence / lift) %>%
     separate(rule, into = c("lhs", "rhs"), sep="=>") %>%
     mutate(
-      lhs = str_remove(rule, pattern = "[<]"),
-      lhs = str_remove(rule, pattern = "[{]"),
-      lhs = str_remove(rule, pattern = "[}]"),
-      lhs = str_remove(rule, pattern = "[>]"),
-      rhs = str_remove(rule, pattern = "[<]"),
-      rhs = str_remove(rule, pattern = "[{]"),
-      rhs = str_remove(rule, pattern = "[}]"),
-      rhs = str_remove(rule, pattern = "[>]")
+      lhs = str_remove(lhs, pattern = "[<]"),
+      lhs = str_remove(lhs, pattern = "[{]"),
+      lhs = str_remove(lhs, pattern = "[}]"),
+      lhs = str_remove(lhs, pattern = "[>]"),
+      rhs = str_remove(rhs, pattern = "[<]"),
+      rhs = str_remove(rhs, pattern = "[{]"),
+      rhs = str_remove(rhs, pattern = "[}]"),
+      rhs = str_remove(rhs, pattern = "[>]")
     ) %>%
     mutate_at(
       c("support", #"lhs.support",
