@@ -384,10 +384,47 @@ rm(clean_AR, my_apriori,
 
 
 ### CSPADE Algorithm
+We apply cspade algorithm
 
 ```{r}
-
-subsequences <- sequences %>%
+# Transform rules from ruleInduction into a readable data frame
+clean_IR <- function(rules){
+  rules %>%
+    as("data.frame") %>%
+    # filter(
+    #   count >= 1
+    # ) %>%
+    mutate(
+      rule = str_remove_all(rule, pattern = "[<]"),
+      rule = str_remove_all(rule, pattern = "[{]"),
+      rule = str_remove_all(rule, pattern = "[}]"),
+      rule = str_remove_all(rule, pattern = "[>]"),
+      `rhs.support` = confidence / lift
+      ) %>%
+    separate(rule, into = c("lhs", "rhs"), sep="=") %>%
+    mutate_at(
+      c("support", #"lhs.support",
+        "confidence", "rhs.support", "lift"),
+      funs(round(., 5))
+    ) %>%
+    select(
+      lhs, rhs,
+      support, 
+      #count, lhs.support, #figure out how to get these
+      confidence, rhs.support,
+      lift
+    ) #%>%
+    #arrange(
+    #  desc(count)
+    #)
+  
+}
+```
+We apply cspade followed by rule induction
+```{r}
+# Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
+my_IR <- function(data){
+  data %>%
   cspade(
     parameter = list(
       support = 0.01, # min support of a sequence
@@ -400,72 +437,36 @@ subsequences <- sequences %>%
     control = list(
       verbose = FALSE
       )
-    )
-
-#Inspect results CSPADE
-summary(subsequences)
-as(subsequences, "data.frame")
-```
-
-##rule induction:
-```{r}
-rules <- ruleInduction(subsequences,
-                       confidence = 0, #we need to play with the parameters.
-                       control    = list(verbose = TRUE))
-
-
-pass_rules_df <- as(rules, "data.frame") %>%
-  
-  separate(sequece, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
-  
-#  filter(str_detect(RHS, string_filter)) %>% #FILTER (YES) --> uncomment, (NO)-->comment
-  
-  arrange(
-    LHS, RHS,
-    desc(confidence), desc(lift))
-
-```
-
-
-
-```{r}
-
-# Transform AR from apriori into a readable data frame
-clean_rules <- function(rules){
-  rules %>%
-    as("data.frame") %>%
-    # filter(
-    #   count >= 1
-    # ) %>%
-    mutate(`rhs.support` = confidence / lift) %>%
-    separate(rule, into = c("lhs", "rhs"), sep="=>") %>%
-    mutate(
-      lhs = str_remove(lhs, pattern = "[<]"),
-      lhs = str_remove(lhs, pattern = "[{]"),
-      lhs = str_remove(lhs, pattern = "[}]"),
-      lhs = str_remove(lhs, pattern = "[>]"),
-      rhs = str_remove(rhs, pattern = "[<]"),
-      rhs = str_remove(rhs, pattern = "[{]"),
-      rhs = str_remove(rhs, pattern = "[}]"),
-      rhs = str_remove(rhs, pattern = "[>]")
     ) %>%
-    mutate_at(
-      c("support", #"lhs.support",
-        "confidence", "rhs.support", "lift"),
-      funs(round(., 5))
-    ) %>%
-    select(
-      lhs, rhs,
-      support, #count, lhs.support,
-      confidence, rhs.support,
-      lift
-    ) #%>%
-    #arrange(
-    #  desc(count)
-    #)
-  
+    ruleInduction(
+      confidence = 0, #we need to play with the parameters.
+      control    = list(verbose = FALSE)
+      ) %>%
+    clean_IR
 }
+
+#Generating induced rules
+IR    <- my_IR(data = sequences   )
+IR_PF <- my_IR(data = sequences_PF)
+IR_HL <- my_IR(data = sequences_HL)
+
+#Saving induced rules:
+save(
+  IR = list(
+    IR = IR,
+    IR_PF = IR_PF,
+    IR_HL = IR_HL
+    ),
+  file = "Output/IR.RDATA")
+
+
+
+rm(clean_IR, my_IR,
+   sequences, sequences_PF, sequences_HL,
+   IR, IR_PF, IR_HL)
+
 ```
+
 ##calculate appropriate measures:
 ```{r}
 n_students <- length(unique(d_sequence_transactions$`Student ID`))
