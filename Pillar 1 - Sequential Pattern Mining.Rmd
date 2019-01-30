@@ -474,7 +474,7 @@ rm(clean_SR, my_SR,
    SR, SR_PF, SR_HL)
 
 ```
-
+#Experiments
 #Visualizing rules
 ```{r}
 #look at counts
@@ -521,6 +521,7 @@ It might be a nice idea to visualise using Sankey diagrams, although I don't kno
 Rounds grades and add new row from original grade up to 10.
 NOTE: includes mandatory courses.
 ```{r}
+
 distributed_transcript <- d_transcript %>%
   filter(!is.na(Grade), Grade>=0) %>%
   mutate(Round_grade = paste("g", round(Grade,0),sep=""),
@@ -545,4 +546,5 @@ distributed_transcript <- d_transcript %>%
   select(-Grade_new) #%>%
   #to check that the grades appear from original grade to 10.
   #arrange(`Student ID`, `Course ID`) 
+
 ```
