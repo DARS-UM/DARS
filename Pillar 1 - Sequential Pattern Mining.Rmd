@@ -422,7 +422,7 @@ AR_HL <- my_apriori(transactions_HL,
 AR_not_taken <- my_apriori(transactions_Taken)
 
 
-AR_expanded <- my_apriori(transactions_expanded)
+AR_expanded_taken <- my_apriori(transactions_expanded)
 # creating vector of fail course
 course_id_fail <- d_transactions_expanded %>%
   filter(PF == "fail") %>%
@@ -444,13 +444,13 @@ AR_expanded_HL <- my_apriori(transactions_expanded_HL,
 #
 # Save association rules
 save(AR_taken, AR_PF, AR_HL, AR_not_taken, 
-     AR_expanded, AR_expanded_PF, AR_expanded_HL,
+     AR_expanded_taken, AR_expanded_PF, AR_expanded_HL,
      file = "App/AR.RDATA")
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
    course_id_fail, course_id_low,
-   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded, AR_expanded_PF, AR_expanded_HL)
+   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded_taken, AR_expanded_PF, AR_expanded_HL)
 
 ```
 
@@ -501,7 +501,7 @@ clean_SR<- function(rules){
 
 ```
 We apply cspade followed by rule induction
-```{r cspade and rule induction, cache = TRUE}
+```{r cspade and rule induction, cache = F}
 # Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
 my_SR<- function(data){
  data %>%
@@ -526,33 +526,28 @@ my_SR<- function(data){
 }
 
 #Generating sequence rules
-SR   <- my_SR(data = sequences   )
-SR_PF <- my_SR(data = sequences_PF)
-SR_HL <- my_SR(data = sequences_HL)
+SR_taken   <- my_SR(data = sequences   )
+SR_PF      <- my_SR(data = sequences_PF)
+SR_HL      <- my_SR(data = sequences_HL)
 
-SR_expanded   <- my_SR(data = sequences_expanded   )
-SR_expanded_PF <- my_SR(data = sequences_expanded_PF)
-SR_expanded_HL <- my_SR(data = sequences_expanded_HL)
+SR_expanded_taken   <- my_SR(data = sequences_expanded   )
+SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)
+SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)
 #Saving sequence rules
-SR <- list(
-    SR = SR,
-    SR_PF = SR_PF,
-    SR_HL = SR_HL,
+save(
+    SR_taken, SR_PF, SR_HL,
     
-    SR_expanded    = SR_expanded,
-    SR_expanded_PF = SR_expanded_PF,
-    SR_expanded_HL = SR_expanded_HL
-    )
-
-save(SR, file = "App/SR.RDATA")
+    SR_expanded_taken, SR_expanded_PF, SR_expanded_HL,
+    
+    file = "App/SR.RDATA")
 
 #clean unnecessary objects
 rm(clean_SR, my_SR, 
    sequences, sequences_PF, sequences_HL,
    sequences_expanded, sequences_expanded_PF, sequences_expanded_HL,
    n_students,
-   SR, SR_PF, SR_HL,
-   SR_expanded, SR_expanded_PF, SR_expanded_HL)
+   SR_taken, SR_PF, SR_HL,
+   SR_expanded_taken, SR_expanded_PF, SR_expanded_HL)
 
 ```
 

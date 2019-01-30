@@ -24,13 +24,13 @@ library(tidyverse)
 Setup
 =====
 
-load previous data and create function to find courses
+We load the environment `data_pillar1` which we saved at the end of the data preparation. It contains the data sets `d_course` and `d_transcript`.
 
 ``` r
 load("Output/data_pillar_1.RDATA")
 ```
 
-Function that returns title of a course given its code.
+We create a function, which, when given the code of a course, returns its title.
 
 ``` r
 find_course <- function(code){ 
@@ -55,20 +55,29 @@ find_course("HUM1005")
 Data Exploration
 ================
 
+We compute summary statistics (minimum, maximum, mean, median, standard deviation, failure rate, number of failure and count) at different levels (student, course, cluster, concentration, year and course level). We save the results in the environment `Transcript Statistics`.
+
 ``` r
 # For convenience
 provide_statistics <- function(data){
+  
   data %>%
     summarise(
       Min       = min(Grade),
       Max       = max(Grade), 
-      Mean      = round(mean(Grade), 2), 
+      Mean      = mean(Grade), 
       Median    = median(Grade), 
-      SD        = round(sd(Grade), 2),
-      Fail_rate = round(mean(Fail), 2),
-      Fail_n    = sum(Fail),
-      n         = n()
-      )
+      SD        = sd(Grade),
+      `Failure Rate` = mean(Fail),
+      `Failure Count`    = sum(Fail),
+      Count     = n()
+      ) %>%
+    mutate_at(
+      vars(Mean, SD, `Failure Rate`),
+      round,
+      digits = 2
+    )
+  
 }
 
 # Student level
@@ -113,6 +122,7 @@ statistics_level <- d_transcript %>%
 # output
 save(statistics_student, statistics_course, statistics_cluster,
      statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
+
 rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
      statistics_concentration, statistics_year, statistics_level)
 ```
@@ -493,7 +503,7 @@ AR_HL <- my_apriori(transactions_HL,
 AR_not_taken <- my_apriori(transactions_Taken)
 
 
-AR_expanded <- my_apriori(transactions_expanded)
+AR_expanded_taken <- my_apriori(transactions_expanded)
 # creating vector of fail course
 course_id_fail <- d_transactions_expanded %>%
   filter(PF == "fail") %>%
@@ -515,13 +525,13 @@ AR_expanded_HL <- my_apriori(transactions_expanded_HL,
 #
 # Save association rules
 save(AR_taken, AR_PF, AR_HL, AR_not_taken, 
-     AR_expanded, AR_expanded_PF, AR_expanded_HL,
+     AR_expanded_taken, AR_expanded_PF, AR_expanded_HL,
      file = "App/AR.RDATA")
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
    course_id_fail, course_id_low,
-   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded, AR_expanded_PF, AR_expanded_HL)
+   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded_taken, AR_expanded_PF, AR_expanded_HL)
 ```
 
 ### CSPADE Algorithm
@@ -598,7 +608,7 @@ my_SR<- function(data){
 }
 
 #Generating sequence rules
-SR   <- my_SR(data = sequences   )
+SR_taken   <- my_SR(data = sequences   )
 ```
 
     ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
@@ -610,10 +620,10 @@ SR   <- my_SR(data = sequences   )
     ## 20, ...].
 
 ``` r
-SR_PF <- my_SR(data = sequences_PF)
-SR_HL <- my_SR(data = sequences_HL)
+SR_PF      <- my_SR(data = sequences_PF)
+SR_HL      <- my_SR(data = sequences_HL)
 
-SR_expanded   <- my_SR(data = sequences_expanded   )
+SR_expanded_taken   <- my_SR(data = sequences_expanded   )
 ```
 
     ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
@@ -625,26 +635,21 @@ SR_expanded   <- my_SR(data = sequences_expanded   )
     ## 20, ...].
 
 ``` r
-SR_expanded_PF <- my_SR(data = sequences_expanded_PF)
-SR_expanded_HL <- my_SR(data = sequences_expanded_HL)
+SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)
+SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)
 #Saving sequence rules
-SR <- list(
-    SR = SR,
-    SR_PF = SR_PF,
-    SR_HL = SR_HL,
+save(
+    SR_taken, SR_PF, SR_HL,
     
-    SR_expanded    = SR_expanded,
-    SR_expanded_PF = SR_expanded_PF,
-    SR_expanded_HL = SR_expanded_HL
-    )
-
-save(SR, file = "App/SR.RDATA")
+    SR_expanded_taken, SR_expanded_PF, SR_expanded_HL,
+    
+    file = "App/SR.RDATA")
 
 #clean unnecessary objects
 rm(clean_SR, my_SR, 
    sequences, sequences_PF, sequences_HL,
    sequences_expanded, sequences_expanded_PF, sequences_expanded_HL,
    n_students,
-   SR, SR_PF, SR_HL,
-   SR_expanded, SR_expanded_PF, SR_expanded_HL)
+   SR_taken, SR_PF, SR_HL,
+   SR_expanded_taken, SR_expanded_PF, SR_expanded_HL)
 ```
