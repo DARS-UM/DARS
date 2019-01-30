@@ -377,51 +377,60 @@ rm(clean_AR, my_apriori,
 
 ```
 
-
 ### CSPADE Algorithm
-We apply cspade algorithm
 ```{r}
 # Transform rules from ruleInduction into a readable data frame
-clean_IR <- function(rules){
+n_students <- length(unique(d_transactions$sequenceID))
+
+clean_SR<- function(rules){
+  
   rules %>%
     as("data.frame") %>%
-    # filter(
-    #   count >= 1
-    # ) %>%
     mutate(
       rule = str_remove_all(rule, pattern = "[<]"),
       rule = str_remove_all(rule, pattern = "[{]"),
       rule = str_remove_all(rule, pattern = "[}]"),
-      rule = str_remove_all(rule, pattern = "[>]"),
-      `rhs.support` = confidence / lift
+      rule = str_remove_all(rule, pattern = "[>]")
       ) %>%
-    separate(rule, into = c("lhs", "rhs"), sep="=") %>%
-    mutate_at(
-      c("support", #"lhs.support",
-        "confidence", "rhs.support", "lift"),
-      funs(round(., 5))
-    ) %>%
+    separate(rule, into = c("lhs", "rhs"), sep="=")  %>%
     select(
       lhs, rhs,
-      support, 
-      #count, lhs.support, #figure out how to get these
-      confidence, rhs.support,
+      support,
+      confidence,
       lift
-    ) #%>%
-    #arrange(
-    #  desc(count)
-    #)
-  
+    ) %>%
+    separate(lhs, into=c("LHS Course ID", "LHS Quality"), sep="_", remove= F) %>%
+    separate(rhs, into=c("RHS Course ID", "RHS Quality"), sep="_", remove= F) %>%
+    # Compute statistic
+    group_by(lhs,`RHS Course ID`) %>%
+    mutate(
+      lhs.rhsCourse.support = sum(support),
+      confidence.corr = support / lhs.rhsCourse.support,
+      count = support * n_students,
+      lhs.rhsCourse.count = lhs.rhsCourse.support * n_students
+      
+      # TODO: coñpute rhs.support
+      # lift.corr = confidence.corr / rhs.support
+     
+  ) %>%
+  ungroup() %>%
+    mutate_at(
+      c("support",
+        "confidence", "lift"),
+      funs(round(., 5))
+    )
+    
 }
+
 ```
 We apply cspade followed by rule induction
 ```{r}
 # Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
-my_IR <- function(data){
-  data %>%
+my_SR<- function(data){
+ data %>%
   cspade(
     parameter = list(
-      support = 0.01, # min support of a sequence
+      support = 0, # min support of a sequence
       maxsize = 1, # max number of items of an element of a sequence
       maxlen  = 2, # max number of element of a sequence
       mingap  = 1, # min time difference between consecutive element of a sequence
@@ -436,78 +445,31 @@ my_IR <- function(data){
       confidence = 0, #we need to play with the parameters.
       control    = list(verbose = FALSE)
       ) %>%
-    clean_IR
+    clean_SR
 }
 
-#Generating induced rules
-IR    <- my_IR(data = sequences   )
-IR_PF <- my_IR(data = sequences_PF)
-IR_HL <- my_IR(data = sequences_HL)
+#Generating sequence rules
+SR   <- my_SR(data = sequences   )
+SR_PF <- my_SR(data = sequences_PF)
+SR_HL <- my_SR(data = sequences_HL)
 
-#Saving induced rules:
-save(
-  IR = list(
-    IR = IR,
-    IR_PF = IR_PF,
-    IR_HL = IR_HL
-    ),
-  file = "Output/IR.RDATA")
+#Saving sequence rules
+SR <- list(
+    SR = SR,
+    SR_PF = SR_PF,
+    SR_HL = SR_HL
+    )
 
+save(SR, file = "App/SR.RDATA")
 
-
-rm(clean_IR, my_IR,
-   sequences, sequences_PF, sequences_HL,
-   IR, IR_PF, IR_HL)
-
-```
-
-##calculate appropriate measures:
-```{r}
-n_students <- length(unique(d_sequence_transactions$`Student ID`))
-
-sequence_rules <- pass_rules_df %>%
-  separate(LHS, into=c("LHS Course ID", "LHS Score"), sep="_", remove= FALSE) %>%
-  separate(RHS, into=c("RHS Course ID", "RHS Score"), sep="_", remove= FALSE) %>%
-  mutate(`RHS Course ID`= substr(`RHS Course ID`, start=4, stop=10))%>%
-  left_join(lookup_table, by = c("RHS Course ID"="Course ID")) %>%
-  
-  # Compute statistics
-  group_by(LHS,`RHS Course ID`) %>%
-  mutate(Prob_both = sum(support), 
-         Conf_corr = support/Prob_both,
-         n_rule = support * n_students,
-         n_both =Prob_both * n_students,
-         lift_diff= Conf_corr - Prop_low,
-         lift_corr=Conf_corr / Prop_low) %>%
-  ungroup() %>%
-  
-  # Filter and edit output
-  filter(str_detect(`RHS Score`, pattern = "low"),
-         str_detect(`LHS Score`, pattern = "low"),
-         n_rule >= 5,
-         Conf_corr > 0.2) %>%
-  select(LHS, RHS, support, n_rule, Prob_both, n_both, Prop_low, Conf_corr, lift_corr, lift_diff) %>%
-  mutate(support = round(support,3),
-         Prob_both =round(Prob_both,3),
-         Prop_low =round(Prop_low,3),
-         Conf_corr= round(Conf_corr,3),
-         lift_diff= round(lift_diff,3),
-         lift_corr= round(lift_corr,3)) %>%
-  arrange(lift_diff)
+#clean unnecessary objects
+rm(clean_SR, my_SR, 
+   sequences, sequences_PF, sequences_HL, 
+   n_students,
+   SR, SR_PF, SR_HL)
 
 ```
-##Save data
-```{r}
-save(sequence_rules,
-     file = "sequence_rules.RDATA")
-```
 
-##Arrange data for plots:
-```{r}
-for_plots <-  manual_confidence_rules %>%
-  group_by(LHS)%>%
-  mutate(LHS_count=n())
-```
 #Visualizing rules
 ```{r}
 #look at counts
@@ -568,7 +530,7 @@ distributed_transcript <- d_transcript %>%
          g7  = g6|g7,
          g8  = g7|g8,
          g9  = g8|g9,
-         g10 = g9|g10,
+         g10 = g9|g10
          ) %>%
   gather(key="Gr_string", value="Gr_bool", g0, g1, g2, g3, g4,g5,g6,g7,g8,g9,g10, na.rm=T) %>%
   select(-Gr_bool )%>%
@@ -579,7 +541,3 @@ distributed_transcript <- d_transcript %>%
   #to check that the grades appear from original grade to 10.
   #arrange(`Student ID`, `Course ID`) 
 ```
-
-##Not ready to move up:
-
-
