@@ -3,6 +3,7 @@
 library(shiny)
 library(dplyr)
 load("AR.RDATA")
+load("SR.RDATA")
 
 # Server
 function(input, output) {

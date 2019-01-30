@@ -30,10 +30,13 @@ fluidPage(
         inputId = "item",
         label   = "Type of item in rules",
         choices = c(
-          "Course taken"      = "taken",
-          "Failed grade"      = "PF",
-          "Low grade (< 6.5)" = "HL",
-          "Course taken & not taken" = "not_taken"
+          "Course taken"                = "taken",
+          "Failed grade"                = "PF",
+          "Low grade (< 6.5)"           = "HL",
+          "Course taken & not taken"    = "not_taken",
+          "Expanded"                    = "expanded_taken",
+          "Expanded (Failed grade)"     = "expanded_PF",
+          "Expanded (low grade (< 6.5)" = "expanded_PF"
           
         ),
         selected = "taken"
