@@ -422,7 +422,7 @@ AR_HL <- my_apriori(transactions_HL,
 AR_not_taken <- my_apriori(transactions_Taken)
 
 
-AR_expanded <- my_apriori(transactions_expanded)
+AR_expanded_taken <- my_apriori(transactions_expanded)
 # creating vector of fail course
 course_id_fail <- d_transactions_expanded %>%
   filter(PF == "fail") %>%
@@ -444,13 +444,13 @@ AR_expanded_HL <- my_apriori(transactions_expanded_HL,
 #
 # Save association rules
 save(AR_taken, AR_PF, AR_HL, AR_not_taken, 
-     AR_expanded, AR_expanded_PF, AR_expanded_HL,
+     AR_expanded_taken, AR_expanded_PF, AR_expanded_HL,
      file = "App/AR.RDATA")
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
    course_id_fail, course_id_low,
-   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded, AR_expanded_PF, AR_expanded_HL)
+   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded_taken, AR_expanded_PF, AR_expanded_HL)
 
 ```
 
