@@ -14,12 +14,12 @@ library(tidyverse)
 ```
 
 # Setup
-load previous data and create function to find courses
+We load the environment `data_pillar1` which we saved at the end of the data preparation. It contains the data sets `d_course` and `d_transcript`.
 ```{r loading data}
 load("Output/data_pillar_1.RDATA")
 ```
 
-Function that returns title of a course given its code.
+We create a function, which, when given the code of a course, returns its title.
 ```{r function find_course}
 find_course <- function(code){ 
   
@@ -37,21 +37,31 @@ find_course("HUM1005")
 ```
 
 # Data Exploration
+
+We compute summary statistics (minimum, maximum, mean, median, standard deviation, failure rate, number of failure and count) at different levels (student, course, cluster, concentration, year and course level). We save the results in the environment `Transcript Statistics`.
+
 ```{r statistic summary}
 
 # For convenience
 provide_statistics <- function(data){
+  
   data %>%
     summarise(
       Min       = min(Grade),
       Max       = max(Grade), 
-      Mean      = round(mean(Grade), 2), 
+      Mean      = mean(Grade), 
       Median    = median(Grade), 
-      SD        = round(sd(Grade), 2),
-      Fail_rate = round(mean(Fail), 2),
-      Fail_n    = sum(Fail),
-      n         = n()
-      )
+      SD        = sd(Grade),
+      `Failure Rate` = mean(Fail),
+      `Failure Count`    = sum(Fail),
+      Count     = n()
+      ) %>%
+    mutate_at(
+      vars(Mean, SD, `Failure Rate`),
+      round,
+      digits = 2
+    )
+  
 }
 
 # Student level
@@ -96,6 +106,7 @@ statistics_level <- d_transcript %>%
 # output
 save(statistics_student, statistics_course, statistics_cluster,
      statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
+
 rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
      statistics_concentration, statistics_year, statistics_level)
 ```
