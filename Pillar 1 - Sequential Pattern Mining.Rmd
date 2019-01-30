@@ -526,22 +526,18 @@ my_SR<- function(data){
 }
 
 #Generating sequence rules
-SR   <- my_SR(data = sequences   )
-SR_PF <- my_SR(data = sequences_PF)
-SR_HL <- my_SR(data = sequences_HL)
+SR_taken   <- my_SR(data = sequences   )
+SR_PF      <- my_SR(data = sequences_PF)
+SR_HL      <- my_SR(data = sequences_HL)
 
-SR_expanded   <- my_SR(data = sequences_expanded   )
-SR_expanded_PF <- my_SR(data = sequences_expanded_PF)
-SR_expanded_HL <- my_SR(data = sequences_expanded_HL)
+SR_expanded_taken   <- my_SR(data = sequences_expanded   )
+SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)
+SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)
 #Saving sequence rules
 save(
-    SR = SR,
-    SR_PF = SR_PF,
-    SR_HL = SR_HL,
+    SR_taken, SR_PF, SR_HL,
     
-    SR_expanded    = SR_expanded,
-    SR_expanded_PF = SR_expanded_PF,
-    SR_expanded_HL = SR_expanded_HL,
+    SR_expanded_taken, SR_expanded_PF, SR_expanded_HL,
     
     file = "App/SR.RDATA")
 
@@ -550,8 +546,8 @@ rm(clean_SR, my_SR,
    sequences, sequences_PF, sequences_HL,
    sequences_expanded, sequences_expanded_PF, sequences_expanded_HL,
    n_students,
-   SR, SR_PF, SR_HL,
-   SR_expanded, SR_expanded_PF, SR_expanded_HL)
+   SR_taken, SR_PF, SR_HL,
+   SR_expanded_taken, SR_expanded_PF, SR_expanded_HL)
 
 ```
 
