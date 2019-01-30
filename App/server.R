@@ -2,7 +2,6 @@
 # Setup
 library(shiny)
 library(dplyr)
-load("sequence_rules.RDATA")
 load("AR.RDATA")
 
 # Server

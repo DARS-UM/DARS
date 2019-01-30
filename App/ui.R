@@ -47,9 +47,9 @@ fluidPage(
         inputId = "count",
         label = "Count",
         min   = 5,
-        max   = 150,
+        max   = 1000,
         step  = 1,
-        value = c(5, 150)
+        value = c(5, 1000)
         ),
       
       # Input: Slider for the Cconfidence
@@ -66,17 +66,12 @@ fluidPage(
       sliderInput(
         inputId = "lift",
         label = "Lift (corrected)",
-        min   = -15,
-        max   = 15,
+        min   = 0,
+        max   = 100,
         step  = 0.01,
-        value = c(-10, 10)
-      ),
+        value = c(0, 100)
+      )
       
-      # Horizontal line
-      tags$hr(),
-      
-      # Text
-      helpText("TODO: use logarithmic scale for sliders")
     ),
     
     # Main panel for displaying outputs

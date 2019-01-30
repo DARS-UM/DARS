@@ -159,20 +159,31 @@ d_transactions <- d_course %>%
 
 ### Adding not taken courses
 ```{r}
-d_transactions_tmp <- expand.grid(sequenceID = unique(d_transactions$sequenceID),item = unique(d_transactions$item)) %>%
-  left_join(d_transactions, by = c("sequenceID","item")) %>%
+d_transactions_not_taken <- expand.grid(
+  
+  # Expand along students (sequenceID) and courses (itemID)
+  sequenceID = unique(d_transactions$sequenceID),
+  item       = unique(d_transactions$item),
+  stringsAsFactors = FALSE
+  ) %>%
+  
+  # Join with d_transactions
+  left_join(
+    d_transactions, 
+    by = c("sequenceID", "item")
+    ) %>%
+  
+  # Create 
   mutate(
-    Taken= case_when(
-     is.na(Grade)  ~ "not taken",
-      T             ~ "taken"),
-    item_Taken= paste(item,Taken, sep = "_")
+    
+    taken = case_when(
+      is.na(Grade) ~ "not taken",
+      TRUE         ~ "taken"),
+    
+    item_taken= paste(item, taken, sep = "_")
+    
      )
 
-#ARRANGE PROPERLY
-
-d_transactions <- d_transactions_tmp
-
-rm(d_transactions_tmp)
 ```
 
 ### Transactions for Apriori
@@ -206,7 +217,7 @@ make_transaction <- function(data = d_transactions, item = item){
 transactions       <- make_transaction(item = item   )
 transactions_PF    <- make_transaction(item = item_PF)
 transactions_HL    <- make_transaction(item = item_HL)
-transactions_Taken <- make_transaction(item=item_Taken)
+transactions_Taken <- make_transaction(data = d_transactions_not_taken, item = item_taken)
 
 #
 # Checking transactions
@@ -362,12 +373,12 @@ AR_not_taken <- my_apriori(transactions_Taken)
 #
 # Save association rules
 save(AR_taken, AR_PF, AR_HL, AR_not_taken,
-     file = "App/ARR.RDATA")
+     file = "App/AR.RDATA")
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
    course_id_fail, course_id_low,
-   AR, AR_PF, AR_HL, AR_Taken)
+   AR_taken, AR_PF, AR_HL, AR_not_taken)
 
 ```
 
