@@ -285,8 +285,6 @@ clean_AR <- function(AR){
     mutate(
       rules = str_remove_all(rules, pattern = "[{]"),
       rules = str_remove_all(rules, pattern = "[}]"),
-      # rules = str_remove(rules, pattern = "[{]"),
-      # rules = str_remove(rules, pattern = "[}]"), #this is needed 4 times, because it only removes the first instance
       `rhs.support` = confidence / lift
     ) %>%
     separate(rules, into = c("lhs", "rhs"), sep="=>") %>%
