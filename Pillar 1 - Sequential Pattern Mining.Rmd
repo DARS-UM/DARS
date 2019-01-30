@@ -501,7 +501,7 @@ clean_SR<- function(rules){
 
 ```
 We apply cspade followed by rule induction
-```{r cspade and rule induction, cache = TRUE}
+```{r cspade and rule induction, cache = F}
 # Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
 my_SR<- function(data){
  data %>%
