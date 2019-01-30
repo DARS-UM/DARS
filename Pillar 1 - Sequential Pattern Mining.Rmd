@@ -37,7 +37,6 @@ find_course("HUM1005")
 ```
 
 # Data Exploration
-
 ```{r statistic summary}
 
 # For convenience
@@ -209,13 +208,10 @@ d_transcript_expanded <- d_transcript %>%
   separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
   select(-Trash) %>%
   mutate(Grade= as.numeric(Grade_new))%>%
-  select(-Grade_new) #%>%
-  #to check that the grades appear from original grade to 10.
-  #arrange(`Student ID`, `Course ID`) 
+  select(-Grade_new)
 
 
 #changing to transactions
-
 d_transactions_expanded <- d_course %>%
   
   # Exclude 
@@ -251,9 +247,10 @@ d_transactions_expanded <- d_course %>%
   rename(
     item = `Course ID`
   ) 
-#%>%
-  #arrange(sequenceID, item) %>%
-  #select(sequenceID, item, Grade, everything())
+
+
+
+rm(d_transcript_expanded)
 ```
 ### Transactions for Apriori
 ```{r making transactions}
