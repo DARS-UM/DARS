@@ -336,7 +336,7 @@ my_apriori <- function(data, appearance = NULL){
 
 #
 # Generating asocciation rules
-AR <- my_apriori(transactions)
+AR_taken <- my_apriori(transactions)
 
 # creating vector of fail course
 course_id_fail <- d_transactions %>%
@@ -356,19 +356,13 @@ AR_HL <- my_apriori(transactions_HL,
 
 
 
-AR_Taken <- my_apriori(transactions_Taken)
+AR_not_taken <- my_apriori(transactions_Taken)
 
 
 #
 # Save association rules
-AR <- list(
-    AR = AR,
-    AR_PF = AR_PF,
-    AR_HL = AR_HL,
-    AR_Taken = AR_Taken
-    )
-
-save(AR, file = "App/AR.RDATA")
+save(AR_taken, AR_PF, AR_HL, AR_not_taken,
+     file = "App/ARR.RDATA")
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
