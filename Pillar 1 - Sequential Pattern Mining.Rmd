@@ -544,8 +544,3 @@ rm(clean_SR, my_SR,
 
 ```
 
-#EXPERIMENTS:
-##TO MOVE UP (These are ready:)
-Rounds grades and add new row from original grade up to 10.
-NOTE: includes mandatory courses.
-
