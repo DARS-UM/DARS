@@ -455,6 +455,8 @@ rm(clean_AR, my_apriori,
 ```
 
 ### CSPADE Algorithm
+##TODO: FILTER FAILS AND LOW GRADE
+Change name confidence corrected to confidence, confidence to confidence old, same for lift
 ```{r function clean SR}
 # Transform rules from ruleInduction into a readable data frame
 n_students <- length(unique(d_transactions$sequenceID))
