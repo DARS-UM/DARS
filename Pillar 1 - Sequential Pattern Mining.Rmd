@@ -156,6 +156,7 @@ d_transactions <- d_course %>%
     item = `Course ID`
   )
 ```
+
 ### Adding not taken courses
 ```{r}
 d_transactions_tmp <- expand.grid(sequenceID = unique(d_transactions$sequenceID),item = unique(d_transactions$item)) %>%
@@ -173,8 +174,6 @@ d_transactions <- d_transactions_tmp
 
 rm(d_transactions_tmp)
 ```
-
-
 
 ### Transactions for Apriori
 ```{r making transactions}
@@ -364,18 +363,14 @@ AR_Taken <- my_apriori(transactions_Taken)
 
 #
 # Save association rules
-save(
-  AR = list(
+AR <- list(
     AR = AR,
     AR_PF = AR_PF,
     AR_HL = AR_HL,
     AR_Taken = AR_Taken
-    ),
-  file = "Output/AR.RDATA")
+    )
 
-# TODO: MAKE APP
-
-
+save(AR, file = "App/AR.RDATA")
 
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
