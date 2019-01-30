@@ -386,7 +386,7 @@ rm(clean_AR, my_apriori,
 subsequences <- sequences %>%
   cspade(
     parameter = list(
-      support = 0.2, # min support of a sequence
+      support = 0.01, # min support of a sequence
       maxsize = 1, # max number of items of an element of a sequence
       maxlen  = 2, # max number of element of a sequence
       mingap  = 1, # min time difference between consecutive element of a sequence
@@ -412,7 +412,7 @@ rules <- ruleInduction(subsequences,
 
 pass_rules_df <- as(rules, "data.frame") %>%
   
-  separate(rule, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
+  separate(sequece, into=c("LHS", "RHS"), sep = "=>", remove = T) %>% #remove = F to keep columns
   
 #  filter(str_detect(RHS, string_filter)) %>% #FILTER (YES) --> uncomment, (NO)-->comment
   
@@ -422,6 +422,56 @@ pass_rules_df <- as(rules, "data.frame") %>%
 
 ```
 
+
+
+```{r}
+
+# Transform AR from apriori into a readable data frame
+clean_rules <- function(rules){
+  rules %>%
+    as("data.frame") %>%
+    # filter(
+    #   count >= 1
+    # ) %>%
+    mutate(
+      rule = str_remove(rule, pattern = "[<]"),
+      rule = str_remove(rule, pattern = "[{]"),
+      rule = str_remove(rule, pattern = "[}]"),
+      rule = str_remove(rule, pattern = "[>]"),
+      rule = str_remove(rule, pattern = "[<]"),
+      rule = str_remove(rule, pattern = "[{]"),
+      rule = str_remove(rule, pattern = "[}]"),  #this is repeated, because it only removes the first instance
+     # rule = str_remove(rule, pattern = "[>]"), #this is taken out because the rules is marked with a => so it removes that one. 
+      `rhs.support` = confidence / lift
+    ) %>%
+    separate(rule, into = c("lhs", "rhs"), sep="=>") %>%
+    mutate(
+      lhs = str_remove(rule, pattern = "[<]"),
+      lhs = str_remove(rule, pattern = "[{]"),
+      lhs = str_remove(rule, pattern = "[}]"),
+      lhs = str_remove(rule, pattern = "[>]"),
+      rhs = str_remove(rule, pattern = "[<]"),
+      rhs = str_remove(rule, pattern = "[{]"),
+      rhs = str_remove(rule, pattern = "[}]"),
+      rhs = str_remove(rule, pattern = "[>]")
+    ) %>%
+    mutate_at(
+      c("support", #"lhs.support",
+        "confidence", "rhs.support", "lift"),
+      funs(round(., 5))
+    ) %>%
+    select(
+      lhs, rhs,
+      support, #count, lhs.support,
+      confidence, rhs.support,
+      lift
+    ) #%>%
+    #arrange(
+    #  desc(count)
+    #)
+  
+}
+```
 ##calculate appropriate measures:
 ```{r}
 n_students <- length(unique(d_sequence_transactions$`Student ID`))
