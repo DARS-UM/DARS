@@ -1,26 +1,66 @@
----
-title: "Pillar 1 - Sequential Pattern Mining"
-author: "DARS"
-date: "`r Sys.Date()`"
-output: 
-  github_document:
-    toc: TRUE
----
+Pillar 1 - Sequential Pattern Mining
+================
+DARS
+2019-01-30
 
-```{r library, message = F}
+-   [Setup](#setup)
+-   [Data Exploration](#data-exploration)
+-   [Association Rules and Sequence Rules](#association-rules-and-sequence-rules)
+    -   [Data Prep: Creating Transactions and Sequences](#data-prep-creating-transactions-and-sequences)
+        -   [Adding not taken courses](#adding-not-taken-courses)
+        -   [Expanded Transcripts](#expanded-transcripts)
+        -   [Transactions for Apriori](#transactions-for-apriori)
+        -   [Sequences for CSPADE](#sequences-for-cspade)
+    -   [Mining Rules](#mining-rules)
+        -   [Apriori Algorithm](#apriori-algorithm)
+        -   [CSPADE Algorithm](#cspade-algorithm)
+-   [EXPERIMENTS:](#experiments)
+    -   [TO MOVE UP (These are ready:)](#to-move-up-these-are-ready)
+
+``` r
 library(arulesSequences)
+```
 
+    ## Warning: package 'arulesSequences' was built under R version 3.4.4
+
+    ## Warning: package 'arules' was built under R version 3.4.4
+
+    ## Warning: package 'Matrix' was built under R version 3.4.4
+
+``` r
 library(tidyverse)
 ```
 
-# Setup
-We load the environment `data_pillar1` which we saved at the end of the data preparation. It contains the data sets `d_course` and `d_transcript`.
-```{r loading data}
+    ## Warning: package 'tidyverse' was built under R version 3.4.2
+
+    ## Warning: package 'ggplot2' was built under R version 3.4.4
+
+    ## Warning: package 'tibble' was built under R version 3.4.4
+
+    ## Warning: package 'tidyr' was built under R version 3.4.4
+
+    ## Warning: package 'readr' was built under R version 3.4.4
+
+    ## Warning: package 'purrr' was built under R version 3.4.4
+
+    ## Warning: package 'dplyr' was built under R version 3.4.4
+
+    ## Warning: package 'stringr' was built under R version 3.4.4
+
+    ## Warning: package 'forcats' was built under R version 3.4.3
+
+Setup
+=====
+
+load previous data and create function to find courses
+
+``` r
 load("Output/data_pillar_1.RDATA")
 ```
 
-We create a function, which, when given the code of a course, returns its title.
-```{r function find_course}
+Function that returns title of a course given its code.
+
+``` r
 find_course <- function(code){ 
   
   dataset <- d_transcript %>%
@@ -36,32 +76,27 @@ find_course <- function(code){
 find_course("HUM1005")
 ```
 
-# Data Exploration
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
-We compute summary statistics (minimum, maximum, mean, median, standard deviation, failure rate, number of failure and count) at different levels (student, course, cluster, concentration, year and course level). We save the results in the environment `Transcript Statistics`.
+    ## [1] "Songs and Poetry: Theory and Analysis"
 
-```{r statistic summary}
+Data Exploration
+================
 
+``` r
 # For convenience
 provide_statistics <- function(data){
-  
   data %>%
     summarise(
       Min       = min(Grade),
       Max       = max(Grade), 
-      Mean      = mean(Grade), 
+      Mean      = round(mean(Grade), 2), 
       Median    = median(Grade), 
-      SD        = sd(Grade),
-      `Failure Rate` = mean(Fail),
-      `Failure Count`    = sum(Fail),
-      Count     = n()
-      ) %>%
-    mutate_at(
-      vars(Mean, SD, `Failure Rate`),
-      round,
-      digits = 2
-    )
-  
+      SD        = round(sd(Grade), 2),
+      Fail_rate = round(mean(Fail), 2),
+      Fail_n    = sum(Fail),
+      n         = n()
+      )
 }
 
 # Student level
@@ -106,21 +141,21 @@ statistics_level <- d_transcript %>%
 # output
 save(statistics_student, statistics_course, statistics_cluster,
      statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
-
 rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
      statistics_concentration, statistics_year, statistics_level)
 ```
 
-# Association Rules and Sequence Rules
-For a first exploration of arules, we conceptualise our framework like this:
-transaction = student
-item = course
+Association Rules and Sequence Rules
+====================================
 
-## Data Prep: Creating Transactions and Sequences
-First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
+For a first exploration of arules, we conceptualise our framework like this: transaction = student item = course
 
-```{r AR data prep 1}
+Data Prep: Creating Transactions and Sequences
+----------------------------------------------
 
+First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts.
+
+``` r
 #
 # Threshold: pass grade, high grade
 pass_grade <- 5.5
@@ -168,7 +203,8 @@ d_transactions <- d_course %>%
 ```
 
 ### Adding not taken courses
-```{r}
+
+``` r
 d_transactions_not_taken <- expand.grid(
   
   # Expand along students (sequenceID) and courses (itemID)
@@ -193,11 +229,11 @@ d_transactions_not_taken <- expand.grid(
     item_taken= paste(item, taken, sep = "_")
     
      )
-
 ```
-###Expanded Transcripts
-```{r}
 
+### Expanded Transcripts
+
+``` r
 d_transcript_expanded <- d_transcript %>%
   filter(!is.na(Grade), Grade>=0) %>%
   mutate(Round_grade = paste("g", round(Grade,0),sep=""),
@@ -219,10 +255,13 @@ d_transcript_expanded <- d_transcript %>%
   separate(Gr_string, into=c("Trash", "Grade_new"), sep="g")%>%
   select(-Trash) %>%
   mutate(Grade= as.numeric(Grade_new))%>%
-  select(-Grade_new)
+  select(-Grade_new) #%>%
+  #to check that the grades appear from original grade to 10.
+  #arrange(`Student ID`, `Course ID`) 
 
 
 #changing to transactions
+
 d_transactions_expanded <- d_course %>%
   
   # Exclude 
@@ -258,14 +297,14 @@ d_transactions_expanded <- d_course %>%
   rename(
     item = `Course ID`
   ) 
-
-
-
-rm(d_transcript_expanded)
+#%>%
+  #arrange(sequenceID, item) %>%
+  #select(sequenceID, item, Grade, everything())
 ```
-### Transactions for Apriori
-```{r making transactions}
 
+### Transactions for Apriori
+
+``` r
 #
 # For convenience
 make_transaction <- function(data = d_transactions, item = item){
@@ -292,10 +331,29 @@ make_transaction <- function(data = d_transactions, item = item){
 #
 # Making transactions
 transactions       <- make_transaction(item = item   )
-transactions_PF    <- make_transaction(item = item_PF)
-transactions_HL    <- make_transaction(item = item_HL)
-transactions_Taken <- make_transaction(data = d_transactions_not_taken, item = item_taken)
+```
 
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_PF    <- make_transaction(item = item_PF)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_HL    <- make_transaction(item = item_HL)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+transactions_Taken <- make_transaction(data = d_transactions_not_taken, item = item_taken)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
 #
 # Checking transactions
 #inspect(head(transactions, 10))
@@ -304,8 +362,8 @@ rm(make_transaction)
 ```
 
 ### Sequences for CSPADE
-```{r}
 
+``` r
 #
 # For convenience
 make_sequence <- function(data = d_transactions, item = item){
@@ -345,10 +403,23 @@ make_sequence <- function(data = d_transactions, item = item){
 #
 # Making sequences
 sequences    <- make_sequence(item = item   )
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
 sequences_PF <- make_sequence(item = item_PF)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
 sequences_HL <- make_sequence(item = item_HL)
+```
 
+    ## Warning in asMethod(object): removing duplicated items in transactions
 
+``` r
 #
 # Checking sequences
 #inspect(head(sequences, 10))
@@ -357,11 +428,12 @@ sequences_HL <- make_sequence(item = item_HL)
 rm(make_sequence)
 ```
 
+Mining Rules
+------------
 
-## Mining Rules
 ### Apriori Algorithm
-```{r}
 
+``` r
 # Transform AR from apriori into a readable data frame
 clean_AR <- function(AR){
   
@@ -394,8 +466,8 @@ clean_AR <- function(AR){
 ```
 
 We apply Apriori algorithm:
-```{r AR apriori}
 
+``` r
 # Run the apriori algorithm with desired parameters
 my_apriori <- function(data, appearance = NULL){
   
@@ -456,11 +528,11 @@ rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL,
    course_id_fail, course_id_low,
    AR_taken, AR_PF, AR_HL, AR_not_taken)
-
 ```
 
 ### CSPADE Algorithm
-```{r}
+
+``` r
 # Transform rules from ruleInduction into a readable data frame
 n_students <- length(unique(d_transactions$sequenceID))
 
@@ -491,7 +563,7 @@ clean_SR<- function(rules){
       count = support * n_students,
       lhs.rhsCourse.count = lhs.rhsCourse.support * n_students
       
-      # TODO: coñpute rhs.support
+      # TODO: coÃ±pute rhs.support
       # lift.corr = confidence.corr / rhs.support
      
   ) %>%
@@ -503,10 +575,11 @@ clean_SR<- function(rules){
     )
     
 }
-
 ```
+
 We apply cspade followed by rule induction
-```{r}
+
+``` r
 # Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
 my_SR<- function(data){
  data %>%
@@ -532,6 +605,17 @@ my_SR<- function(data){
 
 #Generating sequence rules
 SR   <- my_SR(data = sequences   )
+```
+
+    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
+    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ## 20, ...].
+
+    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
+    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ## 20, ...].
+
+``` r
 SR_PF <- my_SR(data = sequences_PF)
 SR_HL <- my_SR(data = sequences_HL)
 
@@ -549,6 +633,12 @@ rm(clean_SR, my_SR,
    sequences, sequences_PF, sequences_HL, 
    n_students,
    SR, SR_PF, SR_HL)
-
 ```
 
+EXPERIMENTS:
+============
+
+TO MOVE UP (These are ready:)
+-----------------------------
+
+Rounds grades and add new row from original grade up to 10. NOTE: includes mandatory courses.
