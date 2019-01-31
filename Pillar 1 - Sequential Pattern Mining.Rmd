@@ -191,7 +191,11 @@ d_transactions_not_taken <- expand.grid(
       is.na(Grade) ~ "not taken",
       TRUE         ~ "taken"),
     
-    item_taken= paste(item, taken, sep = "_")
+    item_taken= paste(item, taken, sep = "_"),
+    item_taken_grade= case_when(
+      is.na(Grade) ~ paste(item, taken, sep = "_"),
+      T            ~ paste(item, PF)
+    )
     
      )
 
@@ -518,27 +522,32 @@ my_SR<- function(data){
 
 We generate sequence rules:
 ```{r SR taken, cache = TRUE}
+
 #Generating sequence rules:
 SR_taken   <- my_SR(data = sequences   )
 ```
 
 ```{r SR PF, cache = TRUE}
+
 ##pass/fail filter
 SR_PF      <- my_SR(data = sequences_PF) %>% 
   filter(str_detect(rhs,"fail"))
 ```
 
 ```{r SR HL, cache = TRUE}
+
 ##high/low filter
 SR_HL      <- my_SR(data = sequences_HL)%>% 
   filter(str_detect(rhs,"low"))
 ```
 
 ```{r SR grade, cache = TRUE}
+
 SR_Grade   <- my_SR(data = sequences_Grade )
 ```
 
 ```{r SR grade exp, cache = TRUE}
+
 #Grades filter 
 SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
 ```
