@@ -375,8 +375,7 @@ clean_AR <- function(AR){
 ```
 
 We apply Apriori algorithm:
-```{r AR apriori}
-
+```{r my_apriori function}
 # Run the apriori algorithm with desired parameters
 my_apriori <- function(data, appearance = NULL){
   
@@ -401,9 +400,10 @@ my_apriori <- function(data, appearance = NULL){
     clean_AR
   
 }
+```
 
+```{r AR apriori}
 
-#
 # Generating asocciation rules
 AR_taken <- my_apriori(transactions)
 
@@ -445,19 +445,20 @@ course_id_low <- d_transactions_expanded %>%
 AR_expanded_HL <- my_apriori(transactions_expanded_HL,
                     appearance = list(both = course_id_low$`item_HL`))
 
-
-
+```
+We save and remove objects:
+```{r saving and rm}
 #
 # Save association rules
 save(AR_taken, AR_PF, AR_HL, AR_not_taken, 
      AR_expanded_taken, AR_expanded_PF, AR_expanded_HL,
      file = "App/AR.RDATA")
 
+# Remove objects
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL, transactions_Grade,
    course_id_fail, course_id_low,
    AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded_taken, AR_expanded_PF, AR_expanded_HL)
-
 ```
 
 ### CSPADE Algorithm
@@ -510,7 +511,7 @@ clean_SR<- function(rules){
 
 ```
 We apply cspade followed by rule induction
-```{r cspade and rule induction, cache = F}
+```{r my_SR function}
 # Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
 my_SR<- function(data){
  data %>%
@@ -533,7 +534,10 @@ my_SR<- function(data){
       ) %>%
     clean_SR
 }
+```
 
+We generate sequence rules:
+```{r cspade and rule induction, cache = F}
 #Generating sequence rules:
 SR_taken   <- my_SR(data = sequences   )
 
@@ -553,6 +557,9 @@ SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>%
 SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% 
   filter(`RHS Quality`=="low")
 
+```
+We save and remove objects:
+```{r saving and rm SR}
 #Saving sequence rules
 save(
     SR_taken, SR_PF, SR_HL,
@@ -570,4 +577,5 @@ rm(clean_SR, my_SR,
    SR_expanded_taken, SR_expanded_PF, SR_expanded_HL)
 
 ```
+
 

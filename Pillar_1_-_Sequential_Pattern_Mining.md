@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-01-30
+2019-01-31
 
 -   [Setup](#setup)
 -   [Data Exploration](#data-exploration)
@@ -14,6 +14,7 @@ DARS
     -   [Mining Rules](#mining-rules)
         -   [Apriori Algorithm](#apriori-algorithm)
         -   [CSPADE Algorithm](#cspade-algorithm)
+    -   [TODO: add AR\_grade, SR\_grade](#todo-add-ar_grade-sr_grade)
 
 ``` r
 library(arulesSequences)
@@ -177,7 +178,8 @@ d_transactions <- d_course %>%
                     Grade >= high_grade ~ "high"),
     
     item_PF = paste(`Course ID`, PF, sep = "_"),
-    item_HL = paste(`Course ID`, HL, sep = "_")
+    item_HL = paste(`Course ID`, HL, sep = "_"),
+    item_Grade = paste(`Course ID`, round(Grade,0), sep = "_")
     ) %>%
   rename(
     item = `Course ID`
@@ -246,7 +248,8 @@ d_transactions_expanded <- d_transactions %>%
                     Grade_round >= high_grade ~ "high"),
     
     item_PF = paste(item, PF, sep = "_"),
-    item_HL = paste(item, HL, sep = "_")
+    item_HL = paste(item, HL, sep = "_"),
+    item_Grade = paste(item, Grade_round, sep = "_")
     )
 ```
 
@@ -296,6 +299,12 @@ transactions_HL               <- make_transaction(item = item_HL)
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
+transactions_Grade            <- make_transaction(item = item_Grade)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
 transactions_Taken            <- make_transaction(data = d_transactions_not_taken, item = item_taken)
 ```
 
@@ -320,9 +329,15 @@ transactions_expanded_HL      <- make_transaction(data = d_transactions_expanded
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
+transactions_expanded_Grade   <- make_transaction(data = d_transactions_expanded, item = item_Grade)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
 #
 # Checking transactions
-#inspect(head(transactions, 10))
+#inspect(head(transactions_Grade, 10))
 
 rm(make_transaction)
 ```
@@ -386,19 +401,31 @@ sequences_HL       <- make_sequence(item = item_HL)
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-sequences_expanded     <- make_sequence(data = d_transactions_expanded, item = item)
+sequences_Grade    <- make_sequence(item = item_Grade)
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-sequences_expanded_PF  <- make_sequence(data = d_transactions_expanded, item = item_PF)
+sequences_expanded        <- make_sequence(data = d_transactions_expanded, item = item)
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-sequences_expanded_HL  <- make_sequence(data = d_transactions_expanded, item = item_HL)
+sequences_expanded_PF     <- make_sequence(data = d_transactions_expanded, item = item_PF)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+sequences_expanded_HL     <- make_sequence(data = d_transactions_expanded, item = item_HL)
+```
+
+    ## Warning in asMethod(object): removing duplicated items in transactions
+
+``` r
+sequences_expanded_Grade  <- make_sequence(data = d_transactions_expanded, item = item_Grade)
 ```
 
     ## Warning in asMethod(object): removing duplicated items in transactions
@@ -529,12 +556,15 @@ save(AR_taken, AR_PF, AR_HL, AR_not_taken,
      file = "App/AR.RDATA")
 
 rm(clean_AR, my_apriori,
-   transactions, transactions_PF, transactions_HL,
+   transactions, transactions_PF, transactions_HL, transactions_Grade,
    course_id_fail, course_id_low,
    AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded_taken, AR_expanded_PF, AR_expanded_HL)
 ```
 
 ### CSPADE Algorithm
+
+TODO: add AR\_grade, SR\_grade
+------------------------------
 
 ``` r
 # Transform rules from ruleInduction into a readable data frame
@@ -561,20 +591,21 @@ clean_SR<- function(rules){
     separate(rhs, into=c("RHS Course ID", "RHS Quality"), sep="_", remove= F) %>%
     # Compute statistic
     group_by(lhs,`RHS Course ID`) %>%
+    rename(confidence.old = "confidence", lift.old="lift")%>%
     mutate(
       lhs.rhsCourse.support = sum(support),
-      confidence.corr = support / lhs.rhsCourse.support,
+      confidence = support / lhs.rhsCourse.support,
       count = support * n_students,
       lhs.rhsCourse.count = lhs.rhsCourse.support * n_students
       
-      # TODO: coñpute rhs.support
-      # lift.corr = confidence.corr / rhs.support
+      # TODO: compute rhs.support
+      # lift = confidence.corr / rhs.support
      
   ) %>%
   ungroup() %>%
     mutate_at(
       c("support",
-        "confidence", "lift"),
+        "confidence","confidence.old", "lift.old"),
       funs(round(., 5))
     )
     
@@ -607,7 +638,7 @@ my_SR<- function(data){
     clean_SR
 }
 
-#Generating sequence rules
+#Generating sequence rules:
 SR_taken   <- my_SR(data = sequences   )
 ```
 
@@ -620,8 +651,13 @@ SR_taken   <- my_SR(data = sequences   )
     ## 20, ...].
 
 ``` r
-SR_PF      <- my_SR(data = sequences_PF)
-SR_HL      <- my_SR(data = sequences_HL)
+##pass/fail filter
+SR_PF      <- my_SR(data = sequences_PF) %>% 
+  filter(`RHS Quality`=="fail")
+
+##high/low filter
+SR_HL      <- my_SR(data = sequences_HL)%>% 
+  filter(`RHS Quality`=="low")
 
 SR_expanded_taken   <- my_SR(data = sequences_expanded   )
 ```
@@ -635,8 +671,13 @@ SR_expanded_taken   <- my_SR(data = sequences_expanded   )
     ## 20, ...].
 
 ``` r
-SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)
-SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)
+##pass/fail filter
+SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% 
+  filter(`RHS Quality`=="fail")
+##high/low filter
+SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% 
+  filter(`RHS Quality`=="low")
+
 #Saving sequence rules
 save(
     SR_taken, SR_PF, SR_HL,
@@ -647,8 +688,8 @@ save(
 
 #clean unnecessary objects
 rm(clean_SR, my_SR, 
-   sequences, sequences_PF, sequences_HL,
-   sequences_expanded, sequences_expanded_PF, sequences_expanded_HL,
+   sequences, sequences_PF, sequences_HL, sequences_Grade,
+   sequences_expanded, sequences_expanded_PF, sequences_expanded_HL, sequences_expanded_Grade,
    n_students,
    SR_taken, SR_PF, SR_HL,
    SR_expanded_taken, SR_expanded_PF, SR_expanded_HL)
