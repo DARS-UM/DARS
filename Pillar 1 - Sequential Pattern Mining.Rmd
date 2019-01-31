@@ -423,6 +423,8 @@ course_id_low <- d_transactions %>%
 AR_HL <- my_apriori(transactions_HL,
                     appearance = list(both = course_id_low$`item_HL`))
 
+AR_Grade <- my_apriori(transactions_Grade)
+
 
 
 AR_not_taken <- my_apriori(transactions_Taken)
@@ -445,20 +447,23 @@ course_id_low <- d_transactions_expanded %>%
 AR_expanded_HL <- my_apriori(transactions_expanded_HL,
                     appearance = list(both = course_id_low$`item_HL`))
 
+AR_expanded_Grade <- my_apriori(transactions_expanded_Grade)
+
 ```
 We save and remove objects:
 ```{r saving and rm}
 #
 # Save association rules
-save(AR_taken, AR_PF, AR_HL, AR_not_taken, 
-     AR_expanded_taken, AR_expanded_PF, AR_expanded_HL,
+save(AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade, 
+     AR_expanded_taken, AR_expanded_PF, AR_expanded_HL, AR_expanded_Grade,
      file = "App/AR.RDATA")
 
 # Remove objects
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL, transactions_Grade,
    course_id_fail, course_id_low,
-   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_expanded_taken, AR_expanded_PF, AR_expanded_HL)
+   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade, 
+   AR_expanded_taken, AR_expanded_PF, AR_expanded_HL, AR_expanded_Grade)
 ```
 
 ### CSPADE Algorithm
@@ -549,6 +554,8 @@ SR_PF      <- my_SR(data = sequences_PF) %>%
 SR_HL      <- my_SR(data = sequences_HL)%>% 
   filter(`RHS Quality`=="low")
 
+SR_Grade   <- my_SR(data = sequences_Grade )
+
 SR_expanded_taken   <- my_SR(data = sequences_expanded   )
 ##pass/fail filter
 SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% 
@@ -557,14 +564,16 @@ SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>%
 SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% 
   filter(`RHS Quality`=="low")
 
+SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
+
 ```
 We save and remove objects:
 ```{r saving and rm SR}
 #Saving sequence rules
 save(
-    SR_taken, SR_PF, SR_HL,
+    SR_taken, SR_PF, SR_HL, SR_Grade,
     
-    SR_expanded_taken, SR_expanded_PF, SR_expanded_HL,
+    SR_expanded_taken, SR_expanded_PF, SR_expanded_HL, SR_expanded_Grade,
     
     file = "App/SR.RDATA")
 
@@ -573,8 +582,8 @@ rm(clean_SR, my_SR,
    sequences, sequences_PF, sequences_HL, sequences_Grade,
    sequences_expanded, sequences_expanded_PF, sequences_expanded_HL, sequences_expanded_Grade,
    n_students,
-   SR_taken, SR_PF, SR_HL,
-   SR_expanded_taken, SR_expanded_PF, SR_expanded_HL)
+   SR_taken, SR_PF, SR_HL, SR_Grade,
+   SR_expanded_taken, SR_expanded_PF, SR_expanded_HL, SR_expanded_Grade)
 
 ```
 
