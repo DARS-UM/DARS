@@ -495,7 +495,7 @@ clean_SR<- function(rules){
       confidence = support / lhs.rhsCourse.support,
       count = support * n_students,
       lhs.rhsCourse.count = lhs.rhsCourse.support * n_students,
-      lift = NA
+      lift = 1 #dummy variable
       # TODO: compute rhs.support
       # lift = confidence.corr / rhs.support
      
