@@ -160,8 +160,7 @@ d_transactions <- d_course %>%
                     Grade >= high_grade ~ "high"),
     
     item_PF = paste(`Course ID`, PF, sep = "_"),
-    item_HL = paste(`Course ID`, HL, sep = "_"),
-    item_Grade = paste(`Course ID`, round(Grade,0), sep = "_")
+    item_HL = paste(`Course ID`, HL, sep = "_")
     ) %>%
   rename(
     item = `Course ID`
@@ -195,10 +194,9 @@ d_transactions_not_taken <- expand.grid(
     item_taken= paste(item, taken, sep = "_"),
     item_taken_grade= case_when(
       is.na(Grade) ~ paste(item, taken, sep = "_"),
-      T            ~ paste(item, PF)
+      TRUE            ~ paste(item, PF)
+      )
     )
-    
-     )
 
 ```
 ###Expanded Transcripts
@@ -241,6 +239,25 @@ d_transactions_expanded <- d_transactions %>%
 
 
 ```{r}
+
+n_students <- d_transactions %>%
+  select(sequenceID) %>%
+  n_distinct()
+
+d_support_take <- d_transactions %>%
+  distinct(
+    item,
+    sequenceID
+    ) %>%
+  group_by(
+    item
+    ) %>%
+  summarise(
+    count     = n(),
+    rate.take = count / n_students
+    )
+
+
 d_support <- d_transactions %>%
   mutate(
     grade_round = round(Grade)
@@ -251,9 +268,20 @@ d_support <- d_transactions %>%
   summarise(
     rate.fail = mean(PF == "fail"),
     rate.low  = mean(HL == "low"),
-    rate.0    = mean(grade_round == 0),
-    # continue with other grades
+    rate.0    = mean(grade_round <= 0),
+    rate.1    = mean(grade_round <= 1),
+    rate.2    = mean(grade_round <= 2),
+    rate.3    = mean(grade_round <= 3),
+    rate.4    = mean(grade_round <= 4),
+    rate.5    = mean(grade_round <= 5),
+    rate.6    = mean(grade_round <= 6),
+    rate.7    = mean(grade_round <= 7),
+    rate.8    = mean(grade_round <= 8),
+    rate.9    = mean(grade_round <= 9),
+    rate.10   = mean(grade_round <= 10)
     )
+
+
 ```
 
 
@@ -288,9 +316,7 @@ make_transaction <- function(data = d_transactions, item = item){
 transactions                  <- make_transaction(item = item   )
 transactions_PF               <- make_transaction(item = item_PF)
 transactions_HL               <- make_transaction(item = item_HL)
-transactions_Grade            <- make_transaction(item = item_Grade)
 transactions_Taken            <- make_transaction(data = d_transactions_not_taken, item = item_taken)
-
 transactions_expanded_Grade   <- make_transaction(data = d_transactions_expanded, item = item_Grade)
 
 #
@@ -344,7 +370,6 @@ make_sequence <- function(data = d_transactions, item = item){
 sequences          <- make_sequence(item = item   )
 sequences_PF       <- make_sequence(item = item_PF)
 sequences_HL       <- make_sequence(item = item_HL)
-sequences_Grade    <- make_sequence(item = item_Grade)
 
 sequences_expanded_Grade  <- make_sequence(data = d_transactions_expanded, item = item_Grade)
 
@@ -369,20 +394,23 @@ clean_AR <- function(AR){
     filter(
       count >= 1
     ) %>%
+    
+    # Clean variable `rules`
     mutate(
       rules = str_remove_all(rules, pattern = "[{]"),
-      rules = str_remove_all(rules, pattern = "[}]"),
-      `rhs.support` = confidence / lift
+      rules = str_remove_all(rules, pattern = "[}]")
     ) %>%
-    separate(rules, into = c("lhs", "rhs"), sep="=>") %>%
+    separate(rules, into = c("lhs", "rhs"), sep=" => ") %>%
+    
+    # Editing output
     mutate_at(
-      c("support", "lhs.support", "confidence", "rhs.support", "lift"),
+      c("support", "lhs.support", "confidence", "lift"),
       funs(round(., 5))
     ) %>%
     select(
       lhs, rhs,
       support, count, lhs.support,
-      confidence, rhs.support,
+      confidence,
       lift
     ) %>%
     arrange(
@@ -423,7 +451,30 @@ my_apriori <- function(data, appearance = NULL){
 ```{r AR apriori, cache = TRUE}
 
 # Generating asocciation rules
-AR_taken <- my_apriori(transactions)
+AR_taken <- my_apriori(transactions) %>%
+  left_join(
+    select(d_support_take, item, rate.take),
+    by = c("rhs" = "item")
+    ) %>%
+  mutate(
+    rhs.support = round(rate.take, 5)
+    ) %>%
+  select(
+    - rate.take
+    ) %>%
+  left_join(
+    select(d_support_take, item, rate.take),
+    by = c("lhs" = "item")
+    ) %>%
+  mutate(
+    lhs.support = round(rate.take, 5)
+    ) %>%
+  select(
+    - rate.take
+    ) %>%
+  select(lhs, rhs, support, count, confidence, rhs.support, lift)
+
+  
 
 # creating vector of fail course
 course_id_fail <- d_transactions %>%
@@ -551,14 +602,20 @@ SR_taken   <- my_SR(data = sequences   )
 
 ##pass/fail filter
 SR_PF      <- my_SR(data = sequences_PF) %>% 
-  filter(str_detect(rhs,"fail"))
+  filter(
+    str_detect(rhs, "fail"),
+    str_detect(lhs, "fail")
+    )
 ```
 
 ```{r SR HL, cache = TRUE}
 
 ##high/low filter
 SR_HL      <- my_SR(data = sequences_HL)%>% 
-  filter(str_detect(rhs,"low"))
+  filter(
+    str_detect(rhs, "low"),
+    str_detect(lhs, "low")
+    )
 ```
 
 ```{r SR grade, cache = TRUE}
