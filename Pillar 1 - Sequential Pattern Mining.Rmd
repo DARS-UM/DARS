@@ -161,7 +161,7 @@ d_transactions <- d_course %>%
     
     item_PF = paste(`Course ID`, PF, sep = "_"),
     item_HL = paste(`Course ID`, HL, sep = "_"),
-    item_Grade = paste(`Course ID`, Grade, sep = "_")
+    item_Grade = paste(`Course ID`, round(Grade,0), sep = "_")
     ) %>%
   rename(
     item = `Course ID`
@@ -274,7 +274,7 @@ transactions_expanded_Grade   <- make_transaction(data = d_transactions_expanded
 
 #
 # Checking transactions
-#inspect(head(transactions, 10))
+#inspect(head(transactions_Grade, 10))
 
 rm(make_transaction)
 ```
@@ -488,7 +488,7 @@ clean_SR<- function(rules){
     separate(rhs, into=c("RHS Course ID", "RHS Quality"), sep="_", remove= F) %>%
     # Compute statistic
     group_by(lhs,`RHS Course ID`) %>%
-    rename(confidence = "confidence.old", lift="lift.old")%>%
+    rename(confidence.old = "confidence", lift.old="lift")%>%
     mutate(
       lhs.rhsCourse.support = sum(support),
       confidence = support / lhs.rhsCourse.support,
@@ -533,37 +533,26 @@ my_SR<- function(data){
       ) %>%
     clean_SR
 }
-# <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- 
-# creating vector of fail course
-course_id_fail <- d_transactions %>%
-  filter(PF == "fail") %>%
-  distinct(`item_PF`)
 
-AR_PF <- my_apriori(transactions_PF,
-                    appearance = list(both = course_id_fail$`item_PF`))
-
-# creating vector of low score course
-course_id_low <- d_transactions %>%
-  filter(HL == "low") %>%
-  distinct(`item_HL`)
-
-AR_HL <- my_apriori(transactions_HL,
-                    appearance = list(both = course_id_low$`item_HL`))
-# <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- 
 #Generating sequence rules:
 SR_taken   <- my_SR(data = sequences   )
-#pass/fail filter
+
+##pass/fail filter
 SR_PF      <- my_SR(data = sequences_PF) %>% 
   filter(`RHS Quality`=="fail")
-#high/low filter
+
+##high/low filter
 SR_HL      <- my_SR(data = sequences_HL)%>% 
   filter(`RHS Quality`=="low")
 
 SR_expanded_taken   <- my_SR(data = sequences_expanded   )
+##pass/fail filter
 SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% 
   filter(`RHS Quality`=="fail")
+##high/low filter
 SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% 
   filter(`RHS Quality`=="low")
+
 #Saving sequence rules
 save(
     SR_taken, SR_PF, SR_HL,
