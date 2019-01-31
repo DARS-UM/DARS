@@ -26,11 +26,11 @@ fluidPage(
         inputId = "item",
         label   = "Type of item in rules",
         choices = c(
-          "Course taken"                = "taken",
-          "Failed grade"                = "PF",
-          "Low grade (< 6.5)"           = "HL",
-          "Grade"                       = "Grade",
-          "Course taken & not taken"    = "not_taken"
+          "Taken"                    = "taken",
+          "Failed grade"             = "PF",
+          "Low grade (< 6.5)"        = "HL",
+          "Grade (grade x or lower)" = "expanded_Grade",
+          "Taken & not taken"        = "not_taken"
         ),
         selected = "taken"
       ),
@@ -43,9 +43,9 @@ fluidPage(
         inputId = "count",
         label = "Count",
         min   = 5,
-        max   = 1000,
+        max   = 1500,
         step  = 1,
-        value = c(5, 1000)
+        value = c(5, 1500)
         ),
       
       # Input: Slider for the Cconfidence
