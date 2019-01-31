@@ -160,7 +160,8 @@ d_transactions <- d_course %>%
                     Grade >= high_grade ~ "high"),
     
     item_PF = paste(`Course ID`, PF, sep = "_"),
-    item_HL = paste(`Course ID`, HL, sep = "_")
+    item_HL = paste(`Course ID`, HL, sep = "_"),
+    item_Grade = paste(`Course ID`, Grade, sep = "_")
     ) %>%
   rename(
     item = `Course ID`
@@ -228,7 +229,8 @@ d_transactions_expanded <- d_transactions %>%
                     Grade_round >= high_grade ~ "high"),
     
     item_PF = paste(item, PF, sep = "_"),
-    item_HL = paste(item, HL, sep = "_")
+    item_HL = paste(item, HL, sep = "_"),
+    item_Grade = paste(item, Grade_round, sep = "_")
     )
 ```
 ### Transactions for Apriori
@@ -455,7 +457,7 @@ rm(clean_AR, my_apriori,
 ```
 
 ### CSPADE Algorithm
-##TODO: FILTER FAILS AND LOW GRADE, paste item: e.g."COR1002_8"
+##TODO:paste item: e.g."COR1002_8"
 
 ```{r function clean SR}
 # Transform rules from ruleInduction into a readable data frame
