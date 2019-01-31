@@ -492,7 +492,8 @@ clean_SR<- function(rules){
     group_by(lhs,`RHS Course ID`) %>%
     mutate(
       lhs.rhsCourse.support = sum(support),
-      confidence = support / lhs.rhsCourse.support,
+      confidence = case_when(is.na(`RHS Quality`) ~ confidence,
+                             T ~ (support / lhs.rhsCourse.support)),
       count = support * n_students,
       lhs.rhsCourse.count = lhs.rhsCourse.support * n_students,
       lift = 1 #dummy variable
