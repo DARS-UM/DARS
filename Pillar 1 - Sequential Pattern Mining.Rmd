@@ -467,7 +467,7 @@ rm(clean_AR, my_apriori,
 ```
 
 ### CSPADE Algorithm
-##TODO: add AR_grade, SR_grade 
+##TODO: fine tune parameters of cspade and ruleInduction
 
 ```{r function clean SR}
 # Transform rules from ruleInduction into a readable data frame
