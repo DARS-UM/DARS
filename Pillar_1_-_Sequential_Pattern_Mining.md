@@ -14,7 +14,7 @@ DARS
     -   [Mining Rules](#mining-rules)
         -   [Apriori Algorithm](#apriori-algorithm)
         -   [CSPADE Algorithm](#cspade-algorithm)
-    -   [TODO: fine tune parameters of cspade and ruleInduction, not taken --&gt; fail,](#todo-fine-tune-parameters-of-cspade-and-ruleinduction-not-taken----fail)
+    -   [TODO: fine tune parameters of cspade and ruleInduction, not taken --&gt; fail](#todo-fine-tune-parameters-of-cspade-and-ruleinduction-not-taken----fail)
 
 ``` r
 library(arulesSequences)
@@ -210,7 +210,11 @@ d_transactions_not_taken <- expand.grid(
       is.na(Grade) ~ "not taken",
       TRUE         ~ "taken"),
     
-    item_taken= paste(item, taken, sep = "_")
+    item_taken= paste(item, taken, sep = "_"),
+    item_taken_grade= case_when(
+      is.na(Grade) ~ paste(item, taken, sep = "_"),
+      T            ~ paste(item, PF)
+    )
     
      )
 ```
@@ -311,9 +315,6 @@ transactions_Taken            <- make_transaction(data = d_transactions_not_take
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-#transactions_expanded         <- make_transaction(data = d_transactions_expanded, item = item)
-#transactions_expanded_PF      <- make_transaction(data = d_transactions_expanded, item = item_PF)
-#transactions_expanded_HL      <- make_transaction(data = d_transactions_expanded, item = item_HL)
 transactions_expanded_Grade   <- make_transaction(data = d_transactions_expanded, item = item_Grade)
 ```
 
@@ -392,9 +393,6 @@ sequences_Grade    <- make_sequence(item = item_Grade)
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-#sequences_expanded        <- make_sequence(data = d_transactions_expanded, item = item)
-#sequences_expanded_PF     <- make_sequence(data = d_transactions_expanded, item = item_PF)
-#sequences_expanded_HL     <- make_sequence(data = d_transactions_expanded, item = item_HL)
 sequences_expanded_Grade  <- make_sequence(data = d_transactions_expanded, item = item_Grade)
 ```
 
@@ -497,19 +495,7 @@ AR_HL <- my_apriori(transactions_HL,
 
 AR_Grade <- my_apriori(transactions_Grade)
 
-
-
 AR_not_taken <- my_apriori(transactions_Taken)
-
-
-#AR_expanded_taken <- my_apriori(transactions_expanded)
-# creating vector of fail course
-#course_id_fail <- d_transactions_expanded %>%filter(PF == "fail") %>%distinct(`item_PF`)
-#AR_expanded_PF <- my_apriori(transactions_expanded_PF,appearance = list(both = course_id_fail$`item_PF`))
-
-# creating vector of low score course
-#course_id_low <- d_transactions_expanded %>%filter(HL == "low") %>%distinct(`item_HL`)
-#AR_expanded_HL <- my_apriori(transactions_expanded_HL, appearance = list(both = course_id_low$`item_HL`))
 
 AR_expanded_Grade <- my_apriori(transactions_expanded_Grade)
 ```
@@ -520,8 +506,6 @@ We save and remove objects:
 #
 # Save association rules
 save(AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade, 
-     #AR_expanded_taken, 
-     #AR_expanded_PF, AR_expanded_HL, 
      AR_expanded_Grade,
      file = "App/AR.RDATA")
 
@@ -529,16 +513,14 @@ save(AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade,
 rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL, transactions_Grade,
    course_id_fail, course_id_low,
-   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade, 
-   #AR_expanded_taken, 
-   #AR_expanded_PF, AR_expanded_HL, 
+   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade,  
    AR_expanded_Grade)
 ```
 
 ### CSPADE Algorithm
 
-TODO: fine tune parameters of cspade and ruleInduction, not taken --&gt; fail,
-------------------------------------------------------------------------------
+TODO: fine tune parameters of cspade and ruleInduction, not taken --&gt; fail
+-----------------------------------------------------------------------------
 
 ``` r
 # Transform rules from ruleInduction into a readable data frame
@@ -574,14 +556,15 @@ clean_SR<- function(rules){
       lift = 1 #dummy variable
       # TODO: compute rhs.support
       # lift = confidence.corr / rhs.support
-     
-  ) %>%
-  ungroup() %>%
+     ) %>%
+    ungroup() %>%
     mutate_at(
       c("support",
         "confidence", "lift"),
       funs(round(., 5))
-    )
+    ) %>%
+    filter(!`LHS Course ID`==`RHS Course ID`) %>%
+    select(-`LHS Course ID`, -`LHS Quality`, -`RHS Course ID`, -`RHS Quality`)
     
 }
 ```
@@ -631,13 +614,13 @@ SR_taken   <- my_SR(data = sequences   )
 ``` r
 ##pass/fail filter
 SR_PF      <- my_SR(data = sequences_PF) %>% 
-  filter(`RHS Quality`=="fail")
+  filter(str_detect(rhs,"fail"))
 ```
 
 ``` r
 ##high/low filter
 SR_HL      <- my_SR(data = sequences_HL)%>% 
-  filter(`RHS Quality`=="low")
+  filter(str_detect(rhs,"low"))
 ```
 
 ``` r
@@ -646,16 +629,7 @@ SR_Grade   <- my_SR(data = sequences_Grade )
 
 ``` r
 #Grades filter 
-SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade ) %>%
-  filter(!`LHS Course ID`==`RHS Course ID`)
-```
-
-``` r
-#SR_expanded_taken   <- my_SR(data = sequences_expanded   )
-##pass/fail filter
-#SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% filter(`RHS Quality`=="fail")
-##high/low filter
-#SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% filter(`RHS Quality`=="low")
+SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
 ```
 
 We save and remove objects:
@@ -664,22 +638,15 @@ We save and remove objects:
 #Saving sequence rules
 save(
     SR_taken, SR_PF, SR_HL, SR_Grade,
-    
-    #SR_expanded_taken, 
-    #SR_expanded_PF, SR_expanded_HL, 
     SR_expanded_Grade,
-    
     file = "App/SR.RDATA")
 
 #clean unnecessary objects
 rm(clean_SR, my_SR, 
    sequences, sequences_PF, sequences_HL, sequences_Grade,
-   #sequences_expanded, 
-   #sequences_expanded_PF, sequences_expanded_HL, 
    sequences_expanded_Grade,
    n_students,
    SR_taken, SR_PF, SR_HL, SR_Grade,
-   #SR_expanded_taken, 
-  # SR_expanded_PF, SR_expanded_HL, 
+
    SR_expanded_Grade)
 ```
