@@ -503,7 +503,7 @@ clean_SR<- function(rules){
   ungroup() %>%
     mutate_at(
       c("support",
-        "confidence","confidence.old", "lift.old"),
+        "confidence", "lift"),
       funs(round(., 5))
     )
     
