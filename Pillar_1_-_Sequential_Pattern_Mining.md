@@ -614,13 +614,15 @@ SR_taken   <- my_SR(data = sequences   )
 ``` r
 ##pass/fail filter
 SR_PF      <- my_SR(data = sequences_PF) %>% 
-  filter(str_detect(rhs,"fail"))
+  filter(str_detect(lhs,"fail"), 
+         str_detect(rhs,"fail"))
 ```
 
 ``` r
 ##high/low filter
 SR_HL      <- my_SR(data = sequences_HL)%>% 
-  filter(str_detect(rhs,"low"))
+  filter(str_detect(lhs,"low"), 
+         str_detect(rhs,"low"))
 ```
 
 ``` r
