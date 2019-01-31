@@ -29,10 +29,8 @@ fluidPage(
           "Course taken"                = "taken",
           "Failed grade"                = "PF",
           "Low grade (< 6.5)"           = "HL",
-          "Course taken & not taken"    = "not_taken",
-          "Expanded"                    = "expanded_taken",
-          "Expanded (Failed grade)"     = "expanded_PF",
-          "Expanded (low grade (< 6.5))" = "expanded_PF"
+          "Grade"                       = "Grade",
+          "Course taken & not taken"    = "not_taken"
         ),
         selected = "taken"
       ),
