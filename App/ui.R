@@ -58,7 +58,7 @@ fluidPage(
       # Input: Slider for the Cconfidence
       sliderInput(
         inputId = "confidence",
-        label = "Confidence (corrected)",
+        label = "Confidence",
         min   = 0,
         max   = 1,
         step  = 0.01,
@@ -68,7 +68,7 @@ fluidPage(
       # Input: Slider for the Confidence
       sliderInput(
         inputId = "lift",
-        label = "Lift (corrected)",
+        label = "Lift",
         min   = 0,
         max   = 100,
         step  = 0.01,
@@ -82,8 +82,6 @@ fluidPage(
       helpText("For rules concerning failed courses or course with low grade, we compute the confidence and lift in the following way:"),
       helpText("Confidence(A_fail -> B_fail) = P( (A_fail -> B_fail) | (A_fail -> B) ). In other words, given a student has failed course A and is taking course B, what is the probability that (s)he will fail course B"),
       helpText("Lift(A_fail - B_fail) = Confidence(A_fail -> B_fail) / Probability(B_fail | B). In other words, we compare the confidence of the rule and the probability of failing course_B *given we take course B*.")
-      
-      
       
     ),
     
