@@ -311,12 +311,7 @@ transactions_Taken            <- make_transaction(data = d_transactions_not_take
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-transactions_expanded         <- make_transaction(data = d_transactions_expanded, item = item)
-```
-
-    ## Warning in asMethod(object): removing duplicated items in transactions
-
-``` r
+#transactions_expanded         <- make_transaction(data = d_transactions_expanded, item = item)
 #transactions_expanded_PF      <- make_transaction(data = d_transactions_expanded, item = item_PF)
 #transactions_expanded_HL      <- make_transaction(data = d_transactions_expanded, item = item_HL)
 transactions_expanded_Grade   <- make_transaction(data = d_transactions_expanded, item = item_Grade)
@@ -397,12 +392,7 @@ sequences_Grade    <- make_sequence(item = item_Grade)
     ## Warning in asMethod(object): removing duplicated items in transactions
 
 ``` r
-sequences_expanded        <- make_sequence(data = d_transactions_expanded, item = item)
-```
-
-    ## Warning in asMethod(object): removing duplicated items in transactions
-
-``` r
+#sequences_expanded        <- make_sequence(data = d_transactions_expanded, item = item)
 #sequences_expanded_PF     <- make_sequence(data = d_transactions_expanded, item = item_PF)
 #sequences_expanded_HL     <- make_sequence(data = d_transactions_expanded, item = item_HL)
 sequences_expanded_Grade  <- make_sequence(data = d_transactions_expanded, item = item_Grade)
@@ -512,7 +502,7 @@ AR_Grade <- my_apriori(transactions_Grade)
 AR_not_taken <- my_apriori(transactions_Taken)
 
 
-AR_expanded_taken <- my_apriori(transactions_expanded)
+#AR_expanded_taken <- my_apriori(transactions_expanded)
 # creating vector of fail course
 #course_id_fail <- d_transactions_expanded %>%filter(PF == "fail") %>%distinct(`item_PF`)
 #AR_expanded_PF <- my_apriori(transactions_expanded_PF,appearance = list(both = course_id_fail$`item_PF`))
@@ -530,7 +520,7 @@ We save and remove objects:
 #
 # Save association rules
 save(AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade, 
-     AR_expanded_taken, 
+     #AR_expanded_taken, 
      #AR_expanded_PF, AR_expanded_HL, 
      AR_expanded_Grade,
      file = "App/AR.RDATA")
@@ -540,7 +530,7 @@ rm(clean_AR, my_apriori,
    transactions, transactions_PF, transactions_HL, transactions_Grade,
    course_id_fail, course_id_low,
    AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade, 
-   AR_expanded_taken, 
+   #AR_expanded_taken, 
    #AR_expanded_PF, AR_expanded_HL, 
    AR_expanded_Grade)
 ```
@@ -648,18 +638,7 @@ SR_HL      <- my_SR(data = sequences_HL)%>%
 
 SR_Grade   <- my_SR(data = sequences_Grade )
 
-SR_expanded_taken   <- my_SR(data = sequences_expanded   )
-```
-
-    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
-    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-    ## 20, ...].
-
-    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
-    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-    ## 20, ...].
-
-``` r
+#SR_expanded_taken   <- my_SR(data = sequences_expanded   )
 ##pass/fail filter
 #SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% filter(`RHS Quality`=="fail")
 ##high/low filter
@@ -675,7 +654,7 @@ We save and remove objects:
 save(
     SR_taken, SR_PF, SR_HL, SR_Grade,
     
-    SR_expanded_taken, 
+    #SR_expanded_taken, 
     #SR_expanded_PF, SR_expanded_HL, 
     SR_expanded_Grade,
     
@@ -684,12 +663,12 @@ save(
 #clean unnecessary objects
 rm(clean_SR, my_SR, 
    sequences, sequences_PF, sequences_HL, sequences_Grade,
-   sequences_expanded, 
+   #sequences_expanded, 
    #sequences_expanded_PF, sequences_expanded_HL, 
    sequences_expanded_Grade,
    n_students,
    SR_taken, SR_PF, SR_HL, SR_Grade,
-   SR_expanded_taken, 
+   #SR_expanded_taken, 
   # SR_expanded_PF, SR_expanded_HL, 
    SR_expanded_Grade)
 ```
