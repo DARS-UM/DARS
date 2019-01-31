@@ -402,7 +402,7 @@ my_apriori <- function(data, appearance = NULL){
 }
 ```
 
-```{r AR apriori}
+```{r AR apriori, cache = TRUE}
 
 # Generating asocciation rules
 AR_taken <- my_apriori(transactions)
@@ -538,19 +538,34 @@ my_SR<- function(data){
 ```
 
 We generate sequence rules:
-```{r cspade and rule induction, cache = F}
+```{r SR taken, cache = TRUE}
 #Generating sequence rules:
 SR_taken   <- my_SR(data = sequences   )
+```
 
+```{r SR PF, cache = TRUE}
 ##pass/fail filter
 SR_PF      <- my_SR(data = sequences_PF) %>% 
   filter(`RHS Quality`=="fail")
+```
 
+```{r SR HL, cache = TRUE}
 ##high/low filter
 SR_HL      <- my_SR(data = sequences_HL)%>% 
   filter(`RHS Quality`=="low")
+```
 
+```{r SR grade, cache = TRUE}
 SR_Grade   <- my_SR(data = sequences_Grade )
+```
+
+```{r SR grade exp, cache = TRUE}
+#Grades filter 
+SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade ) %>%
+  filter(!`LHS Course ID`==`RHS Course ID`)
+```
+
+```{r cspade and rule induction, cache = F}
 
 #SR_expanded_taken   <- my_SR(data = sequences_expanded   )
 ##pass/fail filter
@@ -558,9 +573,8 @@ SR_Grade   <- my_SR(data = sequences_Grade )
 ##high/low filter
 #SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% filter(`RHS Quality`=="low")
 
-SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
-
 ```
+
 We save and remove objects:
 ```{r saving and rm SR}
 #Saving sequence rules

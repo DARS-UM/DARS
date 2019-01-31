@@ -567,10 +567,11 @@ clean_SR<- function(rules){
     group_by(lhs,`RHS Course ID`) %>%
     mutate(
       lhs.rhsCourse.support = sum(support),
-      confidence = support / lhs.rhsCourse.support,
+      confidence = case_when(is.na(`RHS Quality`) ~ confidence,
+                             T ~ (support / lhs.rhsCourse.support)),
       count = support * n_students,
       lhs.rhsCourse.count = lhs.rhsCourse.support * n_students,
-      lift = NA
+      lift = 1 #dummy variable
       # TODO: compute rhs.support
       # lift = confidence.corr / rhs.support
      
@@ -631,20 +632,30 @@ SR_taken   <- my_SR(data = sequences   )
 ##pass/fail filter
 SR_PF      <- my_SR(data = sequences_PF) %>% 
   filter(`RHS Quality`=="fail")
+```
 
+``` r
 ##high/low filter
 SR_HL      <- my_SR(data = sequences_HL)%>% 
   filter(`RHS Quality`=="low")
+```
 
+``` r
 SR_Grade   <- my_SR(data = sequences_Grade )
+```
 
+``` r
+#Grades filter 
+SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade ) %>%
+  filter(!`LHS Course ID`==`RHS Course ID`)
+```
+
+``` r
 #SR_expanded_taken   <- my_SR(data = sequences_expanded   )
 ##pass/fail filter
 #SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% filter(`RHS Quality`=="fail")
 ##high/low filter
 #SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% filter(`RHS Quality`=="low")
-
-SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
 ```
 
 We save and remove objects:
