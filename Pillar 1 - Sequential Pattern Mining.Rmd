@@ -166,6 +166,7 @@ d_transactions <- d_course %>%
   rename(
     item = `Course ID`
   )
+
 ```
 
 ### Adding not taken courses
@@ -237,6 +238,25 @@ d_transactions_expanded <- d_transactions %>%
     item_Grade = paste(item, Grade_round, sep = "_")
     )
 ```
+
+
+```{r}
+d_support <- d_transactions %>%
+  mutate(
+    grade_round = round(Grade)
+  ) %>%
+  group_by(
+    item
+    ) %>%
+  summarise(
+    rate.fail = mean(PF == "fail"),
+    rate.low  = mean(HL == "low"),
+    rate.0    = mean(grade_round == 0),
+    # continue with other grades
+    )
+```
+
+
 ### Transactions for Apriori
 ```{r making transactions}
 
