@@ -268,8 +268,8 @@ transactions_Grade            <- make_transaction(item = item_Grade)
 transactions_Taken            <- make_transaction(data = d_transactions_not_taken, item = item_taken)
 
 transactions_expanded         <- make_transaction(data = d_transactions_expanded, item = item)
-transactions_expanded_PF      <- make_transaction(data = d_transactions_expanded, item = item_PF)
-transactions_expanded_HL      <- make_transaction(data = d_transactions_expanded, item = item_HL)
+#transactions_expanded_PF      <- make_transaction(data = d_transactions_expanded, item = item_PF)
+#transactions_expanded_HL      <- make_transaction(data = d_transactions_expanded, item = item_HL)
 transactions_expanded_Grade   <- make_transaction(data = d_transactions_expanded, item = item_Grade)
 
 #
@@ -326,8 +326,8 @@ sequences_HL       <- make_sequence(item = item_HL)
 sequences_Grade    <- make_sequence(item = item_Grade)
 
 sequences_expanded        <- make_sequence(data = d_transactions_expanded, item = item)
-sequences_expanded_PF     <- make_sequence(data = d_transactions_expanded, item = item_PF)
-sequences_expanded_HL     <- make_sequence(data = d_transactions_expanded, item = item_HL)
+#sequences_expanded_PF     <- make_sequence(data = d_transactions_expanded, item = item_PF)
+#sequences_expanded_HL     <- make_sequence(data = d_transactions_expanded, item = item_HL)
 sequences_expanded_Grade  <- make_sequence(data = d_transactions_expanded, item = item_Grade)
 
 #
@@ -432,20 +432,12 @@ AR_not_taken <- my_apriori(transactions_Taken)
 
 AR_expanded_taken <- my_apriori(transactions_expanded)
 # creating vector of fail course
-course_id_fail <- d_transactions_expanded %>%
-  filter(PF == "fail") %>%
-  distinct(`item_PF`)
-
-AR_expanded_PF <- my_apriori(transactions_expanded_PF,
-                    appearance = list(both = course_id_fail$`item_PF`))
+#course_id_fail <- d_transactions_expanded %>%filter(PF == "fail") %>%distinct(`item_PF`)
+#AR_expanded_PF <- my_apriori(transactions_expanded_PF,appearance = list(both = course_id_fail$`item_PF`))
 
 # creating vector of low score course
-course_id_low <- d_transactions_expanded %>%
-  filter(HL == "low") %>%
-  distinct(`item_HL`)
-
-AR_expanded_HL <- my_apriori(transactions_expanded_HL,
-                    appearance = list(both = course_id_low$`item_HL`))
+#course_id_low <- d_transactions_expanded %>%filter(HL == "low") %>%distinct(`item_HL`)
+#AR_expanded_HL <- my_apriori(transactions_expanded_HL, appearance = list(both = course_id_low$`item_HL`))
 
 AR_expanded_Grade <- my_apriori(transactions_expanded_Grade)
 
@@ -561,11 +553,9 @@ SR_Grade   <- my_SR(data = sequences_Grade )
 
 SR_expanded_taken   <- my_SR(data = sequences_expanded   )
 ##pass/fail filter
-SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% 
-  filter(`RHS Quality`=="fail")
+#SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% filter(`RHS Quality`=="fail")
 ##high/low filter
-SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% 
-  filter(`RHS Quality`=="low")
+#SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% filter(`RHS Quality`=="low")
 
 SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
 
