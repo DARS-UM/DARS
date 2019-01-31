@@ -1,18 +1,15 @@
 
-# Setup
-library(shiny)
 
 fluidPage(
   
   # App title
-  titlePanel("Sequence Rules"),
+  titlePanel("Association Rules and Sequence Rules"),
   
   # Sidebar layout
   sidebarLayout(
     
     # Sidebar panel for inputs
     sidebarPanel(
-      
       
       # Input: button for the type of rules
       radioButtons(
