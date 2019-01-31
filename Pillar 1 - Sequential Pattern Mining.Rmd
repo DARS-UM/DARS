@@ -455,8 +455,8 @@ rm(clean_AR, my_apriori,
 ```
 
 ### CSPADE Algorithm
-##TODO: FILTER FAILS AND LOW GRADE
-Change name confidence corrected to confidence, confidence to confidence old, same for lift
+##TODO: FILTER FAILS AND LOW GRADE, paste item: e.g."COR1002_8"
+
 ```{r function clean SR}
 # Transform rules from ruleInduction into a readable data frame
 n_students <- length(unique(d_transactions$sequenceID))
@@ -482,20 +482,21 @@ clean_SR<- function(rules){
     separate(rhs, into=c("RHS Course ID", "RHS Quality"), sep="_", remove= F) %>%
     # Compute statistic
     group_by(lhs,`RHS Course ID`) %>%
+    rename(confidence = "confidence.old", lift="lift.old")%>%
     mutate(
       lhs.rhsCourse.support = sum(support),
-      confidence.corr = support / lhs.rhsCourse.support,
+      confidence = support / lhs.rhsCourse.support,
       count = support * n_students,
       lhs.rhsCourse.count = lhs.rhsCourse.support * n_students
       
-      # TODO: coñpute rhs.support
-      # lift.corr = confidence.corr / rhs.support
+      # TODO: compute rhs.support
+      # lift = confidence.corr / rhs.support
      
   ) %>%
   ungroup() %>%
     mutate_at(
       c("support",
-        "confidence", "lift"),
+        "confidence","confidence.old", "lift.old"),
       funs(round(., 5))
     )
     
@@ -526,15 +527,37 @@ my_SR<- function(data){
       ) %>%
     clean_SR
 }
+# <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- 
+# creating vector of fail course
+course_id_fail <- d_transactions %>%
+  filter(PF == "fail") %>%
+  distinct(`item_PF`)
 
-#Generating sequence rules
+AR_PF <- my_apriori(transactions_PF,
+                    appearance = list(both = course_id_fail$`item_PF`))
+
+# creating vector of low score course
+course_id_low <- d_transactions %>%
+  filter(HL == "low") %>%
+  distinct(`item_HL`)
+
+AR_HL <- my_apriori(transactions_HL,
+                    appearance = list(both = course_id_low$`item_HL`))
+# <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- <- 
+#Generating sequence rules:
 SR_taken   <- my_SR(data = sequences   )
-SR_PF      <- my_SR(data = sequences_PF)
-SR_HL      <- my_SR(data = sequences_HL)
+#pass/fail filter
+SR_PF      <- my_SR(data = sequences_PF) %>% 
+  filter(`RHS Quality`=="fail")
+#high/low filter
+SR_HL      <- my_SR(data = sequences_HL)%>% 
+  filter(`RHS Quality`=="low")
 
 SR_expanded_taken   <- my_SR(data = sequences_expanded   )
-SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)
-SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)
+SR_expanded_PF      <- my_SR(data = sequences_expanded_PF)%>% 
+  filter(`RHS Quality`=="fail")
+SR_expanded_HL      <- my_SR(data = sequences_expanded_HL)%>% 
+  filter(`RHS Quality`=="low")
 #Saving sequence rules
 save(
     SR_taken, SR_PF, SR_HL,
