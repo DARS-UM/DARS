@@ -43,9 +43,9 @@ fluidPage(
         inputId = "count",
         label = "Count",
         min   = 5,
-        max   = 1500,
+        max   = 3000,
         step  = 1,
-        value = c(5, 1500)
+        value = c(5, 3000)
         ),
       
       # Input: Slider for the Cconfidence
