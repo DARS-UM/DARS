@@ -7,6 +7,13 @@ output:
     toc: TRUE
 ---
 
+```{r TODO}
+# TODO: compute corrected confidence for AR
+# TODO: compute lhs.support, for grade, not taken and  
+```
+
+
+
 ```{r library, message = FALSE, warning = FALSE}
 library(arulesSequences)
 
@@ -387,7 +394,7 @@ rm(make_sequence)
 The function `my_apriori()` applies the apriori algorithm on a set of transactions with the parameters that we have chosen.
 ```{r my_apriori function}
 
-my_apriori <- function(data, appearance = NULL){
+my_apriori <- function(data, appearance){
   
   data %>%
     apriori(
@@ -405,8 +412,12 @@ my_apriori <- function(data, appearance = NULL){
         minval = 0
         ),
       
-      # impose restriction on what could be on the lhs and rhs of the rule
-      appearance = appearance
+      # impose restriction on lhs and rhs
+      appearance = appearance,
+      
+      control = list(
+        verbose = FALSE
+      )
       
       )
   
@@ -454,14 +465,34 @@ clean_AR <- function(AR){
 The function `compute_support()` computes the support of the lhs and rhs of the rules.
 
 ```{r}
-compute_support <- function(AR, type_rule){
+compute_support <- function(AR, data_support, type_rule){
   
   type_rule_enquo <- enquo(type_rule)
   
   AR %>%
+    
+    # include lhs.support
+    mutate(
+      lhs_course = str_remove_all(lhs, pattern = "_fail|_low")
+      ) %>%
     left_join(
-      select(d_support, item, !!type_rule_enquo),
-      by = c("rhs" = "item")
+      select(data_support, item, !!enquo(type_rule)),
+      by = c("lhs_course" = "item")
+      ) %>%
+    mutate(
+      lhs.support = round(!!type_rule_enquo, 5)
+      )  %>%
+    select(
+      - !!type_rule_enquo
+      ) %>%
+    
+    # include rhs.support
+    mutate(
+      rhs_course = str_remove_all(rhs, pattern = "_fail|_low")
+      ) %>%
+    left_join(
+      select(data_support, item, !!type_rule_enquo),
+      by = c("rhs_course" = "item")
       ) %>%
     mutate(
       rhs.support = round(!!type_rule_enquo, 5)
@@ -469,18 +500,10 @@ compute_support <- function(AR, type_rule){
     select(
       - !!type_rule_enquo
       ) %>%
-    left_join(
-      select(d_support, item, !!type_rule_enquo),
-      by = c("lhs" = "item")
-      ) %>%
-    mutate(
-      lhs.support = round(!!type_rule_enquo, 5)
-      ) %>%
+    
+    # order variable
     select(
-      - !!type_rule_enquo
-      ) %>%
-    select(
-      lhs, rhs, support, count, confidence, rhs.support, lift
+      lhs, rhs, support, count, confidence, rhs.support, lift, lhs.support
     )
   
 }
@@ -489,12 +512,13 @@ compute_support <- function(AR, type_rule){
 We encapsulate the three functions `my_apriori()`, `clean_AR()` and `compute_support` into the function `make_AR()`.
 
 ```{r}
-make_AR <- function(data, appearance, type_rule){
+make_AR <- function(data, appearance = NULL,
+                    data_support, type_rule){
   
   data %>%
     my_apriori(appearance = appearance) %>%
-    clean_AR() %>%
-    compute_support(type_rule = type_rule)
+    clean_AR %>%
+    compute_support(data_support = data_support, type_rule = !!enquo(type_rule))
   
 }
 ```
@@ -502,55 +526,55 @@ make_AR <- function(data, appearance, type_rule){
 
 ```{r AR apriori, cache = TRUE}
 
-AR_take <- make_AR(transactions)
+#
+# AR taken
+AR_taken <- transactions %>%
+  make_AR(
+    data_support = d_support_take, 
+    type_rule = rate.take
+    )
 
-# Generating asocciation rules
-AR_taken <- my_apriori(transactions) %>%
-  left_join(
-    select(d_support_take, item, rate.take),
-    by = c("rhs" = "item")
-    ) %>%
-  mutate(
-    rhs.support = round(rate.take, 5)
-    ) %>%
-  select(
-    - rate.take
-    ) %>%
-  left_join(
-    select(d_support_take, item, rate.take),
-    by = c("lhs" = "item")
-    ) %>%
-  mutate(
-    lhs.support = round(rate.take, 5)
-    ) %>%
-  select(
-    - rate.take
-    ) %>%
-  select(lhs, rhs, support, count, confidence, rhs.support, lift)
 
-  
+#
+# AR fail
+AR_PF <- transactions_PF %>%
+  make_AR(
+    appearance = list(
+      
+      # impose lhs and rhs to be fail
+      both = d_transactions %>%
+        filter(PF == "fail") %>%
+        distinct(`item_PF`) %>%
+        pull
+    ),
+    
+    data_support = d_support,
+    type_rule = rate.fail
+  )
 
-# creating vector of fail course
-course_id_fail <- d_transactions %>%
-  filter(PF == "fail") %>%
-  distinct(`item_PF`)
 
-AR_PF <- my_apriori(transactions_PF,
-                    appearance = list(both = course_id_fail$`item_PF`))
+#
+# AR low
+AR_PF <- transactions_HL %>%
+  make_AR(
+    appearance = list(
+      
+      # impose lhs and rhs to be fail
+      both = d_transactions %>%
+        filter(HL == "low") %>%
+        distinct(`item_HL`) %>%
+        pull
+    ),
+    
+    data_support = d_support,
+    type_rule = rate.low
+  )
 
-# creating vector of low score course
-course_id_low <- d_transactions %>%
-  filter(HL == "low") %>%
-  distinct(`item_HL`)
+# TODO
 
-AR_HL <- my_apriori(transactions_HL,
-                    appearance = list(both = course_id_low$`item_HL`))
+# AR_not_taken <- my_apriori(transactions_Taken)
 
-AR_Grade <- my_apriori(transactions_Grade)
-
-AR_not_taken <- my_apriori(transactions_Taken)
-
-AR_expanded_Grade <- my_apriori(transactions_expanded_Grade)
+# AR_expanded_Grade <- my_apriori(transactions_expanded_Grade)
 
 ```
 We save and remove objects:
