@@ -278,7 +278,8 @@ d_support_take <- d_transactions %>%
     ) %>%
   summarise(
     count     = n(),
-    rate.take = count / n_students
+    rate.take = count / n_students,
+    rate.not  = 1 - rate.take
     )
 
 # Probability of failing, having a low grade of a grade less than x in a course
@@ -487,7 +488,7 @@ compute_support <- function(AR, data_support, type_rule){
     
     # include lhs.support
     mutate(
-      lhs_course = str_remove_all(lhs, pattern = "_fail|_low")
+      lhs_course = str_remove_all(lhs, pattern = "_fail|_low|_not taken")
       ) %>%
     left_join(
       select(data_support, item, !!enquo(type_rule)),
@@ -502,7 +503,7 @@ compute_support <- function(AR, data_support, type_rule){
     
     # include rhs.support
     mutate(
-      rhs_course = str_remove_all(rhs, pattern = "_fail|_low")
+      rhs_course = str_remove_all(rhs, pattern = "_fail|_low|_not taken")
       ) %>%
     left_join(
       select(data_support, item, !!type_rule_enquo),
@@ -517,7 +518,7 @@ compute_support <- function(AR, data_support, type_rule){
     
     # order variable
     select(
-      lhs, rhs, support, count, confidence, rhs.support, lift, lhs.support
+      lhs_course, lhs, rhs, support, count, confidence, rhs.support, lift, lhs.support
     )
   
 }
@@ -573,7 +574,7 @@ AR_PF <- transactions_HL %>%
   make_AR(
     appearance = list(
       
-      # impose lhs and rhs to be fail
+      # impose lhs and rhs to be low
       both = d_transactions %>%
         filter(HL == "low") %>%
         distinct(`item_HL`) %>%
@@ -584,9 +585,25 @@ AR_PF <- transactions_HL %>%
     type_rule = rate.low
   )
 
-# TODO
 
-# AR_not_taken <- my_apriori(transactions_Taken)
+#
+# AR not taken
+AR_not_taken <- transactions_Taken %>%
+  make_AR(
+    appearance = list(
+      
+      # impose lhs and rhs to be not taken
+      both = d_transactions_not_taken %>%
+        filter(taken == "not taken") %>%
+        distinct(`item_taken`) %>%
+        pull
+    ),
+    
+    data_support = d_support_take,
+    type_rule = rate.not
+  )
+
+# TODO
 
 # AR_expanded_Grade <- my_apriori(transactions_expanded_Grade)
 
