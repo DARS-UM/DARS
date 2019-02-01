@@ -237,7 +237,21 @@ d_transactions_expanded <- d_transactions %>%
     )
 ```
 
+### Preceding courses
+```{r}
+d_cumulative_transcript <-  d_transactions        %>%
+  select(sequenceID, item, eventID)  %>%
+  arrange(sequenceID, eventID, item) %>%
+  group_by(sequenceID, eventID)      %>%
+  summarize_all(paste, collapse=" ") %>%
+  arrange(sequenceID, eventID)       %>%
+  mutate(
+    Cumulative_transcript=lag(Reduce(paste, item, accumulate=T)),
+    Cumulative_transcript= str_split(Cumulative_transcript," ")
+                                     )
+```
 
+###Computing probabilities
 ```{r}
 
 # Number of students
