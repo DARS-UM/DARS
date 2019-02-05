@@ -266,9 +266,24 @@ d_cumulative_transcript <-  d_transactions        %>%
   summarize_all(paste, collapse=" ") %>%
   arrange(sequenceID, eventID)       %>%
   mutate(
-    Cumulative_transcript=lag(Reduce(paste, item, accumulate=T)),
-    Cumulative_transcript= str_split(Cumulative_transcript," ")
-                                     )
+    course_all  = paste(unique(d_transactions$item), collapse = " "),
+    course_all  = str_split(course_all, pattern = " "),
+    
+    course_now  = str_split(item, pattern = " "),
+
+    course_past     = Reduce(paste, item, accumulate=T),
+    course_past     = lag(course_past),
+    course_past     = str_split(course_past, pattern = " ")) %>%
+  ungroup() %>%
+    mutate(
+    course_past_now = purrr::map2(.x = course_past,
+                                      .y = course_now,
+                                      .f = union),
+    course_not = purrr::map2( .x = course_all,
+                              .y = course_past_now,
+                              .f = setdiff)
+    ) %>%
+  mutate(item = str_split(item, pattern = " "))
 ```
 
 ###Computing probabilities
