@@ -8,8 +8,7 @@ output:
 ---
 
 ```{r TODO}
-# TODO: compute corrected confidence for AR
-# TODO: support of AR_TFP
+# TODO: corrected confidence for AR
 ```
 
 ```{r library, message = FALSE, warning = FALSE}
@@ -281,7 +280,7 @@ d_cumulative_transcript <-  d_transactions        %>%
   mutate(item = str_split(item, pattern = " "))
 ```
 
-###Computing probabilities
+### Computing Support
 ```{r}
 
 # Number of students
@@ -329,7 +328,6 @@ d_support <- d_transactions %>%
     rate.10   = mean(grade_round <= 10)
     )
 
-rm(n_students)
 ```
 
 
@@ -417,7 +415,7 @@ sequences_PF  <- make_sequence(item = item_PF)
 sequences_HL  <- make_sequence(item = item_HL)
 #sequences_TNT <- make_sequence(data = d_transactions_not_taken, item = item_TNT) # compute ad hoc
 #sequences_TPF <- make_sequence(data = d_transactions_not_taken, item = item_TPF) # compute ad hoc
-sequences_G   <- make_sequence(data = d_transactions_grade    , item = item_G  )
+sequences_G   <- make_sequence(data = d_transactions_G    , item = item_G  )
 
 
 #
@@ -435,7 +433,7 @@ rm(make_sequence)
 The function `my_apriori()` applies the apriori algorithm on a set of transactions with the parameters that we have chosen.
 ```{r my_apriori}
 
-my_apriori <- function(data, appearance){
+my_apriori <- function(data){
   
   data %>%
     apriori(
@@ -446,12 +444,8 @@ my_apriori <- function(data, appearance){
         smax = 1,    # max support
         conf = 0,    # min confidence
         minlen = 2,  # min length of 
-        maxlen = 2,  # max length of rule
-        ext = TRUE
+        maxlen = 2  # max length of rule
         ),
-      
-      # impose restriction on lhs and rhs
-      appearance = appearance,
       
       # no printing during execution
       control = list(
@@ -519,7 +513,7 @@ editing_AR <- function(AR){
   
   AR %>%
     mutate_at(
-      c("support", "lhs.support", 
+      c("support", 
         "confidence", "rhs.support",
         "lift"
         ),
@@ -527,7 +521,7 @@ editing_AR <- function(AR){
     ) %>%
     select(
       lhs, rhs,
-      support, count, lhs.support,
+      support, count,
       confidence, rhs.support,
       lift
     ) %>%
@@ -542,11 +536,11 @@ editing_AR <- function(AR){
 We encapsulate the three functions `my_apriori()`, `clean_AR()` and `compute_support` into the function `make_AR()`.
 
 ```{r make_AR}
-make_AR <- function(data, appearance = NULL,
+make_AR <- function(data,
                     data_support, type_rule){
   
   data %>%
-    my_apriori(appearance = appearance) %>%
+    my_apriori %>%
     clean_AR %>%
     compute_metrics(
       data_support = data_support,
@@ -573,56 +567,48 @@ AR_taken <- transactions %>%
 # AR fail
 AR_PF <- transactions_PF %>%
   make_AR(
-    
-    # impose lhs and rhs to be fail
-    appearance = list(
-      both = d_transactions %>%
-        filter(PF == "fail") %>%
-        distinct(item_PF) %>%
-        pull
-    ),
-    
     data_support = d_support,
     type_rule = rate.fail
-  )
+    ) %>%
+  
+  # lhs and rhs must be fail
+  filter(
+    str_detect(lhs, "fail"),
+    str_detect(rhs, "fail")
+    )
 
 
 #
 # AR low
 AR_HL <- transactions_HL %>%
   make_AR(
-    
-    # impose lhs and rhs to be low
-    appearance = list(
-      both = d_transactions %>%
-        filter(HL == "low") %>%
-        distinct(`item_HL`) %>%
-        pull
-    ),
-    
     data_support = d_support,
     type_rule = rate.low
-  )
+    ) %>%
+  
+    # lhs and rhs must be low
+  filter(
+    str_detect(lhs, "low"),
+    str_detect(rhs, "low")
+    )
 
-
+  
 #
 # AR not taken / fail / pass
 
 AR_TPF <- transactions_TPF %>%
   make_AR(
-    
-    # impose lhs and rhs to be not taken
-    appearance = list(
-      rhs = d_transactions_TNT %>%
-        filter(TPF == "fail") %>%
-        distinct(`item_TPF`) %>%
-        pull
-    ),
-    
-    data_support = d_support_take,
-    type_rule = rate.not
-  )
+    data_support = d_support_take, 
+    type_rule = rate.take
+  ) %>%
+  
+  # lhs and rhs must be low
+  filter(
+    str_detect(rhs, "fail")
+    )
 
+
+rm(transactions, transactions_PF, transactions_HL, transactions_TPF)
 ```
 
 ```{r AR grade (by hand)}
@@ -665,19 +651,20 @@ AR_G <- transactions_G %>%
   
     editing_AR
 
+
+rm(d_support_grade, transactions_G)
 ```
 
 We save and remove objects:
 ```{r saving and rm}
 #
 # Save association rules
-save(AR_taken, AR_PF, AR_HL, AR_TNT, AR_TPF, AR_G,
+save(AR_taken, AR_PF, AR_HL, AR_TPF, AR_G,
      file = "App/AR.RDATA")
 
 # Remove objects
-rm(clean_AR, my_apriori,
-   transactions, transactions_PF, transactions_HL, transactions_G,
-   AR_taken, AR_PF, AR_HL, AR_TNT, AR_G)
+rm(my_apriori, clean_AR, compute_metrics, make_AR,
+   AR_taken, AR_PF, AR_HL, AR_TPF, AR_G)
 ```
 
 ### CSPADE Algorithm
@@ -685,7 +672,6 @@ rm(clean_AR, my_apriori,
 
 ```{r function clean SR}
 # Transform rules from ruleInduction into a readable data frame
-n_students <- length(unique(d_transactions$sequenceID))
 
 clean_SR<- function(rules){
   
