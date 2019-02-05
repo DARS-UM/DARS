@@ -123,6 +123,7 @@ item = course
 ## Data Prep: Creating Transactions and Sequences
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
 
+### take, fail, low grade
 ```{r AR data prep 1}
 
 #
@@ -172,7 +173,7 @@ d_transactions <- d_course %>%
 
 ```
 
-### Adding not taken courses
+### take / not take, pass / fail / not take
 ```{r transactions not taken}
 d_transactions_not_taken <- expand.grid(
   
@@ -208,7 +209,8 @@ d_transactions_not_taken <- expand.grid(
     )
 
 ```
-###Expanded Transcripts
+
+### Grade
 ```{r transactions expanded}
 
 d_transactions_grade <- d_transactions %>%
