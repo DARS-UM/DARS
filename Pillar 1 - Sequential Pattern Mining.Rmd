@@ -175,7 +175,7 @@ d_transactions <- d_course %>%
 
 ### take / not take, pass / fail / not take
 ```{r transactions not taken}
-d_transactions_not_taken <- expand.grid(
+d_transactions_TPF <- expand.grid(
   
   # Expand along students (sequenceID) and courses (itemID)
   sequenceID = unique(d_transactions$sequenceID),
@@ -192,28 +192,23 @@ d_transactions_not_taken <- expand.grid(
   # Create 
   mutate(
     
-    TNT = case_when(
-      is.na(Grade) ~ "not taken",
-      TRUE         ~ "taken"
-      ),
-    
     TPF = case_when(
-      is.na(Grade) ~ "not taken",
-      Grade < 5.5  ~ "fail",
-      TRUE         ~ "pass"
+      is.na(Grade)       ~ "not taken",
+      Grade < pass_grade ~ "fail",
+      TRUE               ~ "pass"
       ),
-    
-    item_TNT = paste(item, TNT, sep = "_"),
+
     item_TPF = paste(item, TPF, sep = "_")
     
     )
 
+rm(high_grade, pass_grade)
 ```
 
 ### Grade
 ```{r transactions expanded}
 
-d_transactions_grade <- d_transactions %>%
+d_transactions_G <- d_transactions %>%
   
   # Spread along rounded grades
   mutate(
@@ -242,13 +237,13 @@ d_transactions_grade <- d_transactions %>%
   # Gather along rounded grades
   gather(
     key = Grade_round,
-    value = "Gr_bool",
+    value = X,
     `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, 
     na.rm = TRUE, 
     convert = TRUE
     ) %>%
   select(
-    -Gr_bool
+    -X
     )%>%
 
   # Identifying item
@@ -334,7 +329,7 @@ d_support <- d_transactions %>%
     rate.10   = mean(grade_round <= 10)
     )
 
-
+rm(n_students)
 ```
 
 
@@ -366,9 +361,8 @@ make_transaction <- function(data = d_transactions, item = item){
 transactions     <- make_transaction(item = item   )
 transactions_PF  <- make_transaction(item = item_PF)
 transactions_HL  <- make_transaction(item = item_HL)
-transactions_TNT <- make_transaction(data = d_transactions_not_taken, item = item_TNT)
-transactions_TPF <- make_transaction(data = d_transactions_not_taken, item = item_TPF)
-transactions_G   <- make_transaction(data = d_transactions_grade    , item = item_G  )
+transactions_TPF <- make_transaction(data = d_transactions_TPF, item = item_TPF)
+transactions_G   <- make_transaction(data = d_transactions_G  , item = item_G  )
 
 
 #
@@ -499,26 +493,11 @@ clean_AR <- function(AR){
 The function `compute_support()` computes the support of the lhs and rhs of the rules.
 
 ```{r compute_support}
-compute_support <- function(AR, data_support, type_rule){
+compute_metrics <- function(AR, data_support, type_rule){
   
   type_rule_enquo <- enquo(type_rule)
   
   AR %>%
-    
-    # include lhs.support
-    mutate(
-      lhs_course = str_remove_all(lhs, pattern = "_fail|_low|_not taken")
-      ) %>%
-    left_join(
-      select(data_support, item, !!type_rule_enquo),
-      by = c("lhs_course" = "item")
-      ) %>%
-    mutate(
-      lhs.support = !!type_rule_enquo
-      )  %>%
-    select(
-      - !!type_rule_enquo
-      ) %>%
     
     # include rhs.support
     mutate(
@@ -530,9 +509,6 @@ compute_support <- function(AR, data_support, type_rule){
       ) %>%
     mutate(
       rhs.support = !!type_rule_enquo
-      ) %>%
-    select(
-      - !!type_rule_enquo
       )
 
 }
@@ -572,7 +548,7 @@ make_AR <- function(data, appearance = NULL,
   data %>%
     my_apriori(appearance = appearance) %>%
     clean_AR %>%
-    compute_support(
+    compute_metrics(
       data_support = data_support,
       type_rule = !!enquo(type_rule)
       ) %>%
@@ -630,24 +606,6 @@ AR_HL <- transactions_HL %>%
 
 
 #
-# AR not taken
-AR_TNT <- transactions_TNT %>%
-  make_AR(
-    
-    # impose lhs and rhs to be not taken
-    appearance = list(
-      both = d_transactions_not_taken %>%
-        filter(TNT == "not taken") %>%
-        distinct(`item_TNT`) %>%
-        pull
-    ),
-    
-    data_support = d_support_take,
-    type_rule = rate.not
-  )
-
-
-#
 # AR not taken / fail / pass
 
 AR_TPF <- transactions_TPF %>%
@@ -655,7 +613,7 @@ AR_TPF <- transactions_TPF %>%
     
     # impose lhs and rhs to be not taken
     appearance = list(
-      rhs = d_transactions_not_taken %>%
+      rhs = d_transactions_TNT %>%
         filter(TPF == "fail") %>%
         distinct(`item_TPF`) %>%
         pull
@@ -688,47 +646,24 @@ d_support_grade <- d_support %>%
 AR_G <- transactions_G %>%
   my_apriori(appearance = NULL) %>%
   clean_AR %>%
-    
-  # include lhs.support by hand
-  separate(
-    lhs, 
-    into = c("lhs_course", "lhs_grade_round"), 
-    sep = "_",
-    remove = FALSE,
-    convert = TRUE
-    ) %>%
-  left_join(
-    d_support_grade,
-    by = c("lhs_course" = "item", "lhs_grade_round" = "grade_round")
-    ) %>%
-  mutate(
-    lhs.support = support.grade
-    ) %>%
-  select(
-    - support.grade
-    ) %>%
 
   # include rhs.support by hand
   separate(
     rhs, 
-    into = c("rhs_course", "rhs_grade_round"), 
+    into = c("item", "grade_round"), 
     sep = "_",
     remove = FALSE,
     convert = TRUE
     ) %>%
   left_join(
     d_support_grade,
-    by = c("rhs_course" = "item", "rhs_grade_round" = "grade_round")
+    by = c("item", "grade_round")
     ) %>%
   mutate(
     rhs.support = support.grade
     ) %>%
-  select(
-    - support.grade
-    ) %>%
   
     editing_AR
-
 
 ```
 
