@@ -13,9 +13,8 @@ output:
 ```
 
 ```{r library, message = FALSE, warning = FALSE}
-library(arulesSequences)
-
 library(tidyverse)
+library(arulesSequences)
 ```
 
 # Setup
@@ -132,7 +131,6 @@ pass_grade <- 5.5
 high_grade <- 6.5
 
 
-
 #
 # Transactions
 d_transactions <- d_course %>%
@@ -146,30 +144,31 @@ d_transactions <- d_course %>%
   
   # Join with transcripts.
   select(- Period) %>%
-  inner_join(d_transcript, by = "Course ID") %>%
+  inner_join(
+    d_transcript,
+    by = "Course ID"
+    ) %>%
   
-  # Identifying sequences
+  # Identifying sequenceID
   rename(sequenceID = `Student ID`) %>%
   
-  # Identifying time of event (sequence)
+  # Identifying evenID
   mutate(
     Period  = substr(Period, 1, 1),
     eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
     ) %>%
 
-  # Identifying item
+  # Identifying itemID
   mutate(
     PF = case_when( Grade <  pass_grade ~ "fail",
                     Grade >= pass_grade ~ "pass"),
     HL = case_when( Grade <  high_grade ~ "low",
                     Grade >= high_grade ~ "high"),
     
+    item    = `Course ID`,
     item_PF = paste(`Course ID`, PF, sep = "_"),
     item_HL = paste(`Course ID`, HL, sep = "_")
-    ) %>%
-  rename(
-    item = `Course ID`
-  )
+    )
 
 ```
 
@@ -194,50 +193,70 @@ d_transactions_not_taken <- expand.grid(
     
     taken = case_when(
       is.na(Grade) ~ "not taken",
-      TRUE         ~ "taken"),
+      TRUE         ~ "taken"
+      ),
     
-    item_taken= paste(item, taken, sep = "_"),
-    item_taken_grade= case_when(
-      is.na(Grade) ~ paste(item, taken, sep = "_"),
-      TRUE            ~ paste(item, PF)
-      )
+    taken_grade = case_when(
+      is.na(Grade) ~ "not taken",
+      Grade < 5.5  ~ "fail",
+      TRUE         ~ "pass"
+      ),
+    
+    item_taken       = paste(item, taken      , sep = "_"),
+    item_taken_grade = paste(item, taken_grade, sep = "_")
+    
     )
 
 ```
 ###Expanded Transcripts
 ```{r transactions expanded}
 
-d_transactions_expanded <- d_transactions %>%
-  mutate(Round_grade = round(Grade, 0),
-         Values = T) %>%
-  spread(key = "Round_grade", value = Values) %>%
-  mutate(`1`  = `0`|`1`,
-         `2`  = `1`|`2`,
-         `3`  = `2`|`3`,
-         `4`  = `3`|`4`,
-         `5`  = `4`|`5`,
-         `6`  = `5`|`6`,
-         `7`  = `6`|`7`,
-         `8`  = `7`|`8`,
-         `9`  = `8`|`9`,
-         `10`  = `9`|`10`
-         ) %>%
-  gather(key = "Grade_round", value = "Gr_bool", `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, na.rm = TRUE, convert = TRUE) %>%
-  select(-Gr_bool) %>%
+d_transactions_grade <- d_transactions %>%
+  
+  # Spread along rounded grades
+  mutate(
+    Round_grade = round(Grade, 0),
+    Values = TRUE
+    ) %>%
+  spread(
+    key   = Round_grade, 
+    value = Values
+    ) %>%
+  
+  # fill grades inferior to obtained grade with TRUE
+  mutate(
+    `1`  = `0`|`1`,
+    `2`  = `1`|`2`,
+    `3`  = `2`|`3`,
+    `4`  = `3`|`4`,
+    `5`  = `4`|`5`,
+    `6`  = `5`|`6`,
+    `7`  = `6`|`7`,
+    `8`  = `7`|`8`,
+    `9`  = `8`|`9`,
+    `10` = `9`|`10`
+    ) %>%
+  
+  # Gather along rounded grades
+  gather(
+    key = Grade_round,
+    value = "Gr_bool",
+    `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, 
+    na.rm = TRUE, 
+    convert = TRUE
+    ) %>%
+  select(
+    -Gr_bool
+    )%>%
+  
+  # Arrange per sequenceID and item for making sequences
   arrange(
     sequenceID,
     item
-  ) %>%
+    ) %>%
 
   # Identifying item
   mutate(
-    PF = case_when( Grade_round <  pass_grade ~ "fail",
-                    Grade_round >= pass_grade ~ "pass"),
-    HL = case_when( Grade_round <  high_grade ~ "low",
-                    Grade_round >= high_grade ~ "high"),
-    
-    item_PF = paste(item, PF, sep = "_"),
-    item_HL = paste(item, HL, sep = "_"),
     item_Grade = paste(item, Grade_round, sep = "_")
     )
 ```
