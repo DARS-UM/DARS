@@ -659,7 +659,7 @@ AR_TPF <- transactions_TPF %>%
   mutate(
     lhs.rhsTake.support = sum(support * rhs.take),
     confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / (rhs.support + 1e-4) # some courses have a failure rate of 0%.
+    lift                = confidence / (rhs.support + 1e-4) # increase denominator by smal value to avoid dividing by 0.
     ) %>%
   ungroup %>%
   
