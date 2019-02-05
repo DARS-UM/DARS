@@ -9,7 +9,7 @@ output:
 
 ```{r TODO}
 # TODO: compute corrected confidence for AR
-# TODO: compute lhs.support, for grade
+# TODO: support of AR_TFP
 ```
 
 ```{r library, message = FALSE, warning = FALSE}
@@ -366,7 +366,7 @@ make_transaction <- function(data = d_transactions, item = item){
 transactions     <- make_transaction(item = item   )
 transactions_PF  <- make_transaction(item = item_PF)
 transactions_HL  <- make_transaction(item = item_HL)
-#transactions_TNT <- make_transaction(data = d_transactions_not_taken, item = item_TNT)
+transactions_TNT <- make_transaction(data = d_transactions_not_taken, item = item_TNT)
 transactions_TPF <- make_transaction(data = d_transactions_not_taken, item = item_TPF)
 transactions_G   <- make_transaction(data = d_transactions_grade    , item = item_G  )
 
@@ -453,10 +453,7 @@ my_apriori <- function(data, appearance){
         conf = 0,    # min confidence
         minlen = 2,  # min length of 
         maxlen = 2,  # max length of rule
-        ext = TRUE,
-        arem = "diff",
-        aval = TRUE,
-        minval = 0
+        ext = TRUE
         ),
       
       # impose restriction on lhs and rhs
@@ -536,11 +533,20 @@ compute_support <- function(AR, data_support, type_rule){
       ) %>%
     select(
       - !!type_rule_enquo
-      ) %>%
-    
-    # Editing output
+      )
+
+}
+```
+
+```{r editing_AR}
+editing_AR <- function(AR){
+  
+  AR %>%
     mutate_at(
-      c("support", "lhs.support", "confidence", "rhs.support", "lift"),
+      c("support", "lhs.support", 
+        "confidence", "rhs.support",
+        "lift"
+        ),
       funs(round(., 5))
     ) %>%
     select(
@@ -556,6 +562,7 @@ compute_support <- function(AR, data_support, type_rule){
 }
 ```
 
+
 We encapsulate the three functions `my_apriori()`, `clean_AR()` and `compute_support` into the function `make_AR()`.
 
 ```{r make_AR}
@@ -565,7 +572,11 @@ make_AR <- function(data, appearance = NULL,
   data %>%
     my_apriori(appearance = appearance) %>%
     clean_AR %>%
-    compute_support(data_support = data_support, type_rule = !!enquo(type_rule))
+    compute_support(
+      data_support = data_support,
+      type_rule = !!enquo(type_rule)
+      ) %>%
+    editing_AR
   
 }
 ```
@@ -602,7 +613,7 @@ AR_PF <- transactions_PF %>%
 
 #
 # AR low
-AR_PF <- transactions_HL %>%
+AR_HL <- transactions_HL %>%
   make_AR(
     
     # impose lhs and rhs to be low
@@ -620,7 +631,7 @@ AR_PF <- transactions_HL %>%
 
 #
 # AR not taken
-AR_not_taken <- transactions_Taken %>%
+AR_TNT <- transactions_TNT %>%
   make_AR(
     
     # impose lhs and rhs to be not taken
@@ -636,27 +647,102 @@ AR_not_taken <- transactions_Taken %>%
   )
 
 
+#
+# AR not taken / fail / pass
 
-
-# TODO
-
-# AR_expanded_Grade <- my_apriori(transactions_expanded_Grade)
+AR_TPF <- transactions_TPF %>%
+  make_AR(
+    
+    # impose lhs and rhs to be not taken
+    appearance = list(
+      rhs = d_transactions_not_taken %>%
+        filter(TPF == "fail") %>%
+        distinct(`item_TPF`) %>%
+        pull
+    ),
+    
+    data_support = d_support_take,
+    type_rule = rate.not
+  )
 
 ```
+
+```{r AR grade (by hand)}
+
+#
+# d_support
+d_support_grade <- d_support %>%
+  gather(
+    key   = grade_round,
+    value = support.grade,
+    rate.0, rate.1, rate.2, rate.3, rate.4, rate.5, rate.6, rate.7, rate.8, rate.9, rate.10
+    ) %>%
+  mutate( 
+    grade_round = substr(grade_round, start = 6, stop = 7),
+    grade_round = as.numeric(grade_round)
+    ) %>%
+  select(-c(rate.fail, rate.low))
+
+
+# Make RA
+AR_G <- transactions_G %>%
+  my_apriori(appearance = NULL) %>%
+  clean_AR %>%
+    
+  # include lhs.support by hand
+  separate(
+    lhs, 
+    into = c("lhs_course", "lhs_grade_round"), 
+    sep = "_",
+    remove = FALSE,
+    convert = TRUE
+    ) %>%
+  left_join(
+    d_support_grade,
+    by = c("lhs_course" = "item", "lhs_grade_round" = "grade_round")
+    ) %>%
+  mutate(
+    lhs.support = support.grade
+    ) %>%
+  select(
+    - support.grade
+    ) %>%
+
+  # include rhs.support by hand
+  separate(
+    rhs, 
+    into = c("rhs_course", "rhs_grade_round"), 
+    sep = "_",
+    remove = FALSE,
+    convert = TRUE
+    ) %>%
+  left_join(
+    d_support_grade,
+    by = c("rhs_course" = "item", "rhs_grade_round" = "grade_round")
+    ) %>%
+  mutate(
+    rhs.support = support.grade
+    ) %>%
+  select(
+    - support.grade
+    ) %>%
+  
+    editing_AR
+
+
+```
+
 We save and remove objects:
 ```{r saving and rm}
 #
 # Save association rules
-save(AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade, 
-     AR_expanded_Grade,
+save(AR_taken, AR_PF, AR_HL, AR_TNT, AR_TPF, AR_G,
      file = "App/AR.RDATA")
 
 # Remove objects
 rm(clean_AR, my_apriori,
-   transactions, transactions_PF, transactions_HL, transactions_Grade,
-   course_id_fail, course_id_low,
-   AR_taken, AR_PF, AR_HL, AR_not_taken, AR_Grade,  
-   AR_expanded_Grade)
+   transactions, transactions_PF, transactions_HL, transactions_G,
+   AR_taken, AR_PF, AR_HL, AR_TNT, AR_G)
 ```
 
 ### CSPADE Algorithm
