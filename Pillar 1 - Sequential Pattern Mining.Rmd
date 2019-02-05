@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r TODO}
-# TODO: corrected confidence for AR
+
 ```
 
 ```{r library, message = FALSE, warning = FALSE}
@@ -280,7 +280,7 @@ d_cumulative_transcript <-  d_transactions        %>%
   mutate(item = str_split(item, pattern = " "))
 ```
 
-### Computing Support
+### Support
 ```{r}
 
 # Number of students
@@ -493,9 +493,9 @@ compute_metrics <- function(AR, data_support, type_rule){
   
   AR %>%
     
-    # include rhs.support
+    # rhs.support
     mutate(
-      rhs_course = str_remove_all(rhs, pattern = "_fail|_low|_not taken")
+      rhs_course = str_remove_all(rhs, pattern = "_fail|_pass|_low|_not taken")
       ) %>%
     left_join(
       select(data_support, item, !!type_rule_enquo),
@@ -555,13 +555,12 @@ make_AR <- function(data,
 ```{r AR, cache = TRUE}
 
 #
-# AR taken
+# AR taken (confidence and lift already correct)
 AR_taken <- transactions %>%
   make_AR(
     data_support = d_support_take, 
     type_rule = rate.take
     )
-
 
 #
 # AR fail
@@ -571,11 +570,32 @@ AR_PF <- transactions_PF %>%
     type_rule = rate.fail
     ) %>%
   
-  # lhs and rhs must be fail
+  # Confidence and Lift
+  separate(
+    rhs,
+    sep = "_",
+    into = c("rhs_course", "rhs_outcome"),
+    remove = FALSE
+    ) %>%
+  group_by(
+    lhs, rhs_course
+    ) %>%
+  mutate(
+    lhs.rhsTake.support = sum(support),
+    confidence          = support / lhs.rhsTake.support,
+    lift                = confidence / rhs.support
+    ) %>%
+  ungroup %>%
+  
+  # lhs and rhs must be fail, count >= 5
   filter(
     str_detect(lhs, "fail"),
-    str_detect(rhs, "fail")
-    )
+    str_detect(rhs, "fail"),
+    count >= 5
+    ) %>%
+  select(
+    - c(rhs_outcome, rhs_course)
+  ) 
 
 
 #
@@ -586,11 +606,32 @@ AR_HL <- transactions_HL %>%
     type_rule = rate.low
     ) %>%
   
-    # lhs and rhs must be low
+  # Confidence and Lift
+  separate(
+    rhs,
+    sep = "_",
+    into = c("rhs_course", "rhs_outcome"),
+    remove = FALSE
+    ) %>%
+  group_by(
+    lhs, rhs_course
+    ) %>%
+  mutate(
+    lhs.rhsTake.support = sum(support),
+    confidence          = support / lhs.rhsTake.support,
+    lift                = confidence / rhs.support
+    ) %>%
+  ungroup %>%
+  
+  # lhs and rhs must be fail, count >= 5
   filter(
     str_detect(lhs, "low"),
-    str_detect(rhs, "low")
-    )
+    str_detect(rhs, "low"),
+    count >= 5
+    ) %>%
+  select(
+    - c(rhs_outcome, rhs_course)
+  )
 
   
 #
@@ -598,14 +639,39 @@ AR_HL <- transactions_HL %>%
 
 AR_TPF <- transactions_TPF %>%
   make_AR(
-    data_support = d_support_take, 
-    type_rule = rate.take
+    data_support = d_support, 
+    type_rule = rate.fail
   ) %>%
   
-  # lhs and rhs must be low
+  # Confidence and Lift
+  separate(
+    rhs,
+    sep = "_",
+    into = c("rhs_course", "rhs_outcome"),
+    remove = FALSE
+    ) %>%
+  mutate(
+    rhs.take = str_detect(rhs, "fail|pass")
+    ) %>%
+  group_by(
+    lhs, rhs_course
+    ) %>%
+  mutate(
+    lhs.rhsTake.support = sum(support * rhs.take),
+    confidence          = support / lhs.rhsTake.support,
+    lift                = confidence / (rhs.support + 1e-4) # some courses have a failure rate of 0%.
+    ) %>%
+  ungroup %>%
+  
+  # lhs and rhs must be fail, count >= 5
   filter(
-    str_detect(rhs, "fail")
-    )
+    str_detect(lhs, "not taken"),
+    str_detect(rhs, "fail"),
+    count >= 5
+    ) %>%
+  select(
+    - c(rhs_outcome, rhs_course, rhs.take)
+  )
 
 
 rm(transactions, transactions_PF, transactions_HL, transactions_TPF)
@@ -628,7 +694,7 @@ d_support_grade <- d_support %>%
   select(-c(rate.fail, rate.low))
 
 
-# Make RA
+# Make AR
 AR_G <- transactions_G %>%
   my_apriori(appearance = NULL) %>%
   clean_AR %>%
