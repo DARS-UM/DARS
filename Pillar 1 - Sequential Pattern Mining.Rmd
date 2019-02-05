@@ -9,10 +9,8 @@ output:
 
 ```{r TODO}
 # TODO: compute corrected confidence for AR
-# TODO: compute lhs.support, for grade, not taken and  
+# TODO: compute lhs.support, for grade
 ```
-
-
 
 ```{r library, message = FALSE, warning = FALSE}
 library(arulesSequences)
