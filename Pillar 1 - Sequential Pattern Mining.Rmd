@@ -334,7 +334,7 @@ d_support_TNT <- d_transactions %>%
 
 
 #
-# Probability of failing, having a low grade, having a grade less than x per course
+# Probability of failing, having a low grade
 d_support_PF_HL <- d_transactions %>%
   group_by(
     item
@@ -343,6 +343,7 @@ d_support_PF_HL <- d_transactions %>%
     rate.fail = mean(PF == "fail"),
     rate.low  = mean(HL == "low")
     )
+
 
 #
 # Probability oh having a grade equal or lower than x
