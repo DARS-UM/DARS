@@ -7,10 +7,6 @@ output:
     toc: TRUE
 ---
 
-```{r TODO}
-
-```
-
 ```{r library, message = FALSE, warning = FALSE}
 library(tidyverse)
 library(arulesSequences)
@@ -454,8 +450,7 @@ make_sequence <- function(data = d_transactions, item = item){
 sequences     <- make_sequence(item = item   )
 sequences_PF  <- make_sequence(item = item_PF)
 sequences_HL  <- make_sequence(item = item_HL)
-#sequences_TNT <- make_sequence(data = d_transactions_not_taken, item = item_TNT) # compute ad hoc
-#sequences_TPF <- make_sequence(data = d_transactions_not_taken, item = item_TPF) # compute ad hoc
+#sequences_TPF <- make_sequence(data = d_transactions_TPF, item = item_TPF) # compute ad hoc
 sequences_G   <- make_sequence(data = d_transactions_G    , item = item_G  )
 
 
@@ -464,7 +459,8 @@ sequences_G   <- make_sequence(data = d_transactions_G    , item = item_G  )
 # inspect(head(sequences_G, 10))
 
 
-rm(make_sequence)
+rm(make_sequence,
+   d_transactions, d_transactions_TPF, d_transactions_G)
 ```
 
 
@@ -594,7 +590,7 @@ AR_taken <- transactions %>%
     type_rule = rate.take
     )
 
-rm(transactions)
+rm(transactions, d_support_TNT)
 ```
 
 ```{r AR fail}
@@ -711,7 +707,7 @@ AR_TPF <- transactions_TPF %>%
     - c(rhs_outcome, rhs_course, rhs.take)
   )
 
-rm(transactions_TPF)
+rm(transactions_TPF, d_support_PF_HL)
 ```
 
 ```{r AR grade}
@@ -746,7 +742,7 @@ AR_G <- transactions_G %>%
     ) %>%
   
   # Confidence and lift
-    separate(
+  separate(
     rhs,
     sep = "_",
     into = c("rhs_course", "rhs_outcome"),
@@ -785,7 +781,7 @@ AR_G <- transactions_G %>%
   editing_AR
 
 
-#rm(d_support_grade, transactions_G)
+rm(transactions_G, d_support_G)
 ```
 
 We save and remove objects:
@@ -796,8 +792,9 @@ save(AR_taken, AR_PF, AR_HL, AR_TPF, AR_G,
      file = "App/AR.RDATA")
 
 # Remove objects
-rm(my_apriori, clean_AR, compute_metrics, make_AR,
-   AR_taken, AR_PF, AR_HL, AR_TPF, AR_G)
+rm(my_apriori, clean_AR, compute_metrics, editing_AR, make_AR,
+   AR_taken, AR_PF, AR_HL, AR_TPF, AR_G,
+   n_students)
 ```
 
 ### CSPADE Algorithm
