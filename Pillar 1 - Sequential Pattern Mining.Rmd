@@ -310,12 +310,14 @@ d_past_course <- expand.grid(
 
 ```{r}
 
+#
 # Number of students
 n_students <- d_transactions %>%
   select(sequenceID) %>%
   n_distinct
 
 
+#
 # Probability of taking a course
 d_support_take <- d_transactions %>%
   distinct(
@@ -330,6 +332,8 @@ d_support_take <- d_transactions %>%
     rate.not  = 1 - rate.take
     )
 
+
+#
 # Probability of failing, having a low grade, having a grade less than x per course
 d_support <- d_transactions %>%
   group_by(
@@ -357,8 +361,6 @@ d_support <- d_transactions %>%
 ### Transactions for Apriori
 ```{r making transactions, message = FALSE}
 
-#
-# For convenience
 make_transaction <- function(data = d_transactions, item = item){
   
   data %>%
@@ -388,7 +390,7 @@ transactions_G   <- make_transaction(data = d_transactions_G  , item = item_G  )
 
 #
 # Checking transactions
-#inspect(head(transactions_Grade, 10))
+# inspect(head(transactions, 10))
 
 rm(make_transaction)
 ```
@@ -396,12 +398,12 @@ rm(make_transaction)
 ### Sequences for CSPADE
 ```{r making sequences}
 
-#
-# For convenience
 make_sequence <- function(data = d_transactions, item = item){
   
   sequences <- data %>%
-    filter(!is.na(eventID))%>% #this is here casue we have courses that were never taken.
+    filter(
+      !is.na(eventID) #this is here casue we have courses that were never taken.
+      ) %>% 
     group_by(
       sequenceID,
       eventID
@@ -419,6 +421,7 @@ make_sequence <- function(data = d_transactions, item = item){
       ) %>%
     as("transactions")
   
+  # indicating sequence ID and event ID for each transaction
   sequences@itemsetInfo <- select(
     data,
     sequenceID,
@@ -461,12 +464,12 @@ my_apriori <- function(data){
   data %>%
     apriori(
       
-      # Chosen parameters
+      # include all AR possible
       parameter = list(
-        supp = 0,    # min support
-        smax = 1,    # max support
-        conf = 0,    # min confidence
-        minlen = 2,  # min length of 
+        supp   = 0, # min support
+        smax   = 1, # max support
+        conf   = 0, # min confidence
+        minlen = 2, # min length of rule
         maxlen = 2  # max length of rule
         ),
       
@@ -511,9 +514,7 @@ The function `compute_support()` computes the support of the lhs and rhs of the 
 
 ```{r compute_support}
 compute_metrics <- function(AR, data_support, type_rule){
-  
-  type_rule_enquo <- enquo(type_rule)
-  
+
   AR %>%
     
     # rhs.support
@@ -521,11 +522,11 @@ compute_metrics <- function(AR, data_support, type_rule){
       rhs_course = str_remove_all(rhs, pattern = "_fail|_pass|_low|_not taken")
       ) %>%
     left_join(
-      select(data_support, item, !!type_rule_enquo),
+      select(data_support, item, !!enquo(type_rule)),
       by = c("rhs_course" = "item")
       ) %>%
     mutate(
-      rhs.support = !!type_rule_enquo
+      rhs.support = !!enquo(type_rule)
       )
 
 }
@@ -556,11 +557,10 @@ editing_AR <- function(AR){
 ```
 
 
-We encapsulate the three functions `my_apriori()`, `clean_AR()` and `compute_support` into the function `make_AR()`.
+We encapsulate the four functions `my_apriori()`, `clean_AR()`, `compute_support()` and `editing_AR()` into the function `make_AR()`.
 
 ```{r make_AR}
-make_AR <- function(data,
-                    data_support, type_rule){
+make_AR <- function(data, data_support, type_rule){
   
   data %>%
     my_apriori %>%
@@ -574,26 +574,25 @@ make_AR <- function(data,
 }
 ```
 
-
-```{r AR, cache = TRUE}
-
-#
-# AR taken (confidence and lift already correct)
+```{r AR take}
 AR_taken <- transactions %>%
   make_AR(
     data_support = d_support_take, 
     type_rule = rate.take
     )
 
-#
-# AR fail
+rm(transactions)
+```
+
+```{r AR fail}
 AR_PF <- transactions_PF %>%
+  
   make_AR(
     data_support = d_support,
     type_rule = rate.fail
     ) %>%
   
-  # Confidence and Lift
+  # Confidence and Lift by hand
   separate(
     rhs,
     sep = "_",
@@ -618,18 +617,20 @@ AR_PF <- transactions_PF %>%
     ) %>%
   select(
     - c(rhs_outcome, rhs_course)
-  ) 
+  )
 
+rm(transactions_PF)
+```
 
-#
-# AR low
+```{r AR low}
 AR_HL <- transactions_HL %>%
+  
   make_AR(
     data_support = d_support,
     type_rule = rate.low
     ) %>%
   
-  # Confidence and Lift
+  # Confidence and Lift by hand
   separate(
     rhs,
     sep = "_",
@@ -656,10 +657,10 @@ AR_HL <- transactions_HL %>%
     - c(rhs_outcome, rhs_course)
   )
 
-  
-#
-# AR not taken / fail / pass
+rm(transactions_HL)
+```
 
+```{r AR TPF}
 AR_TPF <- transactions_TPF %>%
   make_AR(
     data_support = d_support, 
@@ -682,7 +683,7 @@ AR_TPF <- transactions_TPF %>%
   mutate(
     lhs.rhsTake.support = sum(support * rhs.take),
     confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / (rhs.support + 1e-4) # increase denominator by smal value to avoid dividing by 0.
+    lift                = confidence / rhs.support
     ) %>%
   ungroup %>%
   
@@ -695,6 +696,17 @@ AR_TPF <- transactions_TPF %>%
   select(
     - c(rhs_outcome, rhs_course, rhs.take)
   )
+
+rm(transactions_TPF)
+```
+
+
+```{r AR, cache = TRUE}
+
+#
+# AR not taken / fail / pass
+
+
 
 
 rm(transactions, transactions_PF, transactions_HL, transactions_TPF)
