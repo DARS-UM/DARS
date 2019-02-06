@@ -212,7 +212,7 @@ d_transactions_G <- d_transactions %>%
   # Spread along rounded grades
   mutate(
     Round_grade = round(Grade, 0),
-    Values = TRUE
+    Values      = TRUE
     ) %>%
   spread(
     key   = Round_grade, 
@@ -235,10 +235,10 @@ d_transactions_G <- d_transactions %>%
   
   # Gather along rounded grades
   gather(
-    key = Grade_round,
+    key   = Grade_round,
     value = X,
     `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, 
-    na.rm = TRUE, 
+    na.rm   = TRUE, 
     convert = TRUE
     ) %>%
   select(
@@ -313,23 +313,21 @@ d_past_course <- expand.grid(
 # Number of students
 n_students <- d_transactions %>%
   select(sequenceID) %>%
-  n_distinct()
+  n_distinct
 
 
-# Probability of taken a course
+# Probability of taking a course
 d_support_take <- d_transactions %>%
   distinct(
     item,
     sequenceID
     ) %>%
-  group_by(
+  count(
     item
     ) %>%
-  summarise(
-    count     = n(),
-    rate.take = count / n_students,
-    rate.not  = 1 - rate.take
-    )
+  mutate(
+    rate.take = n / n_students,
+    rate.not  = 1 - rate.take)
 
 # Probability of failing, having a low grade, having a grade less than x per course
 d_support <- d_transactions %>%
