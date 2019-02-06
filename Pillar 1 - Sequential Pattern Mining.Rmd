@@ -205,17 +205,17 @@ rm(high_grade, pass_grade)
 ```
 
 ### Grade
-```{r transactions expanded}
+```{r transactions grade}
 
 d_transactions_G <- d_transactions %>%
   
   # Spread along rounded grades
   mutate(
-    Round_grade = round(Grade, 0),
-    Values = TRUE
+    grade_ceil = ceiling(Grade),
+    Values     = TRUE
     ) %>%
   spread(
-    key   = Round_grade, 
+    key   = grade_ceil, 
     value = Values
     ) %>%
   
@@ -235,19 +235,19 @@ d_transactions_G <- d_transactions %>%
   
   # Gather along rounded grades
   gather(
-    key = Grade_round,
+    key   = grade_ceil,
     value = X,
-    `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, 
-    na.rm = TRUE, 
+    `0` :`10`, 
+    na.rm   = TRUE, 
     convert = TRUE
     ) %>%
   select(
     -X
-    )%>%
+    ) %>%
 
   # Identifying item
   mutate(
-    item_G = paste(item, Grade_round, sep = "_")
+    item_G = paste(item, grade_ceil, sep = "_")
     )
 ```
 ### Additional General Dataframes for courses
@@ -361,49 +361,65 @@ not_take_fail_rules <- d_cumulative_transcript     %>%
 
 ```{r}
 
+#
 # Number of students
 n_students <- d_transactions %>%
   select(sequenceID) %>%
-  n_distinct()
+  n_distinct
 
 
-# Probability of taken a course
-d_support_take <- d_transactions %>%
+#
+# Probability of taking a course
+d_support_TNT <- d_transactions %>%
   distinct(
     item,
     sequenceID
     ) %>%
-  group_by(
+  count(
     item
     ) %>%
-  summarise(
-    count     = n(),
-    rate.take = count / n_students,
+  mutate(
+    rate.take = n / n_students,
     rate.not  = 1 - rate.take
     )
 
-# Probability of failing, having a low grade, having a grade less than x per course
-d_support <- d_transactions %>%
-  mutate(
-    grade_round = round(Grade)
-  ) %>%
+
+#
+# Probability of failing, having a low grade
+d_support_PF_HL <- d_transactions %>%
   group_by(
     item
     ) %>%
   summarise(
     rate.fail = mean(PF == "fail"),
-    rate.low  = mean(HL == "low"),
-    rate.0    = mean(grade_round <= 0),
-    rate.1    = mean(grade_round <= 1),
-    rate.2    = mean(grade_round <= 2),
-    rate.3    = mean(grade_round <= 3),
-    rate.4    = mean(grade_round <= 4),
-    rate.5    = mean(grade_round <= 5),
-    rate.6    = mean(grade_round <= 6),
-    rate.7    = mean(grade_round <= 7),
-    rate.8    = mean(grade_round <= 8),
-    rate.9    = mean(grade_round <= 9),
-    rate.10   = mean(grade_round <= 10)
+    rate.low  = mean(HL == "low")
+    )
+
+
+#
+# Probability oh having a grade equal or lower than x
+d_support_G <- d_transactions %>%
+  group_by(
+    item
+    ) %>%
+  summarise(
+    `0`    = mean(Grade <= 0),
+    `1`    = mean(Grade <= 1),
+    `2`    = mean(Grade <= 2),
+    `3`    = mean(Grade <= 3),
+    `4`    = mean(Grade <= 4),
+    `5`    = mean(Grade <= 5),
+    `6`    = mean(Grade <= 6),
+    `7`    = mean(Grade <= 7),
+    `8`    = mean(Grade <= 8),
+    `9`    = mean(Grade <= 9),
+    `10`   = mean(Grade <= 10)
+    ) %>%
+  gather(
+    key   = grade_ceil,
+    value = support.grade,
+    `0` : `10`,
+    convert = TRUE
     )
 
 ```
@@ -412,8 +428,6 @@ d_support <- d_transactions %>%
 ### Transactions for Apriori
 ```{r making transactions, message = FALSE}
 
-#
-# For convenience
 make_transaction <- function(data = d_transactions, item = item){
   
   data %>%
@@ -443,7 +457,7 @@ transactions_G   <- make_transaction(data = d_transactions_G  , item = item_G  )
 
 #
 # Checking transactions
-#inspect(head(transactions_Grade, 10))
+# inspect(head(transactions, 10))
 
 rm(make_transaction)
 ```
@@ -451,12 +465,12 @@ rm(make_transaction)
 ### Sequences for CSPADE
 ```{r making sequences}
 
-#
-# For convenience
 make_sequence <- function(data = d_transactions, item = item){
   
   sequences <- data %>%
-    filter(!is.na(eventID))%>% #this is here casue we have courses that were never taken.
+    filter(
+      !is.na(eventID) #this is here casue we have courses that were never taken.
+      ) %>% 
     group_by(
       sequenceID,
       eventID
@@ -474,6 +488,7 @@ make_sequence <- function(data = d_transactions, item = item){
       ) %>%
     as("transactions")
   
+  # indicating sequence ID and event ID for each transaction
   sequences@itemsetInfo <- select(
     data,
     sequenceID,
@@ -516,12 +531,12 @@ my_apriori <- function(data){
   data %>%
     apriori(
       
-      # Chosen parameters
+      # include all AR possible
       parameter = list(
-        supp = 0,    # min support
-        smax = 1,    # max support
-        conf = 0,    # min confidence
-        minlen = 2,  # min length of 
+        supp   = 0, # min support
+        smax   = 1, # max support
+        conf   = 0, # min confidence
+        minlen = 2, # min length of rule
         maxlen = 2  # max length of rule
         ),
       
@@ -566,9 +581,7 @@ The function `compute_support()` computes the support of the lhs and rhs of the 
 
 ```{r compute_support}
 compute_metrics <- function(AR, data_support, type_rule){
-  
-  type_rule_enquo <- enquo(type_rule)
-  
+
   AR %>%
     
     # rhs.support
@@ -576,11 +589,11 @@ compute_metrics <- function(AR, data_support, type_rule){
       rhs_course = str_remove_all(rhs, pattern = "_fail|_pass|_low|_not taken")
       ) %>%
     left_join(
-      select(data_support, item, !!type_rule_enquo),
+      select(data_support, item, !!enquo(type_rule)),
       by = c("rhs_course" = "item")
       ) %>%
     mutate(
-      rhs.support = !!type_rule_enquo
+      rhs.support = !!enquo(type_rule)
       )
 
 }
@@ -611,11 +624,10 @@ editing_AR <- function(AR){
 ```
 
 
-We encapsulate the three functions `my_apriori()`, `clean_AR()` and `compute_support` into the function `make_AR()`.
+We encapsulate the four functions `my_apriori()`, `clean_AR()`, `compute_support()` and `editing_AR()` into the function `make_AR()`.
 
 ```{r make_AR}
-make_AR <- function(data,
-                    data_support, type_rule){
+make_AR <- function(data, data_support, type_rule){
   
   data %>%
     my_apriori %>%
@@ -629,26 +641,25 @@ make_AR <- function(data,
 }
 ```
 
-
-```{r AR, cache = TRUE}
-
-#
-# AR taken (confidence and lift already correct)
+```{r AR take}
 AR_taken <- transactions %>%
   make_AR(
     data_support = d_support_take, 
     type_rule = rate.take
     )
 
-#
-# AR fail
+rm(transactions)
+```
+
+```{r AR fail}
 AR_PF <- transactions_PF %>%
+  
   make_AR(
     data_support = d_support,
     type_rule = rate.fail
     ) %>%
   
-  # Confidence and Lift
+  # Confidence and Lift by hand
   separate(
     rhs,
     sep = "_",
@@ -673,18 +684,20 @@ AR_PF <- transactions_PF %>%
     ) %>%
   select(
     - c(rhs_outcome, rhs_course)
-  ) 
+  )
 
+rm(transactions_PF)
+```
 
-#
-# AR low
+```{r AR low}
 AR_HL <- transactions_HL %>%
+  
   make_AR(
     data_support = d_support,
     type_rule = rate.low
     ) %>%
   
-  # Confidence and Lift
+  # Confidence and Lift by hand
   separate(
     rhs,
     sep = "_",
@@ -711,10 +724,10 @@ AR_HL <- transactions_HL %>%
     - c(rhs_outcome, rhs_course)
   )
 
-  
-#
-# AR not taken / fail / pass
+rm(transactions_HL)
+```
 
+```{r AR TPF}
 AR_TPF <- transactions_TPF %>%
   make_AR(
     data_support = d_support, 
@@ -737,7 +750,7 @@ AR_TPF <- transactions_TPF %>%
   mutate(
     lhs.rhsTake.support = sum(support * rhs.take),
     confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / (rhs.support + 1e-4) # some courses have a failure rate of 0%.
+    lift                = confidence / rhs.support
     ) %>%
   ungroup %>%
   
@@ -751,29 +764,12 @@ AR_TPF <- transactions_TPF %>%
     - c(rhs_outcome, rhs_course, rhs.take)
   )
 
-
-rm(transactions, transactions_PF, transactions_HL, transactions_TPF)
+rm(transactions_TPF)
 ```
 
-```{r AR grade (by hand)}
-
-#
-# d_support
-d_support_grade <- d_support %>%
-  gather(
-    key   = grade_round,
-    value = support.grade,
-    rate.0, rate.1, rate.2, rate.3, rate.4, rate.5, rate.6, rate.7, rate.8, rate.9, rate.10
-    ) %>%
-  mutate( 
-    grade_round = substr(grade_round, start = 6, stop = 7),
-    grade_round = as.numeric(grade_round)
-    ) %>%
-  select(-c(rate.fail, rate.low))
-
-
-# Make AR
+```{r AR grade}
 AR_G <- transactions_G %>%
+  
   my_apriori(appearance = NULL) %>%
   clean_AR %>%
 
