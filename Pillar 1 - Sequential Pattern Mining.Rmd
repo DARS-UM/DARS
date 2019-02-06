@@ -319,7 +319,7 @@ n_students <- d_transactions %>%
 
 #
 # Probability of taking a course
-d_support_take <- d_transactions %>%
+d_support_TNT <- d_transactions %>%
   distinct(
     item,
     sequenceID
@@ -335,24 +335,39 @@ d_support_take <- d_transactions %>%
 
 #
 # Probability of failing, having a low grade, having a grade less than x per course
-d_support <- d_transactions %>%
+d_support_PF_HL <- d_transactions %>%
   group_by(
     item
     ) %>%
   summarise(
     rate.fail = mean(PF == "fail"),
-    rate.low  = mean(HL == "low"),
-    rate.0    = mean(Grade <= 0),
-    rate.1    = mean(Grade <= 1),
-    rate.2    = mean(Grade <= 2),
-    rate.3    = mean(Grade <= 3),
-    rate.4    = mean(Grade <= 4),
-    rate.5    = mean(Grade <= 5),
-    rate.6    = mean(Grade <= 6),
-    rate.7    = mean(Grade <= 7),
-    rate.8    = mean(Grade <= 8),
-    rate.9    = mean(Grade <= 9),
-    rate.10   = mean(Grade <= 10)
+    rate.low  = mean(HL == "low")
+    )
+
+#
+# Probability oh having a grade equal or lower than x
+d_support_G <- d_transactions %>%
+  group_by(
+    item
+    ) %>%
+  summarise(
+    `0`    = mean(Grade <= 0),
+    `1`    = mean(Grade <= 1),
+    `2`    = mean(Grade <= 2),
+    `3`    = mean(Grade <= 3),
+    `4`    = mean(Grade <= 4),
+    `5`    = mean(Grade <= 5),
+    `6`    = mean(Grade <= 6),
+    `7`    = mean(Grade <= 7),
+    `8`    = mean(Grade <= 8),
+    `9`    = mean(Grade <= 9),
+    `10`   = mean(Grade <= 10)
+    ) %>%
+  gather(
+    key   = grade_ceil,
+    value = support.grade,
+    `0` : `10`,
+    convert = TRUE
     )
 
 ```
@@ -700,25 +715,9 @@ AR_TPF <- transactions_TPF %>%
 rm(transactions_TPF)
 ```
 
-```{r AR grade (by hand)}
-
-#
-# d_support
-d_support_grade <- d_support %>%
-  gather(
-    key   = grade_round,
-    value = support.grade,
-    rate.0, rate.1, rate.2, rate.3, rate.4, rate.5, rate.6, rate.7, rate.8, rate.9, rate.10
-    ) %>%
-  mutate( 
-    grade_round = substr(grade_round, start = 6, stop = 7),
-    grade_round = as.numeric(grade_round)
-    ) %>%
-  select(-c(rate.fail, rate.low))
-
-
-# Make AR
+```{r AR grade}
 AR_G <- transactions_G %>%
+  
   my_apriori(appearance = NULL) %>%
   clean_AR %>%
 
