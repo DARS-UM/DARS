@@ -211,11 +211,11 @@ d_transactions_G <- d_transactions %>%
   
   # Spread along rounded grades
   mutate(
-    Round_grade = round(Grade, 0),
-    Values      = TRUE
+    grade_ceil = ceiling(Grade),
+    Values     = TRUE
     ) %>%
   spread(
-    key   = Round_grade, 
+    key   = grade_ceil, 
     value = Values
     ) %>%
   
@@ -235,7 +235,7 @@ d_transactions_G <- d_transactions %>%
   
   # Gather along rounded grades
   gather(
-    key   = Grade_round,
+    key   = grade_ceil,
     value = X,
     `0`, `1`, `2`, `3`, `4`, `5`, `6`, `7`, `8`, `9`, `10`, 
     na.rm   = TRUE, 
@@ -243,11 +243,11 @@ d_transactions_G <- d_transactions %>%
     ) %>%
   select(
     -X
-    )%>%
+    ) %>%
 
   # Identifying item
   mutate(
-    item_G = paste(item, Grade_round, sep = "_")
+    item_G = paste(item, grade_ceil, sep = "_")
     )
 ```
 ### Additional General Dataframes for courses
@@ -327,30 +327,28 @@ d_support_take <- d_transactions %>%
     ) %>%
   mutate(
     rate.take = n / n_students,
-    rate.not  = 1 - rate.take)
+    rate.not  = 1 - rate.take
+    )
 
 # Probability of failing, having a low grade, having a grade less than x per course
 d_support <- d_transactions %>%
-  mutate(
-    grade_round = round(Grade)
-  ) %>%
   group_by(
     item
     ) %>%
   summarise(
     rate.fail = mean(PF == "fail"),
     rate.low  = mean(HL == "low"),
-    rate.0    = mean(grade_round <= 0),
-    rate.1    = mean(grade_round <= 1),
-    rate.2    = mean(grade_round <= 2),
-    rate.3    = mean(grade_round <= 3),
-    rate.4    = mean(grade_round <= 4),
-    rate.5    = mean(grade_round <= 5),
-    rate.6    = mean(grade_round <= 6),
-    rate.7    = mean(grade_round <= 7),
-    rate.8    = mean(grade_round <= 8),
-    rate.9    = mean(grade_round <= 9),
-    rate.10   = mean(grade_round <= 10)
+    rate.0    = mean(Grade <= 0),
+    rate.1    = mean(Grade <= 1),
+    rate.2    = mean(Grade <= 2),
+    rate.3    = mean(Grade <= 3),
+    rate.4    = mean(Grade <= 4),
+    rate.5    = mean(Grade <= 5),
+    rate.6    = mean(Grade <= 6),
+    rate.7    = mean(Grade <= 7),
+    rate.8    = mean(Grade <= 8),
+    rate.9    = mean(Grade <= 9),
+    rate.10   = mean(Grade <= 10)
     )
 
 ```
