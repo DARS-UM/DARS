@@ -899,6 +899,59 @@ SR_Grade   <- my_SR(data = sequences_Grade )
 SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
 ```
 
+SR_TPF are manually computed
+```{r}
+# current, past, not_yet
+SR_TPF <- d_cumulative_transcript                  %>%
+  select(sequenceID, eventID, item, course_not)    %>%
+  unnest(item, .drop = F)                          %>%
+  unnest(course_not)                               %>%
+  left_join(
+    select(d_transactions, 
+           sequenceID, eventID, item, PF), 
+    by= c("sequenceID", "eventID", "item")
+    )                                              %>%
+  select(sequenceID,eventID, course_not, item, PF) %>%
+  rename(
+    lhs="course_not", 
+    rhs.x = "item", 
+    rhs.PF = "PF")                                 %>%
+  mutate(num_transactions = n())                   %>%
+  group_by(lhs)                                    %>%
+  mutate(
+    num_lhs = n(),
+    support_lhs         = num_lhs / num_transactions
+    )                                              %>%
+  group_by(rhs.x)                                  %>%
+  mutate(
+    num_rhs.x           = n(),
+    support_rhs.x       = num_rhs.x / num_transactions
+         )                                         %>%
+  group_by(rhs.x,rhs.PF)                           %>%
+  mutate(
+    num_rhs.PF          = n(),
+    support_rhs.PF      = num_rhs.PF / num_transactions
+  )                                                %>%
+  group_by(lhs, rhs.x)                             %>%
+  mutate(
+    num_rule_x          = n(),
+    support_rule_rhs.x  = num_rule_x / num_transactions
+  )                                                %>%
+  group_by(lhs, rhs.x, rhs.PF)                     %>%
+  mutate(
+    num_rule_PF          = n(),
+    support_rule_rhs.PF  = num_rule_PF / num_transactions,
+    support_rhs_bounded  = num_rule_PF / num_rule_x
+         )                                         %>%
+  ungroup()                                        %>%
+  mutate(
+    confidence                   = support_rule_rhs.PF / support_lhs,
+    confidence_bounded           = support_rhs_bounded / support_lhs, #not sure about this 
+    lift                         = confidence / support_rhs.PF,
+    lift_bounded                 = confidence_bounded /support_rhs_bounded #not sure about this
+  )
+```
+
 We save and remove objects:
 ```{r saving and rm SR}
 #Saving sequence rules
