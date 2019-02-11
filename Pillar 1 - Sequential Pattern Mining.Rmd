@@ -424,13 +424,13 @@ make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
       eventID
     ) %>%
     summarise(
-      list_item = list(!!enquo(item))
+      list_item = list(unique(!!enquo(item)))
     ) %>%
+    ungroup %>%
     arrange(
       sequenceID,
       eventID
     ) %>%
-    ungroup %>%
     pull(
       list_item
       ) %>%
@@ -456,8 +456,8 @@ sequences <- list()
 sequences$taken <- make_sequence(item = item   )
 sequences$PF    <- make_sequence(item = item_PF)
 sequences$HL    <- make_sequence(item = item_HL)
-#sequences_TPF <- make_sequence(data = d_transactions_TPF, item = item_TPF) # compute ad hoc
-sequences$G   <- make_sequence(data = d_transactions$G    , item = item_G  )
+#sequences_TPF  <- make_sequence(data = d_transactions_TPF, item = item_TPF) # compute ad hoc
+sequences$G     <- make_sequence(data = d_transactions$G    , item = item_G  )
 
 
 #
@@ -771,12 +771,16 @@ We save and remove objects:
 ```{r saving and rm}
 #
 # Save association rules
-save(AR,
-     file = "App/AR.RDATA")
+save(
+  AR,
+  file = "App/AR.RDATA"
+  )
 
 # Remove objects
-rm(my_apriori, clean_AR, compute_metrics, edit_AR, make_AR,
-   AR)
+rm(
+  my_apriori, clean_AR, compute_metrics, edit_AR, make_AR,
+  AR
+  )
 ```
 
 ### CSPADE Algorithm
