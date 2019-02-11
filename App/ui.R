@@ -26,11 +26,11 @@ fluidPage(
         inputId = "item",
         label   = "Type of item in rules",
         choices = c(
-          "Taken"                    = "taken",
-          "Failed grade"             = "PF",
-          "Low grade (< 6.5)"        = "HL",
-          "Grade (grade x or lower)" = "expanded_Grade",
-          "Taken & not taken"        = "not_taken"
+          "take => take"                   = "taken",
+          "fail => fail"                   = "PF",
+          "Low grade (< 6.5) => low grade" = "HL",
+          "not taken or fail => fail"      = "TPF",
+          "less than => less than"         = "G"
         ),
         selected = "taken"
       ),
@@ -41,31 +41,31 @@ fluidPage(
       # Input: Slider for the support
       sliderInput(
         inputId = "count",
-        label = "Count",
-        min   = 5,
-        max   = 3000,
-        step  = 1,
-        value = c(5, 3000)
+        label   = "Count",
+        min     = 5,
+        max     = 3000,
+        step    = 1,
+        value   = c(5, 3000)
         ),
       
       # Input: Slider for the Cconfidence
       sliderInput(
         inputId = "confidence",
-        label = "Confidence",
-        min   = 0,
-        max   = 1,
-        step  = 0.01,
-        value = c(0, 1)
+        label   = "Confidence",
+        min     = 0,
+        max     = 1,
+        step    = 0.01,
+        value   = c(0, 1)
       ),
       
       # Input: Slider for the Confidence
       sliderInput(
         inputId = "lift",
-        label = "Lift",
-        min   = 0,
-        max   = 100,
-        step  = 0.01,
-        value = c(0, 100)
+        label   = "Lift",
+        min     = 0,
+        max     = 100,
+        step    = 0.01,
+        value   = c(0, 100)
       ),
       
       # Horizontal line
