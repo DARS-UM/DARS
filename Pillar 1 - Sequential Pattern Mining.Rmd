@@ -785,7 +785,8 @@ rm(
 ```
 
 ## Sequence Rules
-##TODO: fine tune parameters of cspade and ruleInduction, not taken --> fail
+
+###TODO: fine tune parameters of cspade and ruleInduction, not taken --> fail
 
 ```{r function clean SR}
 # Transform rules from ruleInduction into a readable data frame
