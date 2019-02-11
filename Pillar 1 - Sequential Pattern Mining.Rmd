@@ -116,15 +116,14 @@ rm(provide_statistics, statistics_student, statistics_course, statistics_cluster
      statistics_concentration, statistics_year, statistics_level)
 ```
 
-# Association Rules and Sequence Rules
+# Creating Transactions and Sequences
 For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
 item = course
 
-## Data Prep: Creating Transactions and Sequences
 First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
-
-### take, fail, low grade
+## Data Preparation
+### Take, fail, low grade
 ```{r AR data prep 1}
 d_transactions <- list()
 
@@ -167,7 +166,7 @@ d_transactions$taken_PF_HL <- d_course %>%
 
 ```
 
-### take / not take, pass / fail / not take
+### Take / not take, pass / fail / not take
 ```{r transactions not taken}
 d_transactions$TPF <- expand.grid(
   
@@ -245,7 +244,7 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
     item_G = paste(item, grade_ceil, sep = "_")
     )
 ```
-### Additional General Dataframes for courses
+## Additional General Dataframes for courses
 #### Transcript with Preceding courses per student
 ```{r}
 d_cumulative_transcript <-  d_transactions        %>%
@@ -301,7 +300,103 @@ d_past_course <- expand.grid(
          total_past_courses = map(.f=length, .x=full_past))
 ```
 
-### Support
+## Transactions
+```{r making transactions, message = FALSE}
+
+make_transaction <- function(data = d_transactions$taken_PF_HL, item = item){
+  
+  data %>%
+    group_by(
+      sequenceID
+    ) %>%
+    summarise(
+      list_item = list(unique(!!enquo(item)))
+    ) %>%
+    ungroup %>%
+    pull(
+      list_item
+      ) %>%
+    as("transactions")
+  
+}
+
+
+#
+# Making transactions
+transactions <- list()
+
+transactions$taken <- make_transaction(item = item   )
+transactions$PF    <- make_transaction(item = item_PF)
+transactions$HL    <- make_transaction(item = item_HL)
+transactions$TPF   <- make_transaction(data = d_transactions$TPF, item = item_TPF)
+transactions$G     <- make_transaction(data = d_transactions$G  , item = item_G  )
+
+
+#
+# Checking transactions
+# inspect(head(transactions, 10))
+
+rm(make_transaction)
+```
+
+## Sequences
+```{r making sequences}
+
+make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
+  
+  sequences <- data %>%
+    filter(
+      !is.na(eventID) #this is here casue we have courses that were never taken.
+      ) %>% 
+    group_by(
+      sequenceID,
+      eventID
+    ) %>%
+    summarise(
+      list_item = list(unique(!!enquo(item)))
+    ) %>%
+    ungroup %>%
+    arrange(
+      sequenceID,
+      eventID
+    ) %>%
+    pull(
+      list_item
+      ) %>%
+    as("transactions")
+  
+  # indicating sequence ID and event ID for each transaction
+  sequences@itemsetInfo <- select(
+    data,
+    sequenceID,
+    eventID
+    ) %>%
+    as.data.frame
+  
+  return(sequences)
+  
+}
+
+
+#
+# Making sequences
+sequences <- list()
+
+sequences$taken <- make_sequence(item = item   )
+sequences$PF    <- make_sequence(item = item_PF)
+sequences$HL    <- make_sequence(item = item_HL)
+#sequences_TPF  <- make_sequence(data = d_transactions_TPF, item = item_TPF) # compute ad hoc
+sequences$G     <- make_sequence(data = d_transactions$G    , item = item_G  )
+
+
+#
+# Checking sequences
+# inspect(head(sequences_G, 10))
+
+rm(make_sequence, d_transactions)
+```
+
+## Support
 ```{r}
 
 #
@@ -367,110 +462,12 @@ d_support$G <- d_transactions$taken_PF_HL %>%
     `0` : `10`,
     convert = TRUE
     )
-
 ```
 
+# Mining Rules
+## Association Rule
 
-### Transactions for Apriori
-```{r making transactions, message = FALSE}
-
-make_transaction <- function(data = d_transactions$taken_PF_HL, item = item){
-  
-  data %>%
-    group_by(
-      sequenceID
-    ) %>%
-    summarise(
-      list_item = list(unique(!!enquo(item)))
-    ) %>%
-    ungroup %>%
-    pull(
-      list_item
-      ) %>%
-    as("transactions")
-  
-}
-
-
-#
-# Making transactions
-transactions <- list()
-
-transactions$taken <- make_transaction(item = item   )
-transactions$PF    <- make_transaction(item = item_PF)
-transactions$HL    <- make_transaction(item = item_HL)
-transactions$TPF   <- make_transaction(data = d_transactions$TPF, item = item_TPF)
-transactions$G     <- make_transaction(data = d_transactions$G  , item = item_G  )
-
-
-#
-# Checking transactions
-# inspect(head(transactions, 10))
-
-rm(make_transaction)
-```
-
-### Sequences for CSPADE
-```{r making sequences}
-
-make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
-  
-  sequences <- data %>%
-    filter(
-      !is.na(eventID) #this is here casue we have courses that were never taken.
-      ) %>% 
-    group_by(
-      sequenceID,
-      eventID
-    ) %>%
-    summarise(
-      list_item = list(unique(!!enquo(item)))
-    ) %>%
-    ungroup %>%
-    arrange(
-      sequenceID,
-      eventID
-    ) %>%
-    pull(
-      list_item
-      ) %>%
-    as("transactions")
-  
-  # indicating sequence ID and event ID for each transaction
-  sequences@itemsetInfo <- select(
-    data,
-    sequenceID,
-    eventID
-    ) %>%
-    as.data.frame
-  
-  return(sequences)
-  
-}
-
-
-#
-# Making sequences
-sequences <- list()
-
-sequences$taken <- make_sequence(item = item   )
-sequences$PF    <- make_sequence(item = item_PF)
-sequences$HL    <- make_sequence(item = item_HL)
-#sequences_TPF  <- make_sequence(data = d_transactions_TPF, item = item_TPF) # compute ad hoc
-sequences$G     <- make_sequence(data = d_transactions$G    , item = item_G  )
-
-
-#
-# Checking sequences
-# inspect(head(sequences_G, 10))
-
-
-rm(make_sequence, d_transactions)
-```
-
-
-## Mining Rules
-### Apriori Algorithm
+### Functions
 
 The function `my_apriori()` applies the apriori algorithm on a set of transactions with the parameters that we have chosen.
 ```{r my_apriori}
@@ -525,7 +522,6 @@ clean_AR <- function(AR){
 ```
 
 The function `compute_support()` computes the support of the lhs and rhs of the rules.
-
 ```{r compute_support}
 compute_metrics <- function(AR, data_support, type_rule){
 
@@ -547,7 +543,6 @@ compute_metrics <- function(AR, data_support, type_rule){
 ```
 
 We encapsulate the functions `my_apriori()`, `clean_AR()` and `compute_support()` into the function `make_AR()`.
-
 ```{r make_AR}
 make_AR <- function(data, data_support, type_rule){
   
@@ -562,6 +557,7 @@ make_AR <- function(data, data_support, type_rule){
 }
 ```
 
+### take -> taken
 ```{r AR take}
 AR <- list()
 
@@ -573,6 +569,7 @@ AR$taken <- transactions$taken %>%
 
 ```
 
+### fail -> fail
 ```{r AR fail}
 AR$PF <- transactions$PF %>%
   
@@ -605,6 +602,7 @@ AR$PF <- transactions$PF %>%
     )
 ```
 
+### low grade -> low grade
 ```{r AR low}
 AR$HL <- transactions$HL %>%
   
@@ -637,6 +635,7 @@ AR$HL <- transactions$HL %>%
     )
 ```
 
+### not take -> fail
 ```{r AR TPF}
 AR$TPF <- transactions$TPF %>%
   
@@ -672,6 +671,7 @@ AR$TPF <- transactions$TPF %>%
     )
 ```
 
+### less than x grade -> less than 6
 ```{r AR grade}
 AR$G <- transactions$G %>%
   
@@ -734,6 +734,7 @@ AR$G <- transactions$G %>%
   ungroup
 ```
 
+### Editing AR
 ```{r edit_AR}
 edit_AR <- function(AR){
   
@@ -766,7 +767,7 @@ AR <- lapply(
     )
 ```
 
-
+### Save Association Rules
 We save and remove objects:
 ```{r saving and rm}
 #
@@ -783,7 +784,7 @@ rm(
   )
 ```
 
-### CSPADE Algorithm
+## Sequence Rules
 ##TODO: fine tune parameters of cspade and ruleInduction, not taken --> fail
 
 ```{r function clean SR}
