@@ -18,6 +18,12 @@ We load the environment `data_pillar1` which we saved at the end of the data pre
 load("Output/data_pillar_1.RDATA")
 ```
 
+```{r}
+pass_grade <- 5.5
+high_grade <- 6.5
+```
+
+
 We create a function, which, when given the code of a course, returns its title.
 ```{r function find_course}
 find_course <- function(code){ 
@@ -120,16 +126,9 @@ First we transform our data into transaction data. For this, we first create a v
 
 ### take, fail, low grade
 ```{r AR data prep 1}
+d_transactions <- list()
 
-#
-# Threshold: pass grade, high grade
-pass_grade <- 5.5
-high_grade <- 6.5
-
-
-#
-# Transactions
-d_transactions <- d_course %>%
+d_transactions$taken_PF_HL <- d_course %>%
   
   # Exclude 
   filter(
@@ -170,17 +169,17 @@ d_transactions <- d_course %>%
 
 ### take / not take, pass / fail / not take
 ```{r transactions not taken}
-d_transactions_TPF <- expand.grid(
+d_transactions$TPF <- expand.grid(
   
   # Expand along students (sequenceID) and courses (itemID)
-  sequenceID = unique(d_transactions$sequenceID),
-  item       = unique(d_transactions$item),
+  sequenceID = unique(d_transactions$taken_PF_HL$sequenceID),
+  item       = unique(d_transactions$taken_PF_HL$item),
   stringsAsFactors = FALSE
   ) %>%
   
   # Join with d_transactions
   left_join(
-    d_transactions, 
+    d_transactions$taken_PF_HL, 
     by = c("sequenceID", "item")
     ) %>%
   
@@ -203,7 +202,7 @@ rm(high_grade, pass_grade)
 ### Grade
 ```{r transactions grade}
 
-d_transactions_G <- d_transactions %>%
+d_transactions$G <- d_transactions$taken_PF_HL %>%
   
   # Spread along rounded grades
   mutate(
@@ -307,14 +306,17 @@ d_past_course <- expand.grid(
 
 #
 # Number of students
-n_students <- d_transactions %>%
+n_students <- d_transactions$taken_PF_HL %>%
   select(sequenceID) %>%
   n_distinct
 
 
 #
+# Support
+d_support <- list()
+
 # Probability of taking a course
-d_support_TNT <- d_transactions %>%
+d_support$TNT <- d_transactions$taken_PF_HL %>%
   distinct(
     item,
     sequenceID
@@ -330,7 +332,7 @@ d_support_TNT <- d_transactions %>%
 
 #
 # Probability of failing, having a low grade
-d_support_PF_HL <- d_transactions %>%
+d_support$PF_HL <- d_transactions$taken_PF_HL %>%
   group_by(
     item
     ) %>%
@@ -342,7 +344,7 @@ d_support_PF_HL <- d_transactions %>%
 
 #
 # Probability oh having a grade equal or lower than x
-d_support_G <- d_transactions %>%
+d_support$G <- d_transactions$taken_PF_HL %>%
   group_by(
     item
     ) %>%
@@ -372,14 +374,14 @@ d_support_G <- d_transactions %>%
 ### Transactions for Apriori
 ```{r making transactions, message = FALSE}
 
-make_transaction <- function(data = d_transactions, item = item){
+make_transaction <- function(data = d_transactions$taken_PF_HL, item = item){
   
   data %>%
     group_by(
       sequenceID
     ) %>%
     summarise(
-      list_item = list(!!enquo(item))
+      list_item = list(unique(!!enquo(item)))
     ) %>%
     ungroup %>%
     pull(
@@ -392,11 +394,13 @@ make_transaction <- function(data = d_transactions, item = item){
 
 #
 # Making transactions
-transactions     <- make_transaction(item = item   )
-transactions_PF  <- make_transaction(item = item_PF)
-transactions_HL  <- make_transaction(item = item_HL)
-transactions_TPF <- make_transaction(data = d_transactions_TPF, item = item_TPF)
-transactions_G   <- make_transaction(data = d_transactions_G  , item = item_G  )
+transactions <- list()
+
+transactions$taken <- make_transaction(item = item   )
+transactions$PF    <- make_transaction(item = item_PF)
+transactions$HL    <- make_transaction(item = item_HL)
+transactions$TPF   <- make_transaction(data = d_transactions$TPF, item = item_TPF)
+transactions$G     <- make_transaction(data = d_transactions$G  , item = item_G  )
 
 
 #
@@ -409,7 +413,7 @@ rm(make_transaction)
 ### Sequences for CSPADE
 ```{r making sequences}
 
-make_sequence <- function(data = d_transactions, item = item){
+make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
   
   sequences <- data %>%
     filter(
@@ -447,11 +451,13 @@ make_sequence <- function(data = d_transactions, item = item){
 
 #
 # Making sequences
-sequences     <- make_sequence(item = item   )
-sequences_PF  <- make_sequence(item = item_PF)
-sequences_HL  <- make_sequence(item = item_HL)
+sequences <- list()
+
+sequences$taken <- make_sequence(item = item   )
+sequences$PF    <- make_sequence(item = item_PF)
+sequences$HL    <- make_sequence(item = item_HL)
 #sequences_TPF <- make_sequence(data = d_transactions_TPF, item = item_TPF) # compute ad hoc
-sequences_G   <- make_sequence(data = d_transactions_G    , item = item_G  )
+sequences$G   <- make_sequence(data = d_transactions$G    , item = item_G  )
 
 
 #
@@ -459,8 +465,7 @@ sequences_G   <- make_sequence(data = d_transactions_G    , item = item_G  )
 # inspect(head(sequences_G, 10))
 
 
-rm(make_sequence,
-   d_transactions, d_transactions_TPF, d_transactions_G)
+rm(make_sequence, d_transactions)
 ```
 
 
@@ -541,32 +546,7 @@ compute_metrics <- function(AR, data_support, type_rule){
 }
 ```
 
-```{r editing_AR}
-editing_AR <- function(AR){
-  
-  AR %>%
-    mutate_at(
-      c("support", 
-        "confidence", "rhs.support",
-        "lift"
-        ),
-      funs(round(., 5))
-    ) %>%
-    select(
-      lhs, rhs,
-      support, count,
-      confidence, rhs.support,
-      lift
-    ) %>%
-    arrange(
-      desc(count)
-    )
-  
-}
-```
-
-
-We encapsulate the four functions `my_apriori()`, `clean_AR()`, `compute_support()` and `editing_AR()` into the function `make_AR()`.
+We encapsulate the functions `my_apriori()`, `clean_AR()` and `compute_support()` into the function `make_AR()`.
 
 ```{r make_AR}
 make_AR <- function(data, data_support, type_rule){
@@ -577,27 +557,27 @@ make_AR <- function(data, data_support, type_rule){
     compute_metrics(
       data_support = data_support,
       type_rule = !!enquo(type_rule)
-      ) %>%
-    editing_AR
+      )
   
 }
 ```
 
 ```{r AR take}
-AR_taken <- transactions %>%
+AR <- list()
+
+AR$taken <- transactions$taken %>%
   make_AR(
-    data_support = d_support_TNT, 
+    data_support = d_support$TNT, 
     type_rule = rate.take
     )
 
-rm(transactions, d_support_TNT)
 ```
 
 ```{r AR fail}
-AR_PF <- transactions_PF %>%
+AR$PF <- transactions$PF %>%
   
   make_AR(
-    data_support = d_support_PF_HL,
+    data_support = d_support$PF_HL,
     type_rule = rate.fail
     ) %>%
   
@@ -621,21 +601,15 @@ AR_PF <- transactions_PF %>%
   # lhs and rhs must be fail, count >= 5
   filter(
     str_detect(lhs, "fail"),
-    str_detect(rhs, "fail"),
-    count >= 5
-    ) %>%
-  select(
-    - c(rhs_outcome, rhs_course)
-  )
-
-rm(transactions_PF)
+    str_detect(rhs, "fail")
+    )
 ```
 
 ```{r AR low}
-AR_HL <- transactions_HL %>%
+AR$HL <- transactions$HL %>%
   
   make_AR(
-    data_support = d_support_PF_HL,
+    data_support = d_support$PF_HL,
     type_rule = rate.low
     ) %>%
   
@@ -659,21 +633,15 @@ AR_HL <- transactions_HL %>%
   # lhs and rhs must be fail, count >= 5
   filter(
     str_detect(lhs, "low"),
-    str_detect(rhs, "low"),
-    count >= 5
-    ) %>%
-  select(
-    - c(rhs_outcome, rhs_course)
-  )
-
-rm(transactions_HL)
+    str_detect(rhs, "low")
+    )
 ```
 
 ```{r AR TPF}
-AR_TPF <- transactions_TPF %>%
+AR$TPF <- transactions$TPF %>%
   
   make_AR(
-    data_support = d_support_PF_HL, 
+    data_support = d_support$PF_HL, 
     type_rule = rate.fail
   ) %>%
   
@@ -685,13 +653,13 @@ AR_TPF <- transactions_TPF %>%
     remove = FALSE
     ) %>%
   mutate(
-    rhs.take = str_detect(rhs, "fail|pass")
+    rhs.taken = str_detect(rhs, "fail|pass")
     ) %>%
   group_by(
     lhs, rhs_course
     ) %>%
   mutate(
-    lhs.rhsTake.support = sum(support * rhs.take),
+    lhs.rhsTake.support = sum(support * rhs.taken),
     confidence          = support / lhs.rhsTake.support,
     lift                = confidence / rhs.support
     ) %>%
@@ -700,18 +668,12 @@ AR_TPF <- transactions_TPF %>%
   # lhs and rhs must be fail, count >= 5
   filter(
     str_detect(lhs, "not taken"),
-    str_detect(rhs, "fail"),
-    count >= 5
-    ) %>%
-  select(
-    - c(rhs_outcome, rhs_course, rhs.take)
-  )
-
-rm(transactions_TPF, d_support_PF_HL)
+    str_detect(rhs, "fail")
+    )
 ```
 
 ```{r AR grade}
-AR_G <- transactions_G %>%
+AR$G <- transactions$G %>%
   
   my_apriori %>%
   clean_AR %>%
@@ -734,7 +696,7 @@ AR_G <- transactions_G %>%
   
   # rhs.support
   left_join(
-    d_support_G,
+    d_support$G,
     by = c("rhs_course" = "item", "rhs_grade" = "grade_ceil")
     ) %>%
   mutate(
@@ -742,12 +704,6 @@ AR_G <- transactions_G %>%
     ) %>%
   
   # Confidence and lift
-  separate(
-    rhs,
-    sep = "_",
-    into = c("rhs_course", "rhs_outcome"),
-    remove = FALSE
-    ) %>%
   group_by(
     lhs, 
     rhs_course
@@ -762,8 +718,7 @@ AR_G <- transactions_G %>%
   
   # reduce number of rules
   filter(
-    lhs_course != rhs_course, # exclude rules with same course on lhs and rhs
-    count >= 5,               
+    lhs_course != rhs_course, # exclude rules with same course on lhs and rhs        
     rhs_grade == 6            
     ) %>%
   
@@ -776,25 +731,52 @@ AR_G <- transactions_G %>%
     1,
     lift
     ) %>%
-  ungroup %>%
-
-  editing_AR
-
-
-rm(transactions_G, d_support_G)
+  ungroup
 ```
+
+```{r edit_AR}
+edit_AR <- function(AR){
+  
+  AR %>%
+    filter(
+      count >= 5
+      ) %>%
+    mutate_if(
+      is.numeric,
+      funs(round(., 5))
+    ) %>%
+    select(
+      lhs, rhs,
+      support, count,
+      confidence, rhs.support,
+      lift, 
+      everything(),
+      - matches("rate|course|grade|outcome|taken")
+    ) %>%
+    arrange(
+      desc(count)
+    )
+  
+}
+
+
+AR <- lapply(
+  X   = AR,
+  FUN = edit_AR
+    )
+```
+
 
 We save and remove objects:
 ```{r saving and rm}
 #
 # Save association rules
-save(AR_taken, AR_PF, AR_HL, AR_TPF, AR_G,
+save(AR,
      file = "App/AR.RDATA")
 
 # Remove objects
-rm(my_apriori, clean_AR, compute_metrics, editing_AR, make_AR,
-   AR_taken, AR_PF, AR_HL, AR_TPF, AR_G,
-   n_students)
+rm(my_apriori, clean_AR, compute_metrics, edit_AR, make_AR,
+   AR)
 ```
 
 ### CSPADE Algorithm
