@@ -244,8 +244,8 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
     item_G = paste(item, grade_ceil, sep = "_")
     )
 ```
-## Additional General Dataframes for courses
-#### Transcript with Preceding courses per student
+
+### Transcript with Preceding courses per student
 ```{r}
 d_cumulative_transcript <-  d_transactions        %>%
   select(sequenceID, item, eventID)  %>%
@@ -274,7 +274,7 @@ d_cumulative_transcript <-  d_transactions        %>%
   mutate(item = str_split(item, pattern = " "))
 ```
 
-#### Courses that were taken before each course
+### Courses that were taken before each course
 ```{r}
 d_past_student_course <- d_cumulative_transcript %>%
   select(sequenceID, eventID, item, course_past) %>%
@@ -339,6 +339,7 @@ transactions$G     <- make_transaction(data = d_transactions$G  , item = item_G 
 rm(make_transaction)
 ```
 
+
 ## Sequences
 ```{r making sequences}
 
@@ -385,7 +386,7 @@ sequences <- list()
 sequences$taken <- make_sequence(item = item   )
 sequences$PF    <- make_sequence(item = item_PF)
 sequences$HL    <- make_sequence(item = item_HL)
-#sequences_TPF  <- make_sequence(data = d_transactions_TPF, item = item_TPF) # compute ad hoc
+#sequences_TPF  <- make_sequence(data = d_transactions$TPF, item = item_TPF) # compute ad hoc
 sequences$G     <- make_sequence(data = d_transactions$G    , item = item_G  )
 
 
@@ -780,7 +781,7 @@ save(
 # Remove objects
 rm(
   my_apriori, clean_AR, compute_metrics, edit_AR, make_AR,
-  AR
+  AR, transaction
   )
 ```
 
