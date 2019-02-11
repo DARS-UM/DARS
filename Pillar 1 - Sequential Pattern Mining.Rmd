@@ -283,7 +283,7 @@ d_cumulative_transcript <-  d_transactions        %>%
 #### Courses that were taken before each course
 ```{r}
 d_past_student_course <- d_cumulative_transcript %>%
-  select(sequenceID, eventID, item, course_past)%>%
+  select(sequenceID, eventID, item, course_past) %>%
   unnest(item, .drop=F)
 
 d_past_course <- expand.grid(
