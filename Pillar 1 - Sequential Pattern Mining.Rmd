@@ -1002,9 +1002,9 @@ SR_TPF <- d_transcript_cum                         %>%
   unnest(course_current, .drop = F)                %>%
   unnest(course_not_so_far)                        %>%
   left_join(
-    select(d_transactions, 
+    select(d_transactions$TPF, 
            sequenceID, eventID, item, PF), 
-    by= c("sequenceID" = "sequenceID", "eventID" = "eventID", "item" = "course_so_far")
+    by= c("sequenceID" = "sequenceID", "eventID" = "eventID", "course_current" = "item")
     )                                              %>%
   select(sequenceID,eventID, course_not_so_far, course_current, PF) %>%
   rename(
@@ -1052,7 +1052,7 @@ We save and remove objects:
 #Saving sequence rules
 save(
     SR_taken, SR_PF, SR_HL, SR_G,
-    #SR_TPF,
+    SR_TPF,
     #SR_expanded_Grade,
     file = "App/SR.RDATA")
 
