@@ -23,7 +23,6 @@ pass_grade <- 5.5
 high_grade <- 6.5
 ```
 
-
 We create a function, which, when given the code of a course, returns its title.
 ```{r function find_course}
 find_course <- function(code){ 
@@ -47,19 +46,26 @@ We compute summary statistics (minimum, maximum, mean, median, standard deviatio
 
 ```{r statistic summary}
 
-# For convenience
-provide_statistics <- function(data){
+#
+# function providing statistics
+provide_statistics <- function(data, var){
   
   data %>%
+    filter(
+      !is.na(!!enquo(var))
+      ) %>%
+    group_by(
+      !!enquo(var)
+      ) %>%
     summarise(
-      Min       = min(Grade),
-      Max       = max(Grade), 
-      Mean      = mean(Grade), 
-      Median    = median(Grade), 
-      SD        = sd(Grade),
-      `Failure Rate` = mean(Fail),
-      `Failure Count`    = sum(Fail),
-      Count     = n()
+      Min             = min(Grade),
+      Max             = max(Grade), 
+      Mean            = mean(Grade), 
+      Median          = median(Grade), 
+      SD              = sd(Grade),
+      `Failure Rate`  = mean(Fail),
+      `Failure Count` = sum(Fail),
+      Count           = n()
       ) %>%
     mutate_at(
       vars(Mean, SD, `Failure Rate`),
@@ -69,51 +75,61 @@ provide_statistics <- function(data){
   
 }
 
+#
+# Generating Statistics
+statistics <- list()
+
 # Student level
-statistics_student <- d_transcript %>%
-  group_by(`Student ID`) %>%
-  provide_statistics()
+statistics$student <- d_transcript %>%
+  provide_statistics(`Student ID`)
 
 # Course level
-statistics_course <- d_transcript %>%
-  inner_join(d_course, by = c("Course ID")) %>%
-  group_by(`Course ID`) %>%
-  provide_statistics()
+statistics$course <- d_transcript %>%
+  inner_join(
+    d_course,
+    by = c("Course ID")
+    ) %>%
+  provide_statistics(`Course ID`)
 
 # Cluster level
 statistics_cluster <- d_transcript %>%
-  inner_join(d_course, by = "Course ID") %>%
-  filter(!is.na(Cluster)) %>%
-  group_by(Cluster) %>%
-  provide_statistics()
+  inner_join(
+    d_course, 
+    by = "Course ID"
+    ) %>%
+  provide_statistics(Cluster)
+
+# Type level
+statistics_type <- d_transcript %>%
+  inner_join(
+    d_course, by = "Course ID"
+    ) %>%
+  provide_statistics(Type)
 
 # Concentration evel
 statistics_concentration <- d_transcript %>%
   inner_join(d_course, by = "Course ID") %>%
   gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
-  group_by(Concentration) %>%
-  provide_statistics()
+  provide_statistics(Concentration)
 
 # Year level
 statistics_year <- d_transcript %>%
-  group_by(Year_numerical) %>%
-  provide_statistics()
+  provide_statistics(Year_numerical)
 
 # Level level
 statistics_level <- d_transcript %>%
   # TODO: filter for student who completed their studies
   inner_join(d_course, by = c("Course ID")) %>%
-  filter(!is.na(Level)) %>%
-  group_by(Level) %>%
-  provide_statistics()
+  provide_statistics(Level)
 
 #
 # output
-save(statistics_student, statistics_course, statistics_cluster,
-     statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
+save(
+  statistics,
+  file = "Output/Transcript Statistics.RDATA"
+  )
 
-rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
-     statistics_concentration, statistics_year, statistics_level)
+rm(statistics)
 ```
 
 # Creating Transactions and Sequences
@@ -246,32 +262,48 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
 ```
 
 ### Transcript with Preceding courses per student
-```{r}
-d_cumulative_transcript <-  d_transactions        %>%
-  select(sequenceID, item, eventID)  %>%
-  arrange(sequenceID, eventID, item) %>%
-  group_by(sequenceID, eventID)      %>%
-  summarize_all(paste, collapse=" ") %>%
-  arrange(sequenceID, eventID)       %>%
-  mutate(
-    course_all  = paste(unique(d_transactions$item), collapse = " "),
-    course_all  = str_split(course_all, pattern = " "),
-    
-    course_now  = str_split(item, pattern = " "),
+```{r d_transcript_cum}
 
-    course_past     = Reduce(paste, item, accumulate=T),
-    course_past     = lag(course_past),
-    course_past     = str_split(course_past, pattern = " ")) %>%
-  ungroup() %>%
-    mutate(
-    course_past_now = purrr::map2(.x = course_past,
-                                      .y = course_now,
-                                      .f = union),
-    course_not = purrr::map2( .x = course_all,
-                              .y = course_past_now,
-                              .f = setdiff)
+#
+# List of all courses
+course_all <- unique(d_transactions$taken_PF_HL$item)
+
+
+#
+# courses taken so far and not taken so far
+d_transcript_cum <- d_transactions$taken_PF_HL %>%
+
+  group_by(
+    sequenceID,
+    eventID
     ) %>%
-  mutate(item = str_split(item, pattern = " "))
+  summarize(
+    course_current = list(
+      unique(item)
+      )
+    ) %>%
+  
+  group_by(
+    sequenceID
+    ) %>%
+  mutate(
+    course_past = Reduce(
+      f = paste, 
+      x = course_current, 
+      accumulate = TRUE
+      ) %>%
+      lag
+    ) %>%
+  
+  rowwise %>% # equivalent to "group by row"
+  mutate(
+    course_so_far     = list(union  (course_past, course_current)),
+    course_not_so_far = list(setdiff(course_all , course_so_far ))
+    ) %>%
+  ungroup
+
+
+rm(course_all)
 ```
 
 ### Courses that were taken before each course
@@ -567,7 +599,6 @@ AR$taken <- transactions$taken %>%
     data_support = d_support$TNT, 
     type_rule = rate.take
     )
-
 ```
 
 ### fail -> fail
@@ -586,17 +617,22 @@ AR$PF <- transactions$PF %>%
     into = c("rhs_course", "rhs_outcome"),
     remove = FALSE
     ) %>%
+  
   group_by(
-    lhs, rhs_course
+    lhs,
+    rhs_course
     ) %>%
   mutate(
-    lhs.rhsTake.support = sum(support),
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    lhs.rhsTake.support = sum(support) # Proba of lhs and taking rhs course
     ) %>%
   ungroup %>%
   
-  # lhs and rhs must be fail, count >= 5
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
+  
+  # lhs and rhs must be fail
   filter(
     str_detect(lhs, "fail"),
     str_detect(rhs, "fail")
@@ -619,15 +655,20 @@ AR$HL <- transactions$HL %>%
     into = c("rhs_course", "rhs_outcome"),
     remove = FALSE
     ) %>%
+  
   group_by(
-    lhs, rhs_course
+    lhs, 
+    rhs_course
     ) %>%
   mutate(
-    lhs.rhsTake.support = sum(support),
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    lhs.rhsTake.support = sum(support) # Proba of lhs and taking rhs course
     ) %>%
   ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
@@ -656,14 +697,18 @@ AR$TPF <- transactions$TPF %>%
     rhs.taken = str_detect(rhs, "fail|pass")
     ) %>%
   group_by(
-    lhs, rhs_course
+    lhs,
+    rhs_course
     ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support * rhs.taken),
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    mutate(
+    lhs.rhsTake.support = sum(support * rhs.taken) # Proba of lhs and taking rhs course
     ) %>%
   ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
