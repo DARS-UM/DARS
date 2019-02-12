@@ -252,7 +252,7 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
 ```
 
 ### Transcript with Preceding courses per student
-```{r}
+```{r d_transcript_cum}
 
 #
 # List of all courses
@@ -261,7 +261,7 @@ course_all <- unique(d_transactions$taken_PF_HL$item)
 
 #
 # courses taken so far and not taken so far
-d_cumulative_transcript <- d_transactions$taken_PF_HL %>%
+d_transcript_cum <- d_transactions$taken_PF_HL %>%
 
   group_by(
     sequenceID,
