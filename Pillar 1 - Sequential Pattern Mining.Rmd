@@ -589,7 +589,6 @@ AR$taken <- transactions$taken %>%
     data_support = d_support$TNT, 
     type_rule = rate.take
     )
-
 ```
 
 ### fail -> fail
@@ -608,17 +607,22 @@ AR$PF <- transactions$PF %>%
     into = c("rhs_course", "rhs_outcome"),
     remove = FALSE
     ) %>%
+  
   group_by(
-    lhs, rhs_course
+    lhs,
+    rhs_course
     ) %>%
   mutate(
-    lhs.rhsTake.support = sum(support),
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    lhs.rhsTake.support = sum(support) # Proba of lhs and taking rhs course
     ) %>%
   ungroup %>%
   
-  # lhs and rhs must be fail, count >= 5
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
+  
+  # lhs and rhs must be fail
   filter(
     str_detect(lhs, "fail"),
     str_detect(rhs, "fail")
@@ -641,15 +645,20 @@ AR$HL <- transactions$HL %>%
     into = c("rhs_course", "rhs_outcome"),
     remove = FALSE
     ) %>%
+  
   group_by(
-    lhs, rhs_course
+    lhs, 
+    rhs_course
     ) %>%
   mutate(
-    lhs.rhsTake.support = sum(support),
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    lhs.rhsTake.support = sum(support) # Proba of lhs and taking rhs course
     ) %>%
   ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
@@ -678,14 +687,18 @@ AR$TPF <- transactions$TPF %>%
     rhs.taken = str_detect(rhs, "fail|pass")
     ) %>%
   group_by(
-    lhs, rhs_course
+    lhs,
+    rhs_course
     ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support * rhs.taken),
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    mutate(
+    lhs.rhsTake.support = sum(support * rhs.taken) # Proba of lhs and taking rhs course
     ) %>%
   ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
