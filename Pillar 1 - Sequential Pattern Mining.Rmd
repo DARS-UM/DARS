@@ -303,6 +303,7 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
       lag
     ) %>%
   
+  
   rowwise %>% # equivalent to "group by row"
   mutate(
     course_so_far     = list(union  (course_past, course_current)),
@@ -316,9 +317,17 @@ rm(course_all)
 
 ### Courses that were taken before each course
 ```{r}
-d_past_student_course <- d_cumulative_transcript %>%
-  select(sequenceID, eventID, item, course_past) %>%
-  unnest(item, .drop=F)
+d_transcript_cum_current <- d_transcript_cum %>%
+  unnest(
+    course_current,
+    .drop = FALSE
+    )
+
+d_transcript_cum_current %>%
+  unnest(
+    course_past,
+    .drop = FALSE
+    )
 
 d_past_course <- expand.grid(
   
