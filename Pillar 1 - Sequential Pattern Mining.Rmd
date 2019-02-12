@@ -46,19 +46,26 @@ We compute summary statistics (minimum, maximum, mean, median, standard deviatio
 
 ```{r statistic summary}
 
-# For convenience
-provide_statistics <- function(data){
+#
+# function providing statistics
+provide_statistics <- function(data, var){
   
   data %>%
+    filter(
+      !is.na(!!enquo(var))
+      ) %>%
+    group_by(
+      !!enquo(var)
+      ) %>%
     summarise(
-      Min       = min(Grade),
-      Max       = max(Grade), 
-      Mean      = mean(Grade), 
-      Median    = median(Grade), 
-      SD        = sd(Grade),
-      `Failure Rate` = mean(Fail),
-      `Failure Count`    = sum(Fail),
-      Count     = n()
+      Min             = min(Grade),
+      Max             = max(Grade), 
+      Mean            = mean(Grade), 
+      Median          = median(Grade), 
+      SD              = sd(Grade),
+      `Failure Rate`  = mean(Fail),
+      `Failure Count` = sum(Fail),
+      Count           = n()
       ) %>%
     mutate_at(
       vars(Mean, SD, `Failure Rate`),
@@ -68,58 +75,61 @@ provide_statistics <- function(data){
   
 }
 
+#
+# Generating Statistics
+statistics <- list()
+
 # Student level
-statistics_student <- d_transcript %>%
-  group_by(`Student ID`) %>%
-  provide_statistics()
+statistics$student <- d_transcript %>%
+  provide_statistics(`Student ID`)
 
 # Course level
-statistics_course <- d_transcript %>%
-  inner_join(d_course, by = c("Course ID")) %>%
-  group_by(`Course ID`) %>%
-  provide_statistics()
+statistics$course <- d_transcript %>%
+  inner_join(
+    d_course,
+    by = c("Course ID")
+    ) %>%
+  provide_statistics(`Course ID`)
 
 # Cluster level
 statistics_cluster <- d_transcript %>%
-  inner_join(d_course, by = "Course ID") %>%
-  filter(!is.na(Cluster)) %>%
-  group_by(Cluster) %>%
-  provide_statistics()
+  inner_join(
+    d_course, 
+    by = "Course ID"
+    ) %>%
+  provide_statistics(Cluster)
 
 # Type level
 statistics_type <- d_transcript %>%
-  inner_join(d_course, by = "Course ID") %>%
-  filter(!is.na(Type)) %>%
-  group_by(Type) %>%
-  provide_statistics()
+  inner_join(
+    d_course, by = "Course ID"
+    ) %>%
+  provide_statistics(Type)
 
 # Concentration evel
 statistics_concentration <- d_transcript %>%
   inner_join(d_course, by = "Course ID") %>%
   gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
-  group_by(Concentration) %>%
-  provide_statistics()
+  provide_statistics(Concentration)
 
 # Year level
 statistics_year <- d_transcript %>%
-  group_by(Year_numerical) %>%
-  provide_statistics()
+  provide_statistics(Year_numerical)
 
 # Level level
 statistics_level <- d_transcript %>%
   # TODO: filter for student who completed their studies
   inner_join(d_course, by = c("Course ID")) %>%
-  filter(!is.na(Level)) %>%
-  group_by(Level) %>%
-  provide_statistics()
+  provide_statistics(Level)
 
 #
 # output
-save(statistics_student, statistics_course, statistics_cluster,
-     statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
+save(
+  statistics,
+  file = "Output/Transcript Statistics.RDATA"
+  )
 
-#rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
-#     statistics_concentration, statistics_year, statistics_level)
+rm(statistics)
 ```
 
 # Creating Transactions and Sequences
