@@ -289,7 +289,7 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
     ) %>%
   summarize(
     course_current = list(
-      unique(item)
+      unique(item_PF)
       )
     ) %>%
   
@@ -345,7 +345,8 @@ d_transcript_cum_current %>%
     ) %>%
   count(
     lhs, 
-    rhs
+    rhs,
+    sort = TRUE
     )
 
 # lhs = course not so far
@@ -359,8 +360,10 @@ d_transcript_cum_current %>%
     ) %>%
   count(
     lhs, 
-    rhs
-    )
+    rhs,
+    sort = TRUE
+    ) %>%
+  filter(str_detect(rhs, "fail"))
 ```
 
 ## Transactions
@@ -796,13 +799,16 @@ AR$G <- transactions$G %>%
 edit_AR <- function(AR){
   
   AR %>%
+    
     filter(
       count >= 5
       ) %>%
+    
     mutate_if(
       is.numeric,
       funs(round(., 5))
     ) %>%
+    
     select(
       lhs, rhs,
       support, count,
@@ -811,6 +817,7 @@ edit_AR <- function(AR){
       everything(),
       - matches("rate|course|grade|outcome|taken")
     ) %>%
+    
     arrange(
       desc(count)
     )
@@ -897,37 +904,39 @@ clean_SR <- function(rules){
     
     # Exclude rules with no support
     filter(
-      count >= 1
+      support > 0
       ) %>%
     
-    # Isolate RHS and LHS
+    # separate rule
     mutate(
-      rule = str_remove_all(rule, pattern = "[<]"),
-      rule = str_remove_all(rule, pattern = "[{]"),
-      rule = str_remove_all(rule, pattern = "[}]"),
-      rule = str_remove_all(rule, pattern = "[>]")
+      rule = str_remove_all(rule, pattern = "[<]|[{]|[}]|[>]")
       ) %>%
-    
     separate(
       rule,
       into = c("lhs", "rhs"),
       sep = " = "
       ) %>%
+    
+    # separate lhs and rhs
     separate(
       lhs,
-      into = c("LHS Course ID", "LHS Quality"),
-      sep = "_",
-      remove= FALSE
+      into    = c("lhs_course", "lhs_outcome"),
+      sep     = "_",
+      remove  = FALSE,
+      convert = TRUE
       ) %>%
     separate(
-      rhs, 
-      into = c("RHS Course ID", "RHS Quality"),
-      sep = "_", 
-      remove = FALSE
-    )
+      rhs,
+      into    = c("rhs_course", "rhs_outcome"),
+      sep     = "_",
+      remove  = FALSE,
+      convert = TRUE
+      )
+  
 }
+```
 
-    
+```{r SR metrics}
     # Compute statistic
     group_by(lhs,`RHS Course ID`) %>%
     mutate(
@@ -941,6 +950,10 @@ clean_SR <- function(rules){
       # lift = confidence.corr / rhs.support
      ) %>%
     ungroup() %>%
+```
+
+
+```{r SR edit}
     mutate_at(
       c("support",
         "confidence", "lift"),
@@ -948,12 +961,6 @@ clean_SR <- function(rules){
     ) %>%
     filter(!`LHS Course ID`==`RHS Course ID`) %>%
     select(-`LHS Course ID`, -`LHS Quality`, -`RHS Course ID`, -`RHS Quality`)
-    
-
-```
-
-```{r}
-
 ```
 
 We generate sequence rules:
