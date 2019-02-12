@@ -5,6 +5,8 @@ date: "`r Sys.Date()`"
 output: 
   github_document:
     toc: TRUE
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r library, message = FALSE, warning = FALSE}
@@ -839,7 +841,7 @@ edit_AR <- function(AR){
 AR <- lapply(
   X   = AR,
   FUN = edit_AR
-    )
+  )
 ```
 
 ### Save Association Rules
@@ -907,7 +909,6 @@ clean_SR<- function(rules){
     select(-`LHS Course ID`, -`LHS Quality`, -`RHS Course ID`, -`RHS Quality`)
     
 }
-
 ```
 We apply cspade followed by rule induction
 ```{r my_SR function}
