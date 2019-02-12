@@ -23,7 +23,6 @@ pass_grade <- 5.5
 high_grade <- 6.5
 ```
 
-
 We create a function, which, when given the code of a course, returns its title.
 ```{r function find_course}
 find_course <- function(code){ 
@@ -87,6 +86,13 @@ statistics_cluster <- d_transcript %>%
   group_by(Cluster) %>%
   provide_statistics()
 
+# Type level
+statistics_type <- d_transcript %>%
+  inner_join(d_course, by = "Course ID") %>%
+  filter(!is.na(Type)) %>%
+  group_by(Type) %>%
+  provide_statistics()
+
 # Concentration evel
 statistics_concentration <- d_transcript %>%
   inner_join(d_course, by = "Course ID") %>%
@@ -112,8 +118,8 @@ statistics_level <- d_transcript %>%
 save(statistics_student, statistics_course, statistics_cluster,
      statistics_concentration, statistics_year, statistics_level, file = "Output/Transcript Statistics.RDATA")
 
-rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
-     statistics_concentration, statistics_year, statistics_level)
+#rm(provide_statistics, statistics_student, statistics_course, statistics_cluster,
+#     statistics_concentration, statistics_year, statistics_level)
 ```
 
 # Creating Transactions and Sequences
