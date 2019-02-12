@@ -406,7 +406,12 @@ rm(make_transaction)
 
 make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
   
-  sequences <- data %>%
+    # make transactions
+  data_temp <- data %>%
+    arrange(
+      sequenceID,
+      eventID
+    ) %>%
     filter(
       !is.na(eventID) #this is here casue we have courses that were never taken.
       ) %>% 
@@ -417,22 +422,20 @@ make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
     summarise(
       list_item = list(unique(!!enquo(item)))
     ) %>%
-    ungroup %>%
-    arrange(
-      sequenceID,
-      eventID
-    ) %>%
+    ungroup
+  
+  sequences <- data_temp %>%
     pull(
       list_item
       ) %>%
     as("transactions")
   
   # indicating sequence ID and event ID for each transaction
-  sequences@itemsetInfo <- select(
-    data,
-    sequenceID,
-    eventID
-    ) %>%
+  sequences@itemsetInfo <- data_temp %>%
+    select(
+      sequenceID,
+      eventID
+      ) %>%
     as.data.frame
   
   return(sequences)
@@ -453,9 +456,10 @@ sequences$G     <- make_sequence(data = d_transactions$G    , item = item_G  )
 
 #
 # Checking sequences
-# inspect(head(sequences_G, 10))
+ inspect(head(sequences$G, 10))
 
-rm(make_sequence, d_transactions)
+rm(make_sequence #, d_transactions
+   )
 ```
 
 ## Support
@@ -876,7 +880,7 @@ clean_SR<- function(rules){
       rule = str_remove_all(rule, pattern = "[}]"),
       rule = str_remove_all(rule, pattern = "[>]")
       ) %>%
-    separate(rule, into = c("lhs", "rhs"), sep="=")  %>%
+    separate(rule, into = c("lhs", "rhs"), sep=" = ")  %>%
     select(
       lhs, rhs,
       support,
@@ -941,13 +945,13 @@ We generate sequence rules:
 ```{r SR taken, cache = TRUE}
 
 #Generating sequence rules:
-SR_taken   <- my_SR(data = sequences$taken )
+SR_taken   <- my_SR(data = sequences$taken)
 ```
 
 ```{r SR PF, cache = TRUE}
 
 ##pass/fail filter
-SR_PF      <- my_SR(data = sequences_PF) %>%
+SR_PF      <- my_SR(data = sequences$PF) %>%
   filter(
     str_detect(rhs, "fail"),
     str_detect(lhs, "fail")
@@ -957,7 +961,7 @@ SR_PF      <- my_SR(data = sequences_PF) %>%
 ```{r SR HL, cache = TRUE}
 
 ##high/low filter
-SR_HL      <- my_SR(data = sequences_HL) %>% 
+SR_HL      <- my_SR(data = sequences$HL) %>% 
   filter(
     str_detect(rhs, "low"),
     str_detect(lhs, "low")
@@ -966,31 +970,31 @@ SR_HL      <- my_SR(data = sequences_HL) %>%
 
 ```{r SR grade, cache = TRUE}
 
-SR_Grade   <- my_SR(data = sequences_Grade )
+SR_G   <- my_SR(data = sequences$G )
 ```
 
 ```{r SR grade exp, cache = TRUE}
 
 #Grades filter 
-SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
+#SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
 ```
 
 SR_TPF are manually computed
 ```{r}
 # current, past, not_yet
-SR_TPF <- d_cumulative_transcript                  %>%
-  select(sequenceID, eventID, item, course_not)    %>%
-  unnest(item, .drop = F)                          %>%
-  unnest(course_not)                               %>%
+SR_TPF <- d_transcript_cum                         %>%
+  select(sequenceID, eventID, course_current, course_not_so_far)    %>%
+  unnest(course_current, .drop = F)                %>%
+  unnest(course_not_so_far)                        %>%
   left_join(
     select(d_transactions, 
            sequenceID, eventID, item, PF), 
-    by= c("sequenceID", "eventID", "item")
+    by= c("sequenceID" = "sequenceID", "eventID" = "eventID", "item" = "course_so_far")
     )                                              %>%
-  select(sequenceID,eventID, course_not, item, PF) %>%
+  select(sequenceID,eventID, course_not_so_far, course_current, PF) %>%
   rename(
-    lhs="course_not", 
-    rhs.x = "item", 
+    lhs="course_not_so_far", 
+    rhs.x = "course_current", 
     rhs.PF = "PF")                                 %>%
   mutate(num_transactions = n())                   %>%
   group_by(lhs)                                    %>%
@@ -1032,18 +1036,20 @@ We save and remove objects:
 ```{r saving and rm SR}
 #Saving sequence rules
 save(
-    SR_taken, SR_PF, SR_HL, SR_Grade,
-    SR_expanded_Grade,
+    SR_taken, SR_PF, SR_HL, SR_G,
+    #SR_TPF,
+    #SR_expanded_Grade,
     file = "App/SR.RDATA")
 
 #clean unnecessary objects
-rm(clean_SR, my_SR, 
-   sequences, sequences_PF, sequences_HL, sequences_Grade,
-   sequences_expanded_Grade,
-   n_students,
-   SR_taken, SR_PF, SR_HL, SR_Grade,
-
-   SR_expanded_Grade)
+# rm(clean_SR, my_SR, 
+#    sequences,
+#    #sequences_expanded_Grade,
+#    n_students,
+#    SR_taken, SR_PF, SR_HL, SR_G,
+#    SR_TPF
+#    #SR_expanded_Grade
+#    )
 ```
 
 
