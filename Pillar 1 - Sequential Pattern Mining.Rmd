@@ -108,8 +108,16 @@ statistics_type <- d_transcript %>%
 
 # Concentration evel
 statistics_concentration <- d_transcript %>%
-  inner_join(d_course, by = "Course ID") %>%
-  gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
+  inner_join(
+    d_course,
+    by = "Course ID"
+    ) %>%
+  gather(
+    key = X, 
+    value = Concentration, 
+    Concentration, `Concentration (additional)`,
+    na.rm = TRUE
+    ) %>%
   provide_statistics(Concentration)
 
 # Year level
@@ -288,11 +296,13 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
     ) %>%
   mutate(
     course_past = Reduce(
-      f = paste, 
+      f = c, 
       x = course_current, 
       accumulate = TRUE
       ) %>%
-      lag
+      lag(
+        default = as.character(NA)
+        )
     ) %>%
   
   rowwise %>% # equivalent to "group by row"
@@ -306,30 +316,49 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
 rm(course_all)
 ```
 
-### Courses that were taken before each course
 ```{r}
-d_past_student_course <- d_cumulative_transcript %>%
-  select(sequenceID, eventID, item, course_past) %>%
-  unnest(item, .drop=F)
 
-d_past_course <- expand.grid(
-  
-  # Expand along students (sequenceID) and courses (itemID)
-  sequenceID = unique(d_transactions$sequenceID),
-  item       = unique(d_transactions$item),
-  stringsAsFactors = FALSE
-  ) %>%
-  full_join(d_past_student_course, by= c("sequenceID", "item")) %>%  #ATTENTION: Duplicates resits. Adds values per retake of course (eg.10177849 SCI3048)
-  arrange(sequenceID) %>%
-  ungroup() %>%
-  drop_na(eventID) %>%
-  unnest(course_past) %>%
-  distinct() %>%
-  group_by(item) %>%
-  summarise(full_past = paste( course_past, collapse = " ")) %>% #difference, between this and above?
-  mutate(full_past    = str_split(full_past, pattern = " "),
-         full_past    = map(.f= unique, .x=full_past),
-         total_past_courses = map(.f=length, .x=full_past))
+#
+# SR by hand
+
+# rhs = current course
+d_transcript_cum_current <- d_transcript_cum %>%
+  unnest(
+    course_current,
+    .drop = FALSE
+    ) %>%
+  rename(
+    rhs = course_current
+    )
+
+# lhs = course past
+d_transcript_cum_current %>%
+  filter(!is.na(course_past)) %>%
+  unnest(
+    course_past,
+    .drop = FALSE
+    ) %>%
+  rename(
+    lhs = course_past
+    ) %>%
+  count(
+    lhs, 
+    rhs
+    )
+
+# lhs = course not so far
+d_transcript_cum_current %>%
+  unnest(
+    course_not_so_far,
+    .drop = FALSE
+    ) %>%
+  rename(
+    lhs = course_not_so_far
+    ) %>%
+  count(
+    lhs, 
+    rhs
+    )
 ```
 
 ## Transactions
@@ -993,7 +1022,7 @@ SR_TPF <- d_cumulative_transcript                  %>%
   ungroup()                                        %>%
   mutate(
     confidence                   = support_rule_rhs.PF / support_lhs,
-    confidence_bounded           = num_rule_PF/num_rule_x, #support_rhs_bounded / support_lhs, #not sure about this 
+    confidence_bounded           = support_rhs_bounded / support_lhs, #not sure about this 
     lift                         = confidence / support_rhs.PF,
     lift_bounded                 = confidence_bounded /support_rhs_bounded #not sure about this
   )
