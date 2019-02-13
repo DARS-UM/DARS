@@ -709,7 +709,7 @@ AR$TPF <- transactions$TPF %>%
 ```
 
 ### grade less than or equal to x -> grade less than or equal to 6
-```{r AR grade}
+```{r AR grade, cache = TRUE}
 AR$G <- transactions$G %>%
   
   my_apriori %>%
@@ -906,9 +906,9 @@ SR$PF <- sequences$PF %>%
   ungroup %>%
   
   mutate(
-    confidence = support / lhs.rateTake.support,
+    confidence = support / lhs.rhsTake.support,
     lift       = confidence / rhs.support
-    )
+    ) %>%
   
   # lhs and rhs are fail
   filter(
@@ -938,9 +938,9 @@ SR$HL <- sequences$HL %>%
   ungroup %>%
   
   mutate(
-    confidence = support / lhs.rateTake.support,
+    confidence = support / lhs.rhsTake.support,
     lift       = confidence / rhs.support
-    )
+    ) %>%
   
   # lhs and rhs are low
   filter(
