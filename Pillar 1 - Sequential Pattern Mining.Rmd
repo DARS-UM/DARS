@@ -762,6 +762,10 @@ edit_rules <- function(AR){
   
   AR %>%
     
+    mutate(
+      count = support * n_students
+    ) %>%
+    
     filter(
       count >= 5
       ) %>%
