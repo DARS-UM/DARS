@@ -816,8 +816,7 @@ rm(
 ## Sequence Rules
 ### Functions
 
-```{r my_SR function}
-# Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
+```{r my_cspade function}
 my_cspade <- function(data){
   
   data %>%
@@ -846,7 +845,7 @@ my_cspade <- function(data){
 }
 ```
 
-```{r}
+```{r my_ruleInduction}
 my_ruleInduction <- function(rules){
   
   rules %>%
@@ -863,7 +862,7 @@ my_ruleInduction <- function(rules){
 }
 ```
 
-```{r}
+```{r make_SR}
 make_SR <- function(data, data_support, type_rule){
   
   data %>%
@@ -879,10 +878,11 @@ make_SR <- function(data, data_support, type_rule){
 ```
 
 ### take -> take
-```{r}
+```{r SR taken}
 SR <- list()
 
 SR$taken <- sequences$taken %>%
+  
   make_SR(
     data_support = d_support$TNT, 
     type_rule = rate.take
@@ -890,7 +890,7 @@ SR$taken <- sequences$taken %>%
 ```
 
 ### fail -> fail
-```{r}
+```{r SR PF}
 SR$PF <- sequences$PF %>%
   
   make_SR(
@@ -922,7 +922,7 @@ SR$PF <- sequences$PF %>%
 ```
 
 ### low grade -> low grade
-```{r}
+```{r SR HL, cache = TRUE}
 SR$HL <- sequences$HL %>%
   
   make_SR(
@@ -954,7 +954,7 @@ SR$HL <- sequences$HL %>%
 ```
 
 ### not take -> fail
-```{r, eval = FALSE}
+```{r SR TPF, eval = FALSE}
 
 #
 # SR by hand
@@ -987,15 +987,52 @@ d_transcript_cum_current %>%
 ```
 
 ### grade less than or equal to x -> grade less than or equal to 6
-```{r, eval = FALSE}
+```{r SR G, cache = TRUE}
 SR$G <- sequences$G %>%
   
-  make_SR %>%
+  my_cspade %>%
+  clean_rules %>%
   
-  # rhs is grade less than 6
+  # rhs.support
+  left_join(
+    d_support$G,
+    by = c("rhs_course" = "item", "rhs_outcome" = "grade_ceil")
+    ) %>%
+  mutate(
+    rhs.support = support.grade
+    ) %>%
+  
+  # Confidence & lift
+  group_by(
+    lhs,
+    rhs_course
+    ) %>%
+  mutate(
+    lhs.rhsTake.support = max(support),
+    confidence          = support / lhs.rhsTake.support,
+    lift                = confidence / rhs.support
+    ) %>%
+  ungroup %>%
+  
+  
+  # Reduce number of rules
   filter(
-    str_detect(rhs, "6")
-    )
+    # exclude rules with same course on lhs and rhs
+    lhs_course != rhs_course,
+    # rhs is grade less than or equal to 6
+    rhs_outcome == 6
+    ) %>%
+  
+  # for each combination of course (lhs and rhs), keep AR with highest lift (most informative)
+  group_by(
+    lhs_course,
+    rhs_course
+    ) %>%
+  top_n(
+    n = 1,
+    lift
+    ) %>%
+  ungroup
 ```
 
 ### Editing SR
@@ -1007,7 +1044,7 @@ SR <- lapply(
 ```
 
 ### Save Sequences Rules
-```{r}
+```{r SR save}
 #
 # Save Sequence rules
 save(
