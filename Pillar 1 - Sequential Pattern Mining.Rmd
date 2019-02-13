@@ -971,6 +971,21 @@ SR <- lapply(
 ```
 
 ### Save Sequences Rules
+```{r}
+#
+# Save Sequence rules
+save(
+  SR,
+  file = "App/SR.RDATA"
+)
+
+# Remove objects
+rm(
+  my_cspade, my_ruleInduction, clean_rules, compute_rhs.support, edit_rules, make_SR,
+  SR, sequences
+)
+```
+
 
 ```{r SR metrics}
     # Compute statistic
@@ -1040,25 +1055,3 @@ SR_TPF <- d_transcript_cum                         %>%
     lift_bounded                 = confidence_bounded /support_rhs_bounded #not sure about this
   )
 ```
-
-We save and remove objects:
-```{r saving and rm SR}
-#Saving sequence rules
-save(
-    SR,
-    SR_TPF,
-    #SR_expanded_Grade,
-    file = "App/SR.RDATA")
-
-#clean unnecessary objects
-# rm(clean_SR, my_SR, 
-#    sequences,
-#    #sequences_expanded_Grade,
-#    n_students,
-#    SR_taken, SR_PF, SR_HL, SR_G,
-#    SR_TPF
-#    #SR_expanded_Grade
-#    )
-```
-
-
