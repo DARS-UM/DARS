@@ -967,6 +967,21 @@ SR <- lapply(
 ```
 
 ### Save Sequences Rules
+```{r}
+#
+# Save Sequence rules
+save(
+  SR,
+  file = "App/SR.RDATA"
+)
+
+# Remove objects
+rm(
+  my_cspade, my_ruleInduction, clean_rules, compute_rhs.support, edit_rules, make_SR,
+  SR, sequences
+)
+```
+
 
 ```{r SR metrics}
     # Compute statistic
