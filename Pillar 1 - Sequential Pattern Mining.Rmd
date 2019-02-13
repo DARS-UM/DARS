@@ -1042,6 +1042,7 @@ SR$G <- sequences$G %>%
 ```
 
 ### Editing SR
+We apply `edit_rules` to SR in order to get easily readable rules. 
 ```{r SR edit}
 SR <- lapply(
   X   = SR,
@@ -1057,7 +1058,10 @@ save(
   SR,
   file = "App/SR.RDATA"
 )
-
+```
+We remove objects
+```{r remove SR}
+#
 # Remove objects
 rm(
   SR, sequences,
