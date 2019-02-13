@@ -621,8 +621,10 @@ make_AR <- function(data, data_support, type_rule){
   
 }
 ```
+###Apply Functions
+We apply make_AR to get different sets of rules:
 
-### take -> take
+#### take -> take
 ```{r AR take}
 AR <- list()
 
@@ -633,7 +635,7 @@ AR$taken <- transactions$taken %>%
     )
 ```
 
-### fail -> fail
+#### fail -> fail
 ```{r AR fail}
 AR$PF <- transactions$PF %>%
   
@@ -665,7 +667,7 @@ AR$PF <- transactions$PF %>%
     )
 ```
 
-### low grade -> low grade
+#### low grade -> low grade
 ```{r AR low}
 AR$HL <- transactions$HL %>%
   
@@ -697,7 +699,7 @@ AR$HL <- transactions$HL %>%
     )
 ```
 
-### not take -> fail
+#### not take -> fail
 ```{r AR TPF}
 AR$TPF <- transactions$TPF %>%
   
@@ -732,7 +734,7 @@ AR$TPF <- transactions$TPF %>%
     )
 ```
 
-### grade less than or equal to x -> grade less than or equal to 6
+#### grade less than or equal to x -> grade less than or equal to 6
 ```{r AR grade, cache = TRUE}
 AR$G <- transactions$G %>%
   
@@ -781,6 +783,7 @@ AR$G <- transactions$G %>%
 ```
 
 ### Editing AR
+The function edit_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 ```{r edit_AR}
 edit_rules <- function(AR){
   
@@ -835,11 +838,12 @@ rm(
   my_apriori, make_AR,
   AR, transaction
   )
+
 ```
 
 ## Sequence Rules
 ### Functions
-
+The function `my_cspade()` applies the cspade algorithm on a set of sequential transactions with the parameters that we have chosen.
 ```{r my_cspade function}
 my_cspade <- function(data){
   
@@ -868,7 +872,7 @@ my_cspade <- function(data){
   
 }
 ```
-
+The function `my_ruleInduction()` creates rules from the set of frequent sequences detemined by cspade.
 ```{r my_ruleInduction}
 my_ruleInduction <- function(rules){
   
@@ -885,7 +889,7 @@ my_ruleInduction <- function(rules){
   
 }
 ```
-
+We encapsulate the fuctions `my_cpade`, `my_ruleInduction`, and `clean_rules` into `make_SR`
 ```{r make_SR}
 make_SR <- function(data, data_support, type_rule){
   
@@ -900,8 +904,9 @@ make_SR <- function(data, data_support, type_rule){
   
 }
 ```
-
-### take -> take
+###Apply Functions
+We apply make_SR to get different types of sequential rules:
+#### take -> take
 ```{r SR taken}
 SR <- list()
 
@@ -913,7 +918,7 @@ SR$taken <- sequences$taken %>%
   )
 ```
 
-### fail -> fail
+#### fail -> fail
 ```{r SR PF}
 SR$PF <- sequences$PF %>%
   
@@ -945,7 +950,7 @@ SR$PF <- sequences$PF %>%
     )
 ```
 
-### low grade -> low grade
+#### low grade -> low grade
 ```{r SR HL, cache = TRUE}
 SR$HL <- sequences$HL %>%
   
@@ -977,7 +982,7 @@ SR$HL <- sequences$HL %>%
     )
 ```
 
-### not take -> fail
+#### not take -> fail
 ```{r SR TPF, eval = FALSE}
 #
 # SR
@@ -1009,7 +1014,7 @@ x <- d_transcript_cum %>%
     )
 ```
 
-### grade less than or equal to x -> grade less than or equal to 6
+#### grade less than or equal to x -> grade less than or equal to 6
 ```{r SR G, cache = TRUE}
 SR$G <- sequences$G %>%
   
@@ -1060,6 +1065,7 @@ SR$G <- sequences$G %>%
 ```
 
 ### Editing SR
+We apply `edit_rules` to SR in order to get easily readable rules. 
 ```{r SR edit}
 SR <- lapply(
   X   = SR,
@@ -1076,6 +1082,7 @@ save(
   file = "App/SR.RDATA"
 )
 
+#
 # Remove objects
 rm(
   SR, sequences,
@@ -1083,6 +1090,7 @@ rm(
   n_students
 )
 ```
+
 
 SR_TPF are manually computed
 ```{r, eval = FALSE}
