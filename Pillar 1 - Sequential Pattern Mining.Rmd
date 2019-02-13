@@ -991,6 +991,7 @@ d_transcript_cum_current %>%
 SR$G <- sequences$G %>%
   
   my_cspade %>%
+  my_ruleInduction %>%
   clean_rules %>%
   
   # rhs.support
