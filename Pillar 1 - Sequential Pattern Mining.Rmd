@@ -951,8 +951,19 @@ make_SR <- function(data){
 ```{r}
 SR <- list()
 
+<<<<<<< HEAD
 SR$taken <- sequences$taken %>%
   my_SR
+=======
+```{r SR edit}
+    mutate_at(
+      c("support",
+        "confidence", "lift"),
+      funs(round(., 5))
+    ) %>%
+    filter(!`LHS Course ID` == `RHS Course ID`) %>%
+    select(-`LHS Course ID`, -`LHS Quality`, -`RHS Course ID`, -`RHS Quality`)
+>>>>>>> 81f537a3107af844b8489657ebb86b92ff5706bc
 ```
 
 ### fail -> fail
