@@ -17,9 +17,7 @@ function(input, output) {
     expr = {
       
       # Use chosen data set
-      get(
-        paste(input$rules, input$item, sep = "_")
-        ) %>%
+      get(input$rules)[[input$item]] %>%
         
         # filter rows based on the ranges of the three buttons
         filter(

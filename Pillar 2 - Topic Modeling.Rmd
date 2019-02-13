@@ -329,18 +329,30 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 
 # LDA
 
-## Ideal Number of Topics
+## Ideal Number of Topics (RUN ON UM COMPUTER)
 
 ```{r LDA number topics, eval = FALSE}
+
+my_control <- list(
+  
+  nstart = 10,
+  seed   = 1 : 10,
+  best   = TRUE,
+  
+  burnin = 500
+  iter   = 2000,
+  thin   = 100
+  
+)
+
 result <- FindTopicsNumber(
   
   d_description_cast,
   topics = seq(from = 20, to = 150, by = 5),
   metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
-  control = list(seed = 123),
-  mc.cores = 1L,
-  verbose = TRUE
+  control = my_control,
+  mc.cores = 1L
   
 )
 
