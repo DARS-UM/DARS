@@ -273,7 +273,6 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
 
 ### Transcript with preceding courses (for SR by hand)
 ```{r d_transcript_cum}
-
 #
 # List of all courses
 course_all <- unique(d_transactions$taken_PF_HL$item)
@@ -282,37 +281,62 @@ course_all <- unique(d_transactions$taken_PF_HL$item)
 #
 # courses taken so far and not taken so far
 d_transcript_cum <- d_transactions$taken_PF_HL %>%
-
+  
+  # item_take
+  mutate(
+    item_take = paste(item, "take", sep = "_")
+  ) %>%
+  
+  # course current
   group_by(
     sequenceID,
     eventID
     ) %>%
-  summarize(
-    course_current = list(
-      unique(item_PF)
-      )
+  summarize_at(
+    c("item", "item_take", "item_PF", "item_HL"),
+    function(x) list(unique(x))
     ) %>%
+  ungroup %>%
   
+  # course current all
+  rowwise %>%
+  mutate(
+    course_current = list(c(item, item_take, item_PF, item_HL))
+    ) %>%
+  ungroup %>%
+  
+  # course past
   group_by(
     sequenceID
     ) %>%
   mutate(
     course_past = Reduce(
-      f = c, 
-      x = course_current, 
+      f = c,
+      x = course_current,
       accumulate = TRUE
       ) %>%
       lag(
         default = as.character(NA)
         )
     ) %>%
+  ungroup %>%
   
-  rowwise %>% # equivalent to "group by row"
+  # course so far, course not so far
+  rowwise %>%
   mutate(
-    course_so_far     = list(union  (course_past, course_current)),
-    course_not_so_far = list(setdiff(course_all , course_so_far ))
+    course_past_current = list(union  (course_past, course_current      )),
+    course_not_yet      = list(setdiff(course_all , course_past_current )),
+    course_not_yet      = list(paste(course_not_yet, "not", sep = "_"   )),
+    course_so_far       = list(union  (course_past, course_not_yet))
     ) %>%
-  ungroup
+  ungroup %>%
+  
+  # lhs: past, rhs: present
+  select(
+    sequenceID,
+    lhs = course_so_far,
+    rhs = course_current
+  )
 
 
 rm(course_all)
@@ -955,35 +979,34 @@ SR$HL <- sequences$HL %>%
 
 ### not take -> fail
 ```{r SR TPF, eval = FALSE}
-
 #
-# SR by hand
+# SR
 
-# rhs = current course
-d_transcript_cum_current <- d_transcript_cum %>%
+x <- d_transcript_cum %>%
+  
+  # rhs
   unnest(
-    course_current,
-    .drop = FALSE
-    ) %>%
-  rename(
-    rhs = course_current
-    )
-
-# lhs = course not so far
-d_transcript_cum_current %>%
-  unnest(
-    course_not_so_far,
-    .drop = FALSE
-    ) %>%
-  rename(
-    lhs = course_not_so_far
-    ) %>%
-  count(
-    lhs, 
     rhs,
-    sort = TRUE
+    .drop = FALSE
     ) %>%
-  filter(str_detect(rhs, "fail"))
+  filter(
+    str_detect(rhs, "low")
+    ) %>%
+  
+  # lhs
+  unnest(
+    lhs,
+    .drop = FALSE
+    ) %>%
+  filter(
+    str_detect(lhs, "not")
+    ) %>%
+  
+  # support
+  count(
+    lhs,
+    rhs
+    )
 ```
 
 ### grade less than or equal to x -> grade less than or equal to 6
