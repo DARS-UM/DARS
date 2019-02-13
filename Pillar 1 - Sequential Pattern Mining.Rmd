@@ -835,7 +835,7 @@ my_ruleInduction <- function(rules){
   
   rules %>%
     
-    ruleinduction(
+    ruleInduction(
       confidence = 0,
       control    = list(verbose = FALSE)
       )
@@ -978,7 +978,7 @@ SR$G <- sequences$G %>%
     )
 ```
 
-### Editing AR
+### Editing SR
 ```{r SR edit}
     mutate_at(
       c("support",
