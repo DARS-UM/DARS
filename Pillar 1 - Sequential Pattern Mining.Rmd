@@ -819,7 +819,7 @@ rm(
 
 ## Sequence Rules
 ### Functions
-
+The function `my_cspade()` applies the cspade algorithm on a set of sequential transactions with the parameters that we have chosen.
 ```{r my_cspade function}
 my_cspade <- function(data){
   
@@ -848,7 +848,7 @@ my_cspade <- function(data){
   
 }
 ```
-
+The function `my_ruleInduction()` creates rules from the set of frequent sequences detemined by cspade.
 ```{r my_ruleInduction}
 my_ruleInduction <- function(rules){
   
@@ -865,7 +865,7 @@ my_ruleInduction <- function(rules){
   
 }
 ```
-
+We encapsulate the fuctions `my_cpade`, `my_ruleInduction`, and `clean_rules` into `make_SR`
 ```{r make_SR}
 make_SR <- function(data, data_support, type_rule){
   
