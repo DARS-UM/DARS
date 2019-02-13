@@ -880,8 +880,9 @@ make_SR <- function(data, data_support, type_rule){
   
 }
 ```
-
-### take -> take
+###Apply Functions
+We apply make_SR to get different types of sequential rules:
+#### take -> take
 ```{r SR taken}
 SR <- list()
 
@@ -893,7 +894,7 @@ SR$taken <- sequences$taken %>%
   )
 ```
 
-### fail -> fail
+#### fail -> fail
 ```{r SR PF}
 SR$PF <- sequences$PF %>%
   
@@ -925,7 +926,7 @@ SR$PF <- sequences$PF %>%
     )
 ```
 
-### low grade -> low grade
+#### low grade -> low grade
 ```{r SR HL, cache = TRUE}
 SR$HL <- sequences$HL %>%
   
@@ -957,7 +958,7 @@ SR$HL <- sequences$HL %>%
     )
 ```
 
-### not take -> fail
+#### not take -> fail
 ```{r SR TPF, eval = FALSE}
 
 #
@@ -990,7 +991,7 @@ d_transcript_cum_current %>%
   filter(str_detect(rhs, "fail"))
 ```
 
-### grade less than or equal to x -> grade less than or equal to 6
+#### grade less than or equal to x -> grade less than or equal to 6
 ```{r SR G, cache = TRUE}
 SR$G <- sequences$G %>%
   
