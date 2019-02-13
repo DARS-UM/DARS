@@ -597,8 +597,10 @@ make_AR <- function(data, data_support, type_rule){
   
 }
 ```
+###Apply Functions
+We apply make_AR to get different sets of rules:
 
-### take -> take
+#### take -> take
 ```{r AR take}
 AR <- list()
 
@@ -609,7 +611,7 @@ AR$taken <- transactions$taken %>%
     )
 ```
 
-### fail -> fail
+#### fail -> fail
 ```{r AR fail}
 AR$PF <- transactions$PF %>%
   
@@ -641,7 +643,7 @@ AR$PF <- transactions$PF %>%
     )
 ```
 
-### low grade -> low grade
+#### low grade -> low grade
 ```{r AR low}
 AR$HL <- transactions$HL %>%
   
@@ -673,7 +675,7 @@ AR$HL <- transactions$HL %>%
     )
 ```
 
-### not take -> fail
+#### not take -> fail
 ```{r AR TPF}
 AR$TPF <- transactions$TPF %>%
   
@@ -708,7 +710,7 @@ AR$TPF <- transactions$TPF %>%
     )
 ```
 
-### grade less than or equal to x -> grade less than or equal to 6
+#### grade less than or equal to x -> grade less than or equal to 6
 ```{r AR grade, cache = TRUE}
 AR$G <- transactions$G %>%
   
@@ -757,6 +759,7 @@ AR$G <- transactions$G %>%
 ```
 
 ### Editing AR
+The function edit_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 ```{r edit_AR}
 edit_rules <- function(AR){
   
@@ -811,6 +814,7 @@ rm(
   my_apriori, make_AR,
   AR, transaction
   )
+
 ```
 
 ## Sequence Rules
