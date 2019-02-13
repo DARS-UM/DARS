@@ -959,7 +959,7 @@ clean_SR <- function(rules){
         "confidence", "lift"),
       funs(round(., 5))
     ) %>%
-    filter(!`LHS Course ID`==`RHS Course ID`) %>%
+    filter(!`LHS Course ID` == `RHS Course ID`) %>%
     select(-`LHS Course ID`, -`LHS Quality`, -`RHS Course ID`, -`RHS Quality`)
 ```
 
