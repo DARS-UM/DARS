@@ -69,8 +69,6 @@ find_course <- function(code){
 find_course("HUM1005")
 ```
 
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
-
     ## [1] "Songs and Poetry: Theory and Analysis"
 
 Data Exploration
@@ -956,7 +954,6 @@ Sequence Rules
 ### Functions
 
 ``` r
-# Run the cspade algorithm with desired parameters. Then run the ruleInduction algorithm with desired parameters.
 my_cspade <- function(data){
   
   data %>%
@@ -1023,6 +1020,7 @@ make_SR <- function(data, data_support, type_rule){
 SR <- list()
 
 SR$taken <- sequences$taken %>%
+  
   make_SR(
     data_support = d_support$TNT, 
     type_rule = rate.take
@@ -1141,12 +1139,50 @@ d_transcript_cum_current %>%
 ``` r
 SR$G <- sequences$G %>%
   
-  make_SR %>%
+  my_cspade %>%
+  my_ruleInduction %>%
+  clean_rules %>%
   
-  # rhs is grade less than 6
+  # rhs.support
+  left_join(
+    d_support$G,
+    by = c("rhs_course" = "item", "rhs_outcome" = "grade_ceil")
+    ) %>%
+  mutate(
+    rhs.support = support.grade
+    ) %>%
+  
+  # Confidence & lift
+  group_by(
+    lhs,
+    rhs_course
+    ) %>%
+  mutate(
+    lhs.rhsTake.support = max(support),
+    confidence          = support / lhs.rhsTake.support,
+    lift                = confidence / rhs.support
+    ) %>%
+  ungroup %>%
+  
+  
+  # Reduce number of rules
   filter(
-    str_detect(rhs, "6")
-    )
+    # exclude rules with same course on lhs and rhs
+    lhs_course != rhs_course,
+    # rhs is grade less than or equal to 6
+    rhs_outcome == 6
+    ) %>%
+  
+  # for each combination of course (lhs and rhs), keep AR with highest lift (most informative)
+  group_by(
+    lhs_course,
+    rhs_course
+    ) %>%
+  top_n(
+    n = 1,
+    lift
+    ) %>%
+  ungroup
 ```
 
 ### Editing SR
