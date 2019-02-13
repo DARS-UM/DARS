@@ -1058,9 +1058,7 @@ save(
   SR,
   file = "App/SR.RDATA"
 )
-```
-We remove objects
-```{r remove SR}
+
 #
 # Remove objects
 rm(
@@ -1069,6 +1067,7 @@ rm(
   n_students
 )
 ```
+
 
 SR_TPF are manually computed
 ```{r, eval = FALSE}
