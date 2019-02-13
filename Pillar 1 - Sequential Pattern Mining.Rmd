@@ -840,7 +840,7 @@ my_ruleInduction <- function(rules){
   
   rules %>%
     
-    ruleinduction(
+    ruleInduction(
       confidence = 0,
       control    = list(verbose = FALSE)
       )
@@ -951,7 +951,7 @@ SR$G <- sequences$G %>%
     )
 ```
 
-### Editing AR
+### Editing SR
 ```{r SR edit}
     mutate_at(
       c("support",
@@ -1037,7 +1037,7 @@ We save and remove objects:
 ```{r saving and rm SR}
 #Saving sequence rules
 save(
-    SR_taken, SR_PF, SR_HL, SR_G,
+    SR,
     SR_TPF,
     #SR_expanded_Grade,
     file = "App/SR.RDATA")
