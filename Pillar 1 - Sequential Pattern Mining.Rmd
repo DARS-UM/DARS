@@ -890,6 +890,22 @@ SR$PF <- sequences$PF %>%
     type_rule = rate.fail
   ) %>%
   
+  # Confidenca and lift by hand
+  group_by(
+    lhs,
+    rhs_course
+    ) %>%
+  mutate(
+    lhs.rhsTake.support = sum(support), # Proba of (lhs => taking rhs course)
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
+  ) %>%
+  ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rateTake.support,
+    lift       = confidence / rhs.support
+    )
+  
   # lhs and rhs are fail
   filter(
     str_detect(lhs, "fail"),
@@ -906,6 +922,22 @@ SR$HL <- sequences$HL %>%
     type_rule = rate.low
   ) %>%
   
+    # Confidenca and lift by hand
+  group_by(
+    lhs,
+    rhs_course
+    ) %>%
+  mutate(
+    lhs.rhsTake.support = sum(support), # Proba of (lhs => taking rhs course)
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
+  ) %>%
+  ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rateTake.support,
+    lift       = confidence / rhs.support
+    )
+  
   # lhs and rhs are low
   filter(
     str_detect(lhs, "low"),
@@ -914,7 +946,7 @@ SR$HL <- sequences$HL %>%
 ```
 
 ### not take -> fail
-```{r}
+```{r, eval = FALSE}
 
 #
 # SR by hand
@@ -947,7 +979,7 @@ d_transcript_cum_current %>%
 ```
 
 ### grade less than or equal to x -> grade less than or equal to 6
-```{r}
+```{r, eval = FALSE}
 SR$G <- sequences$G %>%
   
   make_SR %>%
@@ -977,30 +1009,14 @@ save(
 
 # Remove objects
 rm(
+  SR, sequences,
   my_cspade, my_ruleInduction, clean_rules, compute_rhs.support, edit_rules, make_SR,
-  SR, sequences
+  n_students
 )
 ```
 
-
-```{r SR metrics}
-    # Compute statistic
-    group_by(lhs,`RHS Course ID`) %>%
-    mutate(
-      lhs.rhsCourse.support = sum(support),
-      confidence = case_when(is.na(`RHS Quality`) ~ confidence,
-                             T ~ (support / lhs.rhsCourse.support)),
-      count = support * n_students,
-      lhs.rhsCourse.count = lhs.rhsCourse.support * n_students,
-      lift = 1 #dummy variable
-      # TODO: compute rhs.support
-      # lift = confidence.corr / rhs.support
-     ) %>%
-    ungroup() %>%
-```
-
 SR_TPF are manually computed
-```{r}
+```{r, eval = FALSE}
 # current, past, not_yet
 SR_TPF <- d_transcript_cum                         %>%
   select(sequenceID, eventID, course_current, course_not_so_far)    %>%
