@@ -94,7 +94,7 @@ statistics$course <- d_transcript %>%
   provide_statistics(`Course ID`)
 
 # Cluster level
-statistics_cluster <- d_transcript %>%
+statistics$cluster <- d_transcript %>%
   inner_join(
     d_course, 
     by = "Course ID"
@@ -102,14 +102,14 @@ statistics_cluster <- d_transcript %>%
   provide_statistics(Cluster)
 
 # Type level
-statistics_type <- d_transcript %>%
+statistics$type <- d_transcript %>%
   inner_join(
     d_course, by = "Course ID"
     ) %>%
   provide_statistics(Type)
 
 # Concentration evel
-statistics_concentration <- d_transcript %>%
+statistics$concentration <- d_transcript %>%
   inner_join(
     d_course,
     by = "Course ID"
@@ -123,11 +123,11 @@ statistics_concentration <- d_transcript %>%
   provide_statistics(Concentration)
 
 # Year level
-statistics_year <- d_transcript %>%
+statistics$year <- d_transcript %>%
   provide_statistics(Year_numerical)
 
 # Level level
-statistics_level <- d_transcript %>%
+statistics$level <- d_transcript %>%
   # TODO: filter for student who completed their studies
   inner_join(d_course, by = c("Course ID")) %>%
   provide_statistics(Level)
@@ -640,7 +640,7 @@ make_AR <- function(data, data_support, type_rule){
 }
 ```
 
-### take -> taken
+### take -> take
 ```{r AR take}
 AR <- list()
 
@@ -747,7 +747,7 @@ AR$TPF <- transactions$TPF %>%
     )
 ```
 
-### less than x grade -> less than 6
+### grade less than or equal to x -> grade less than or equal to 6
 ```{r AR grade}
 AR$G <- transactions$G %>%
   
@@ -849,7 +849,6 @@ rm(
 ```
 
 ## Sequence Rules
-
 ### Functions
 
 ```{r my_SR function}
@@ -936,6 +935,82 @@ clean_SR <- function(rules){
 }
 ```
 
+```{r}
+make_SR <- function(data){
+  
+  data %>%
+    my_cspade %>%
+    my_ruleInduction %>%
+    clean_SR
+  
+}
+  
+```
+
+### take -> take
+```{r}
+SR <- list()
+
+SR$taken <- sequences$taken %>%
+  my_SR
+```
+
+### fail -> fail
+```{r}
+SR$PF <- sequences$PF %>%
+  
+  my_SR %>%
+  
+  # lhs and rhs are fail
+  filter(
+    str_detect(lhs, "fail"),
+    str_detect(rhs, "fail")
+    )
+```
+
+### low grade -> low grade
+```{r}
+SR$HL <- sequences$HL %>%
+  
+  my_SR %>%
+  
+  # lhs and rhs are low
+  filter(
+    str_detect(lhs, "low"),
+    str_detect(rhs, "low")
+    )
+```
+
+### not take -> fail
+```{r}
+# by hand
+```
+
+### grade less than or equal to x -> grade less than or equal to 6
+```{r}
+SR$G <- sequences$G %>%
+  
+  my_SR %>%
+  
+  # rhs is grade less than 6
+  filter(
+    str_detect(rhs, "6")
+    )
+```
+
+### Editing AR
+```{r SR edit}
+    mutate_at(
+      c("support",
+        "confidence", "lift"),
+      funs(round(., 5))
+    ) %>%
+    filter(!`LHS Course ID`==`RHS Course ID`) %>%
+    select(-`LHS Course ID`, -`LHS Quality`, -`RHS Course ID`, -`RHS Quality`)
+```
+
+### Save Sequences Rules
+
 ```{r SR metrics}
     # Compute statistic
     group_by(lhs,`RHS Course ID`) %>%
@@ -950,55 +1025,6 @@ clean_SR <- function(rules){
       # lift = confidence.corr / rhs.support
      ) %>%
     ungroup() %>%
-```
-
-
-```{r SR edit}
-    mutate_at(
-      c("support",
-        "confidence", "lift"),
-      funs(round(., 5))
-    ) %>%
-    filter(!`LHS Course ID`==`RHS Course ID`) %>%
-    select(-`LHS Course ID`, -`LHS Quality`, -`RHS Course ID`, -`RHS Quality`)
-```
-
-We generate sequence rules:
-```{r SR taken, cache = TRUE}
-
-#Generating sequence rules:
-SR_taken   <- my_SR(data = sequences$taken)
-```
-
-```{r SR PF, cache = TRUE}
-
-##pass/fail filter
-SR_PF      <- my_SR(data = sequences$PF) %>%
-  filter(
-    str_detect(rhs, "fail"),
-    str_detect(lhs, "fail")
-    )
-```
-
-```{r SR HL, cache = TRUE}
-
-##high/low filter
-SR_HL      <- my_SR(data = sequences$HL) %>% 
-  filter(
-    str_detect(rhs, "low"),
-    str_detect(lhs, "low")
-    )
-```
-
-```{r SR grade, cache = TRUE}
-
-SR_G   <- my_SR(data = sequences$G )
-```
-
-```{r SR grade exp, cache = TRUE}
-
-#Grades filter 
-#SR_expanded_Grade   <- my_SR(data = sequences_expanded_Grade )
 ```
 
 SR_TPF are manually computed
