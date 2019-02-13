@@ -535,10 +535,10 @@ clean_rules <- function(rules){
     
     # separate rule
     mutate(
-      rule = str_remove_all(rule, pattern = "[<]|[{]|[}]|[>]")
+      rules = str_remove_all(rules, pattern = "[<]|[{]|[}]|[>]")
       ) %>%
     separate(
-      rule,
+      rules,
       into = c("lhs", "rhs"),
       sep = " = "
       ) %>%
@@ -620,7 +620,8 @@ AR$PF <- transactions$PF %>%
     rhs_course
     ) %>%
   mutate(
-    lhs.rhsTake.support = sum(support) # Proba of lhs and taking rhs course
+    lhs.rhsTake.support = sum(support), # Proba of lhs and taking rhs course
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
     ) %>%
   ungroup %>%
   
@@ -651,7 +652,8 @@ AR$HL <- transactions$HL %>%
     rhs_course
     ) %>%
   mutate(
-    lhs.rhsTake.support = sum(support) # Proba of lhs and taking rhs course
+    lhs.rhsTake.support = sum(support), # Proba of lhs and taking rhs course
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
     ) %>%
   ungroup %>%
   
@@ -685,7 +687,8 @@ AR$TPF <- transactions$TPF %>%
     rhs_course
     ) %>%
     mutate(
-    lhs.rhsTake.support = sum(support * rhs.taken) # Proba of lhs and taking rhs course
+    lhs.rhsTake.support = sum(support * rhs.taken), # Proba of lhs and taking rhs course
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
     ) %>%
   ungroup %>%
   
@@ -724,6 +727,7 @@ AR$G <- transactions$G %>%
     ) %>%
   mutate(
     lhs.rhsTake.support = max(support),
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students,
     confidence          = support / lhs.rhsTake.support,
     lift                = confidence / rhs.support
     ) %>%
@@ -750,7 +754,7 @@ AR$G <- transactions$G %>%
 
 ### Editing AR
 ```{r edit_AR}
-edit_AR <- function(AR){
+edit_rules <- function(AR){
   
   AR %>%
     
@@ -764,12 +768,11 @@ edit_AR <- function(AR){
     ) %>%
     
     select(
-      lhs, rhs,
-      support, count,
+      lhs       , rhs,
+      support   , count,
       confidence, rhs.support,
-      lift, 
-      everything(),
-      - matches("rate|course|grade|outcome|taken")
+      lift,
+      matches("rhsTake")
     ) %>%
     
     arrange(
@@ -781,7 +784,7 @@ edit_AR <- function(AR){
 
 AR <- lapply(
   X   = AR,
-  FUN = edit_AR
+  FUN = edit_rules
   )
 ```
 
@@ -797,7 +800,7 @@ save(
 
 # Remove objects
 rm(
-  my_apriori, clean_AR, compute_metrics, edit_AR, make_AR,
+  my_apriori, make_AR,
   AR, transaction
   )
 ```
@@ -841,8 +844,12 @@ my_ruleInduction <- function(rules){
   rules %>%
     
     ruleInduction(
+      
+      # keep all subsequences
       confidence = 0,
+      
       control    = list(verbose = FALSE)
+      
       )
   
 }
@@ -953,13 +960,10 @@ SR$G <- sequences$G %>%
 
 ### Editing SR
 ```{r SR edit}
-    mutate_at(
-      c("support",
-        "confidence", "lift"),
-      funs(round(., 5))
-    ) %>%
-    filter(!`LHS Course ID`==`RHS Course ID`) %>%
-    select(-`LHS Course ID`, -`LHS Quality`, -`RHS Course ID`, -`RHS Quality`)
+SR <- lapply(
+  X   = SR,
+  FUN = edit_rules
+  )
 ```
 
 ### Save Sequences Rules
