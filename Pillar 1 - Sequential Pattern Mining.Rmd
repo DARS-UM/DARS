@@ -534,11 +534,15 @@ clean_rules <- function(rules){
       ) %>%
     
     # separate rule
+    rename_at(
+      vars(matches("rule")),
+      function(x) substr(x, 1, 4)
+    ) %>%
     mutate(
-      rules = str_remove_all(rules, pattern = "[<]|[{]|[}]|[>]")
+      rule = str_remove_all(rule, pattern = "[<]|[{]|[}]|[>]")
       ) %>%
     separate(
-      rules,
+      rule,
       into = c("lhs", "rhs"),
       sep = " = "
       ) %>%
