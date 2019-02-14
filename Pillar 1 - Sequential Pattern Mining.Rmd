@@ -473,6 +473,7 @@ n_students <- d_transactions$taken_PF_HL %>%
 # Support
 d_support <- list()
 
+#
 # Probability of taking a course
 d_support$TNT <- d_transactions$taken_PF_HL %>%
   distinct(
