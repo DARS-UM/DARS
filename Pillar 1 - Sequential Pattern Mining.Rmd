@@ -59,23 +59,38 @@ provide_statistics <- function(data, var){
     group_by(
       !!enquo(var)
       ) %>%
+    
     summarise(
+      Count           = n(),
       Min             = min(Grade),
-      Max             = max(Grade), 
-      Mean            = mean(Grade), 
-      Median          = median(Grade), 
+      Max             = max(Grade),
+      Mean            = mean(Grade),
+      Median          = median(Grade),
+      IQR             = IQR(Grade),
       SD              = sd(Grade),
-      `Failure Rate`  = mean(Fail),
-      `Failure Count` = sum(Fail),
-      Count           = n()
+      `Low Rate`      = mean(Grade < high_grade),
+      `Fail Rate`  = mean(Grade < pass_grade)
       ) %>%
+    
     mutate_at(
-      vars(Mean, SD, `Failure Rate`),
+      vars(Mean, SD, `Low Rate`, `Fail Rate`),
       round,
       digits = 2
     )
   
 }
+
+# for convenience
+join_d_course <- function(data){
+  
+  data %>%
+    inner_join(
+    d_course,
+    by = c("Course ID")
+    )
+    
+}
+
 
 #
 # Generating Statistics
@@ -87,33 +102,22 @@ statistics$student <- d_transcript %>%
 
 # Course level
 statistics$course <- d_transcript %>%
-  inner_join(
-    d_course,
-    by = c("Course ID")
-    ) %>%
+  join_d_course %>%
   provide_statistics(`Course ID`)
 
 # Cluster level
 statistics$cluster <- d_transcript %>%
-  inner_join(
-    d_course, 
-    by = "Course ID"
-    ) %>%
+  join_d_course %>%
   provide_statistics(Cluster)
 
 # Type level
 statistics$type <- d_transcript %>%
-  inner_join(
-    d_course, by = "Course ID"
-    ) %>%
+  join_d_course %>%
   provide_statistics(Type)
 
 # Concentration evel
 statistics$concentration <- d_transcript %>%
-  inner_join(
-    d_course,
-    by = "Course ID"
-    ) %>%
+  join_d_course %>%
   gather(
     key = X, 
     value = Concentration, 
@@ -129,8 +133,9 @@ statistics$year <- d_transcript %>%
 # Level level
 statistics$level <- d_transcript %>%
   # TODO: filter for student who completed their studies
-  inner_join(d_course, by = c("Course ID")) %>%
+  join_d_course %>%
   provide_statistics(Level)
+
 
 #
 # output
