@@ -19,7 +19,7 @@ We load the environment `data_pillar1` which we saved at the end of the data pre
 ```{r loading data}
 load("Output/data_pillar_1.RDATA")
 ```
-
+We set the thresholds for passing and obtaining a high grade.
 ```{r}
 pass_grade <- 5.5
 high_grade <- 6.5
@@ -144,12 +144,15 @@ rm(statistics)
 
 # Creating Transactions and Sequences
 For a first exploration of arules, we conceptualise our framework like this:
-transaction = student
-item = course
+sequence = student
+item     = course
 
-First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
+
 ## Data Preparation
+First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. Furthermore, for courses that span more than one period, we consider only the starting point.
+
 ### Take, fail, low grade
+For our first transactions we add variables that code whether a course has been passed/failed, or passed with a high grade/low grade. We assign the `Student ID` to the variable `sequenceID`, and the timing of a course (Year,period) to the `eventID`. We identify three different sets of items (course, course_pass/course_fail, course_high/course_low) for the creation of different rules further on. 
 ```{r AR data prep 1}
 d_transactions <- list()
 
@@ -193,6 +196,7 @@ d_transactions$taken_PF_HL <- d_course %>%
 ```
 
 ### Take / not take, pass / fail / not take
+For our second set of transactions, we come up with all possible combinations of courses and students, then categorise each as, not taken, passed or failed. Items are the courses with their pass/fail/not taken categories (course_pass/course_fail/course_not taken).
 ```{r transactions not taken}
 d_transactions$TPF <- expand.grid(
   
@@ -225,6 +229,8 @@ rm(high_grade, pass_grade)
 ```
 
 ### Grade
+For our last set of transactions we would like to have cumulative probabilities so we can interpret a prediction of a grade 8 as the probability of getting an 8 or lower. 
+For this, we add additional rows to the transcripts, corresponding to all the grades above the grade that a student got for a course (e.g. if student_A got a grade_8 for course_B, we would add two rows: student_A/course_B/grade_9 and student_A/course_B/grade_10). Items in these transactions correspond to course_grade.
 ```{r transactions grade}
 
 d_transactions$G <- d_transactions$taken_PF_HL %>%
@@ -272,6 +278,7 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
 ```
 
 ### Transcript with preceding courses (for SR by hand)
+For our analysis in sequential rule mining, we extract the history of each student, and create a transcript per student, per period, which contains information on the current courses, the courses taken before the current courses, courses taken so far (including current courses) and the courses not taken so far. 
 ```{r d_transcript_cum}
 
 #
@@ -319,6 +326,8 @@ rm(course_all)
 ```
 
 ## Transactions
+The function make_transactions takes a data.frame and the item label and converts it into an object of class transaction. 
+We create transactions with the different types of data we prepared above (i.e. taken, pass/fail, high/low, NotTaken/pass/fail, Grades).
 ```{r making transactions, message = FALSE}
 
 make_transaction <- function(data = d_transactions$taken_PF_HL, item = item){
@@ -359,6 +368,8 @@ rm(make_transaction)
 
 
 ## Sequences
+The function make_sequence takes a data.frame and the item label and converts it into an object of class sequences (used for extracting sequential rules).
+We create sequences with the different types of data we prepared above (i.e. taken, pass/fail, high/low, Grades).
 ```{r making sequences}
 
 make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
