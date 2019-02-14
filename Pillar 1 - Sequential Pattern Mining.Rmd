@@ -355,7 +355,6 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
   
   # lhs: past, rhs: present
   select(
-    sequenceID,
     lhs = course_so_far,
     rhs = course_current
   )
@@ -678,6 +677,33 @@ compute_rhs.support <- function(AR, data_support, type_rule){
 }
 ```
 
+### compute_conf_lift
+
+```{r}
+compute_conf_lift <- function(rules){
+  
+  rules %>%
+  
+  # support (and count) of doing lhs and taking course of rhs
+  group_by(
+    lhs,
+    rhs_course
+    ) %>%
+    mutate(
+      lhs.rhsTake.support = sum(support),
+      lhs.rhsTake.count   = lhs.rhsTake.support * n_students
+      ) %>%
+    ungroup %>%
+    
+    mutate(
+      confidence = support / lhs.rhsTake.support,
+      lift       = confidence / rhs.support
+      )
+  
+}
+```
+
+
 ### make_AR and  make_SR (wrapers)
 
 We encapsulate the functions `my_apriori()`, `clean_AR()` and `compute_support()` into the function `make_AR()`.
@@ -734,21 +760,7 @@ AR$PF <- transactions$PF %>%
     type_rule = rate.fail
     ) %>%
   
-  # Confidence and Lift by hand
-  group_by(
-    lhs,
-    rhs_course
-    ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support), # Proba of lhs and taking rhs course
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-    ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs must be fail
   filter(
@@ -766,21 +778,7 @@ AR$HL <- transactions$HL %>%
     type_rule = rate.low
     ) %>%
   
-  # Confidence and Lift by hand
-  group_by(
-    lhs, 
-    rhs_course
-    ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support), # Proba of lhs and taking rhs course
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-    ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
@@ -796,30 +794,17 @@ AR$TPF <- transactions$TPF %>%
   make_AR(
     data_support = d_support$PF_HL, 
     type_rule = rate.fail
-  ) %>%
+    ) %>%
   
   # Confidence and Lift
-  mutate(
-    rhs.taken = str_detect(rhs, "fail|pass")
+  filter(
+    str_detect(rhs, "fail|pass") # only keep rhsTake for computing confidence and lift
     ) %>%
-  group_by(
-    lhs,
-    rhs_course
-    ) %>%
-    mutate(
-    lhs.rhsTake.support = sum(support * rhs.taken), # Proba of lhs and taking rhs course
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-    ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
-    str_detect(lhs, "not taken"),
+    str_detect(lhs, "not"),
     str_detect(rhs, "fail")
     )
 ```
@@ -848,11 +833,14 @@ AR$G <- transactions$G %>%
     ) %>%
   mutate(
     lhs.rhsTake.support = max(support),
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students,
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
     ) %>%
   ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
   
   
   # reduce number of rules
@@ -897,21 +885,7 @@ SR$PF <- sequences$PF %>%
     type_rule = rate.fail
   ) %>%
   
-  # Confidenca and lift by hand
-  group_by(
-    lhs,
-    rhs_course
-    ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support), # Proba of (lhs => taking rhs course)
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-  ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs are fail
   filter(
@@ -929,21 +903,7 @@ SR$HL <- sequences$HL %>%
     type_rule = rate.low
   ) %>%
   
-    # Confidenca and lift by hand
-  group_by(
-    lhs,
-    rhs_course
-    ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support), # Proba of (lhs => taking rhs course)
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-  ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs are low
   filter(
@@ -952,8 +912,8 @@ SR$HL <- sequences$HL %>%
     )
 ```
 
-#### not take -> fail
-```{r SR TPF, eval = FALSE}
+### not take -> fail
+```{r SR TPF, cache = TRUE}
 SR$TPF <- d_transcript_cum %>%
   
   # rhs
@@ -962,7 +922,7 @@ SR$TPF <- d_transcript_cum %>%
     .drop = FALSE
     ) %>%
   filter(
-    str_detect(rhs, "low")
+    str_detect(rhs, "pass|fail")
     ) %>%
   
   # lhs
@@ -974,10 +934,34 @@ SR$TPF <- d_transcript_cum %>%
     str_detect(lhs, "not")
     ) %>%
   
-  # support
+  # rule
+  unite(
+    col = "rule",
+    lhs, rhs,
+    sep = " => "
+    ) %>%
+  
+  # rule support
   count(
-    lhs,
-    rhs
+    rule
+    ) %>%
+  mutate(
+    support = n / n_students
+    ) %>%
+  
+  # regular fucntions
+  clean_rules %>%
+  
+  compute_rhs.support(
+    data_support = d_support$PF_HL,
+    type_rule    = rate.fail
+    ) %>%
+  
+  compute_conf_lift %>%
+  
+  # lhs not, rhs low
+  filter(
+    str_detect(rhs, "fail")
     )
 ```
 
@@ -1005,10 +989,14 @@ SR$G <- sequences$G %>%
     ) %>%
   mutate(
     lhs.rhsTake.support = max(support),
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
     ) %>%
   ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
   
   
   # Reduce number of rules
@@ -1034,9 +1022,9 @@ SR$G <- sequences$G %>%
 ## Editing rules
 The function edit_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 ```{r edit_rules}
-edit_rules <- function(AR){
+edit_rules <- function(rules){
   
-  AR %>%
+  rules %>%
     
     mutate(
       count = support * n_students
@@ -1080,7 +1068,7 @@ SR <- lapply(
 
 ```{r show rules}
 print(AR$TPF)
-print(SR$HL)
+print(SR$TPF)
 ```
 
 ```{r save rules, include = FALSE}

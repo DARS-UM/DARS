@@ -18,6 +18,7 @@ DARS
         -   [my\_aprior, my\_cspade and my\_ruleInduction](#my_aprior-my_cspade-and-my_ruleinduction)
         -   [clean\_rules](#clean_rules)
         -   [compute\_rhs.support](#compute_rhs.support)
+        -   [compute\_conf\_lift](#compute_conf_lift)
         -   [make\_AR and make\_SR (wrapers)](#make_ar-and-make_sr-wrapers)
     -   [Association Rule](#association-rule)
         -   [take -&gt; take](#take---take)
@@ -375,7 +376,6 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
   
   # lhs: past, rhs: present
   select(
-    sequenceID,
     lhs = course_so_far,
     rhs = course_current
   )
@@ -689,6 +689,32 @@ compute_rhs.support <- function(AR, data_support, type_rule){
 }
 ```
 
+### compute\_conf\_lift
+
+``` r
+compute_conf_lift <- function(rules){
+  
+  rules %>%
+  
+  # support (and count) of doing lhs and taking course of rhs
+  group_by(
+    lhs,
+    rhs_course
+    ) %>%
+    mutate(
+      lhs.rhsTake.support = sum(support),
+      lhs.rhsTake.count   = lhs.rhsTake.support * n_students
+      ) %>%
+    ungroup %>%
+    
+    mutate(
+      confidence = support / lhs.rhsTake.support,
+      lift       = confidence / rhs.support
+      )
+  
+}
+```
+
 ### make\_AR and make\_SR (wrapers)
 
 We encapsulate the functions `my_apriori()`, `clean_AR()` and `compute_support()` into the function `make_AR()`.
@@ -751,21 +777,7 @@ AR$PF <- transactions$PF %>%
     type_rule = rate.fail
     ) %>%
   
-  # Confidence and Lift by hand
-  group_by(
-    lhs,
-    rhs_course
-    ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support), # Proba of lhs and taking rhs course
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-    ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs must be fail
   filter(
@@ -784,21 +796,7 @@ AR$HL <- transactions$HL %>%
     type_rule = rate.low
     ) %>%
   
-  # Confidence and Lift by hand
-  group_by(
-    lhs, 
-    rhs_course
-    ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support), # Proba of lhs and taking rhs course
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-    ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
@@ -815,30 +813,17 @@ AR$TPF <- transactions$TPF %>%
   make_AR(
     data_support = d_support$PF_HL, 
     type_rule = rate.fail
-  ) %>%
+    ) %>%
   
   # Confidence and Lift
-  mutate(
-    rhs.taken = str_detect(rhs, "fail|pass")
+  filter(
+    str_detect(rhs, "fail|pass") # only keep rhsTake for computing confidence and lift
     ) %>%
-  group_by(
-    lhs,
-    rhs_course
-    ) %>%
-    mutate(
-    lhs.rhsTake.support = sum(support * rhs.taken), # Proba of lhs and taking rhs course
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-    ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
-    str_detect(lhs, "not taken"),
+    str_detect(lhs, "not"),
     str_detect(rhs, "fail")
     )
 ```
@@ -868,11 +853,14 @@ AR$G <- transactions$G %>%
     ) %>%
   mutate(
     lhs.rhsTake.support = max(support),
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students,
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
     ) %>%
   ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
   
   
   # reduce number of rules
@@ -929,21 +917,7 @@ SR$PF <- sequences$PF %>%
     type_rule = rate.fail
   ) %>%
   
-  # Confidenca and lift by hand
-  group_by(
-    lhs,
-    rhs_course
-    ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support), # Proba of (lhs => taking rhs course)
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-  ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs are fail
   filter(
@@ -962,21 +936,7 @@ SR$HL <- sequences$HL %>%
     type_rule = rate.low
   ) %>%
   
-    # Confidenca and lift by hand
-  group_by(
-    lhs,
-    rhs_course
-    ) %>%
-  mutate(
-    lhs.rhsTake.support = sum(support), # Proba of (lhs => taking rhs course)
-    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
-  ) %>%
-  ungroup %>%
-  
-  mutate(
-    confidence = support / lhs.rhsTake.support,
-    lift       = confidence / rhs.support
-    ) %>%
+  compute_conf_lift %>%
   
   # lhs and rhs are low
   filter(
@@ -988,10 +948,7 @@ SR$HL <- sequences$HL %>%
 #### not take -&gt; fail
 
 ``` r
-#
-# SR
-
-x <- d_transcript_cum %>%
+SR$TPF <- d_transcript_cum %>%
   
   # rhs
   unnest(
@@ -999,7 +956,7 @@ x <- d_transcript_cum %>%
     .drop = FALSE
     ) %>%
   filter(
-    str_detect(rhs, "low")
+    str_detect(rhs, "pass|fail")
     ) %>%
   
   # lhs
@@ -1011,12 +968,55 @@ x <- d_transcript_cum %>%
     str_detect(lhs, "not")
     ) %>%
   
-  # support
+  # rule
+  unite(
+    col = "rule",
+    lhs, rhs,
+    sep = " => "
+    ) %>%
+  
+  # rule support
   count(
-    lhs,
-    rhs
+    rule
+    ) %>%
+  mutate(
+    support = n / n_students
+    ) %>%
+  
+  # regular fucntions
+  clean_rules %>%
+  
+  compute_rhs.support(
+    data_support = d_support$PF_HL,
+    type_rule    = rate.fail
+    ) %>%
+  
+  compute_conf_lift %>%
+  
+  # lhs not, rhs low
+  filter(
+    str_detect(rhs, "fail")
     )
+
+print(SR$TPF)
 ```
+
+    ## # A tibble: 18,501 x 14
+    ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome     n support
+    ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>       <int>   <dbl>
+    ##  1 HUM1~ HUM1003    not         HUM1~ HUM1007    fail           23 9.18e-3
+    ##  2 HUM1~ HUM1003    not         HUM1~ HUM1010    fail            2 7.98e-4
+    ##  3 HUM1~ HUM1003    not         HUM1~ HUM1011    fail           10 3.99e-3
+    ##  4 HUM1~ HUM1003    not         HUM1~ HUM1012    fail            3 1.20e-3
+    ##  5 HUM1~ HUM1003    not         HUM1~ HUM1013    fail           15 5.99e-3
+    ##  6 HUM1~ HUM1003    not         HUM1~ HUM1014    fail            3 1.20e-3
+    ##  7 HUM1~ HUM1003    not         HUM2~ HUM2003    fail           35 1.40e-2
+    ##  8 HUM1~ HUM1003    not         HUM2~ HUM2005    fail           14 5.59e-3
+    ##  9 HUM1~ HUM1003    not         HUM2~ HUM2007    fail            4 1.60e-3
+    ## 10 HUM1~ HUM1003    not         HUM2~ HUM2008    fail            4 1.60e-3
+    ## # ... with 18,491 more rows, and 6 more variables: rate.fail <dbl>,
+    ## #   rhs.support <dbl>, lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>,
+    ## #   confidence <dbl>, lift <dbl>
 
 ### grade less than or equal to x -&gt; grade less than or equal to 6
 
@@ -1043,10 +1043,14 @@ SR$G <- sequences$G %>%
     ) %>%
   mutate(
     lhs.rhsTake.support = max(support),
-    confidence          = support / lhs.rhsTake.support,
-    lift                = confidence / rhs.support
+    lhs.rhsTake.count   = lhs.rhsTake.support * n_students
     ) %>%
   ungroup %>%
+  
+  mutate(
+    confidence = support / lhs.rhsTake.support,
+    lift       = confidence / rhs.support
+    ) %>%
   
   
   # Reduce number of rules
@@ -1075,9 +1079,9 @@ Editing rules
 The function edit\_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 
 ``` r
-edit_rules <- function(AR){
+edit_rules <- function(rules){
   
-  AR %>%
+  rules %>%
     
     mutate(
       count = support * n_students
@@ -1139,20 +1143,20 @@ print(AR$TPF)
     ## # ... with 12,925 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
 
 ``` r
-print(SR$HL)
+print(SR$TPF)
 ```
 
-    ## # A tibble: 491 x 9
+    ## # A tibble: 13,123 x 9
     ##    lhs   rhs   support count confidence rhs.support  lift lhs.rhsTake.sup~
     ##    <chr> <chr>   <dbl> <dbl>      <dbl>       <dbl> <dbl>            <dbl>
-    ##  1 SCI1~ SCI2~  0.0467   117      0.632       0.416  1.52           0.0738
-    ##  2 SSC1~ SCI2~  0.0228    57      0.576       0.416  1.38           0.0395
-    ##  3 SSC1~ SCI2~  0.0196    49      0.681       0.419  1.62           0.0287
-    ##  4 SSC1~ SCI1~  0.0180    45      0.523       0.369  1.42           0.0343
-    ##  5 SSC1~ SSC2~  0.0176    44      0.564       0.341  1.65           0.0311
-    ##  6 SSC1~ SCI2~  0.0176    44      0.579       0.416  1.39           0.0303
-    ##  7 SSC1~ SSC1~  0.0132    33      0.407       0.273  1.49           0.0323
-    ##  8 SSC2~ SCI2~  0.0132    33      0.66        0.416  1.59           0.0200
-    ##  9 SSC1~ SCI1~  0.0132    33      0.55        0.369  1.49           0.0239
-    ## 10 SSC1~ SCI2~  0.0128    32      0.604       0.416  1.45           0.0212
-    ## # ... with 481 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+    ##  1 HUM1~ SSC1~  0.0603   151      0.177       0.213 0.832            0.340
+    ##  2 HUM1~ SSC1~  0.0603   151      0.177       0.213 0.834            0.340
+    ##  3 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.833            0.340
+    ##  4 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.832            0.340
+    ##  5 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.831            0.341
+    ##  6 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.832            0.340
+    ##  7 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.830            0.341
+    ##  8 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.832            0.340
+    ##  9 HUM2~ SSC1~  0.0603   151      0.176       0.213 0.829            0.342
+    ## 10 HUM2~ SSC1~  0.0603   151      0.176       0.213 0.827            0.342
+    ## # ... with 13,113 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
