@@ -954,10 +954,7 @@ SR$HL <- sequences$HL %>%
 
 #### not take -> fail
 ```{r SR TPF, eval = FALSE}
-#
-# SR
-
-x <- d_transcript_cum %>%
+SR$TPF <- d_transcript_cum %>%
   
   # rhs
   unnest(
