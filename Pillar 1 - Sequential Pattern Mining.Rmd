@@ -460,7 +460,11 @@ rm(make_sequence #, d_transactions
 ```
 
 ## Support
-We calculate the support for all rules manually.
+We calculate manually the probabilities of:
+a) taking a course
+b) failing a course
+c) getting a low grade
+d) getting a grade equal or lower than x (a certain grade).
 ```{r}
 
 #
