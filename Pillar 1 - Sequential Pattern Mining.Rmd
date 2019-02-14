@@ -59,23 +59,38 @@ provide_statistics <- function(data, var){
     group_by(
       !!enquo(var)
       ) %>%
+    
     summarise(
+      Count           = n(),
       Min             = min(Grade),
-      Max             = max(Grade), 
-      Mean            = mean(Grade), 
-      Median          = median(Grade), 
+      Max             = max(Grade),
+      Mean            = mean(Grade),
+      Median          = median(Grade),
+      IQR             = IQR(Grade),
       SD              = sd(Grade),
-      `Failure Rate`  = mean(Fail),
-      `Failure Count` = sum(Fail),
-      Count           = n()
+      `Low Rate`      = mean(Grade < high_grade),
+      `Fail Rate`  = mean(Grade < pass_grade)
       ) %>%
+    
     mutate_at(
-      vars(Mean, SD, `Failure Rate`),
+      vars(Mean, SD, `Low Rate`, `Fail Rate`),
       round,
       digits = 2
     )
   
 }
+
+# for convenience
+join_d_course <- function(data){
+  
+  data %>%
+    inner_join(
+    d_course,
+    by = c("Course ID")
+    )
+    
+}
+
 
 #
 # Generating Statistics
@@ -87,33 +102,22 @@ statistics$student <- d_transcript %>%
 
 # Course level
 statistics$course <- d_transcript %>%
-  inner_join(
-    d_course,
-    by = c("Course ID")
-    ) %>%
+  join_d_course %>%
   provide_statistics(`Course ID`)
 
 # Cluster level
 statistics$cluster <- d_transcript %>%
-  inner_join(
-    d_course, 
-    by = "Course ID"
-    ) %>%
+  join_d_course %>%
   provide_statistics(Cluster)
 
 # Type level
 statistics$type <- d_transcript %>%
-  inner_join(
-    d_course, by = "Course ID"
-    ) %>%
+  join_d_course %>%
   provide_statistics(Type)
 
 # Concentration evel
 statistics$concentration <- d_transcript %>%
-  inner_join(
-    d_course,
-    by = "Course ID"
-    ) %>%
+  join_d_course %>%
   gather(
     key = X, 
     value = Concentration, 
@@ -129,8 +133,9 @@ statistics$year <- d_transcript %>%
 # Level level
 statistics$level <- d_transcript %>%
   # TODO: filter for student who completed their studies
-  inner_join(d_course, by = c("Course ID")) %>%
+  join_d_course %>%
   provide_statistics(Level)
+
 
 #
 # output
@@ -280,7 +285,6 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
 ### Transcript with preceding courses (for SR by hand)
 For our analysis in sequential rule mining, we extract the history of each student, and create a transcript per student, per period, which contains information on the current courses, the courses taken before the current courses, courses taken so far (including current courses) and the courses not taken so far. 
 ```{r d_transcript_cum}
-
 #
 # List of all courses
 course_all <- unique(d_transactions$taken_PF_HL$item)
@@ -289,37 +293,62 @@ course_all <- unique(d_transactions$taken_PF_HL$item)
 #
 # courses taken so far and not taken so far
 d_transcript_cum <- d_transactions$taken_PF_HL %>%
-
+  
+  # item_take
+  mutate(
+    item_take = paste(item, "take", sep = "_")
+  ) %>%
+  
+  # course current
   group_by(
     sequenceID,
     eventID
     ) %>%
-  summarize(
-    course_current = list(
-      unique(item_PF)
-      )
+  summarize_at(
+    c("item", "item_take", "item_PF", "item_HL"),
+    function(x) list(unique(x))
     ) %>%
+  ungroup %>%
   
+  # course current all
+  rowwise %>%
+  mutate(
+    course_current = list(c(item, item_take, item_PF, item_HL))
+    ) %>%
+  ungroup %>%
+  
+  # course past
   group_by(
     sequenceID
     ) %>%
   mutate(
     course_past = Reduce(
-      f = c, 
-      x = course_current, 
+      f = c,
+      x = course_current,
       accumulate = TRUE
       ) %>%
       lag(
         default = as.character(NA)
         )
     ) %>%
+  ungroup %>%
   
-  rowwise %>% # equivalent to "group by row"
+  # course so far, course not so far
+  rowwise %>%
   mutate(
-    course_so_far     = list(union  (course_past, course_current)),
-    course_not_so_far = list(setdiff(course_all , course_so_far ))
+    course_past_current = list(union  (course_past, course_current      )),
+    course_not_yet      = list(setdiff(course_all , course_past_current )),
+    course_not_yet      = list(paste(course_not_yet, "not", sep = "_"   )),
+    course_so_far       = list(union  (course_past, course_not_yet))
     ) %>%
-  ungroup
+  ungroup %>%
+  
+  # lhs: past, rhs: present
+  select(
+    sequenceID,
+    lhs = course_so_far,
+    rhs = course_current
+  )
 
 
 rm(course_all)
@@ -971,35 +1000,34 @@ SR$HL <- sequences$HL %>%
 
 #### not take -> fail
 ```{r SR TPF, eval = FALSE}
-
 #
-# SR by hand
+# SR
 
-# rhs = current course
-d_transcript_cum_current <- d_transcript_cum %>%
+x <- d_transcript_cum %>%
+  
+  # rhs
   unnest(
-    course_current,
-    .drop = FALSE
-    ) %>%
-  rename(
-    rhs = course_current
-    )
-
-# lhs = course not so far
-d_transcript_cum_current %>%
-  unnest(
-    course_not_so_far,
-    .drop = FALSE
-    ) %>%
-  rename(
-    lhs = course_not_so_far
-    ) %>%
-  count(
-    lhs, 
     rhs,
-    sort = TRUE
+    .drop = FALSE
     ) %>%
-  filter(str_detect(rhs, "fail"))
+  filter(
+    str_detect(rhs, "low")
+    ) %>%
+  
+  # lhs
+  unnest(
+    lhs,
+    .drop = FALSE
+    ) %>%
+  filter(
+    str_detect(lhs, "not")
+    ) %>%
+  
+  # support
+  count(
+    lhs,
+    rhs
+    )
 ```
 
 #### grade less than or equal to x -> grade less than or equal to 6
@@ -1077,58 +1105,4 @@ rm(
   my_cspade, my_ruleInduction, clean_rules, compute_rhs.support, edit_rules, make_SR,
   n_students
 )
-```
-
-
-SR_TPF are manually computed
-```{r, eval = FALSE}
-# current, past, not_yet
-SR_TPF <- d_transcript_cum                         %>%
-  select(sequenceID, eventID, course_current, course_not_so_far)    %>%
-  unnest(course_current, .drop = F)                %>%
-  unnest(course_not_so_far)                        %>%
-  left_join(
-    select(d_transactions$TPF, 
-           sequenceID, eventID, item, PF), 
-    by= c("sequenceID" = "sequenceID", "eventID" = "eventID", "course_current" = "item")
-    )                                              %>%
-  select(sequenceID,eventID, course_not_so_far, course_current, PF) %>%
-  rename(
-    lhs="course_not_so_far", 
-    rhs.x = "course_current", 
-    rhs.PF = "PF")                                 %>%
-  mutate(num_transactions = n())                   %>%
-  group_by(lhs)                                    %>%
-  mutate(
-    num_lhs = n(),
-    support_lhs         = num_lhs / num_transactions
-    )                                              %>%
-  group_by(rhs.x)                                  %>%
-  mutate(
-    num_rhs.x           = n(),
-    support_rhs.x       = num_rhs.x / num_transactions
-         )                                         %>%
-  group_by(rhs.x,rhs.PF)                           %>%
-  mutate(
-    num_rhs.PF          = n(),
-    support_rhs.PF      = num_rhs.PF / num_transactions
-  )                                                %>%
-  group_by(lhs, rhs.x)                             %>%
-  mutate(
-    num_rule_x          = n(),
-    support_rule_rhs.x  = num_rule_x / num_transactions
-  )                                                %>%
-  group_by(lhs, rhs.x, rhs.PF)                     %>%
-  mutate(
-    num_rule_PF          = n(),
-    support_rule_rhs.PF  = num_rule_PF / num_transactions,
-    support_rhs_bounded  = num_rule_PF / num_rule_x
-         )                                         %>%
-  ungroup()                                        %>%
-  mutate(
-    confidence                   = support_rule_rhs.PF / support_lhs,
-    confidence_bounded           = support_rhs_bounded / support_lhs, #not sure about this 
-    lift                         = confidence / support_rhs.PF,
-    lift_bounded                 = confidence_bounded /support_rhs_bounded #not sure about this
-  )
 ```
