@@ -24,12 +24,15 @@ DARS
         -   [take -&gt; take](#take---take)
         -   [fail -&gt; fail](#fail---fail)
         -   [low grade -&gt; low grade](#low-grade---low-grade)
-        -   [not take -&gt; fail](#not-take---fail)
+        -   [not -&gt; fail](#not---fail)
+        -   [not -&gt; low](#not---low)
         -   [grade less than or equal to x -&gt; grade less than or equal to 6](#grade-less-than-or-equal-to-x---grade-less-than-or-equal-to-6)
     -   [Sequence Rules](#sequence-rules)
         -   [take -&gt; take](#take---take-1)
         -   [fail -&gt; fail](#fail---fail-1)
         -   [low grade -&gt; low grade](#low-grade---low-grade-1)
+        -   [not -&gt; fail](#not---fail-1)
+        -   [not -&gt; low](#not---low-1)
         -   [grade less than or equal to x -&gt; grade less than or equal to 6](#grade-less-than-or-equal-to-x---grade-less-than-or-equal-to-6-1)
     -   [Editing rules](#editing-rules)
 
@@ -244,7 +247,7 @@ n_students  <- length(student_all)
 ### Take / not take, pass / fail / not take
 
 ``` r
-d_transactions$TPF <- expand.grid(
+d_transactions$T_PF_HL <- expand.grid(
   
   # Expand along students (sequenceID) and courses (itemID)
   sequenceID       = student_all,
@@ -262,12 +265,19 @@ d_transactions$TPF <- expand.grid(
   mutate(
     
     TPF = case_when(
-      is.na(Grade)        ~ "not taken",
+      is.na(Grade)        ~ "not",
       Grade <  pass_grade ~ "fail",
       Grade >= pass_grade ~ "pass"
       ),
+    THL = case_when(
+      is.na(Grade)        ~ "not",
+      Grade <  high_grade ~ "low",
+      Grade >= high_grade ~ "high"
+      ),
 
-    item_TPF = paste(item, TPF, sep = "_")
+    item_TPF = paste(item, TPF, sep = "_"),
+    
+    item_THL = paste(item, THL, sep = "_")
     
     )
 ```
@@ -410,10 +420,11 @@ transactions <- list()
 transactions$taken <- make_transaction(item = item   )
 transactions$PF    <- make_transaction(item = item_PF)
 transactions$HL    <- make_transaction(item = item_HL)
-transactions$TPF   <- make_transaction(data = d_transactions$TPF, item = item_TPF)
+transactions$TPF   <- make_transaction(data = d_transactions$T_PF_HL, item = item_TPF)
+transactions$THL   <- make_transaction(data = d_transactions$T_PF_HL, item = item_THL)
 transactions$G     <- make_transaction(data = d_transactions$G  , item = item_G  )
 
-# inspect(head(transactions, 10))
+# inspect(head(transactions$taken, 10))
 ```
 
 Sequences
@@ -805,7 +816,7 @@ AR$HL <- transactions$HL %>%
     )
 ```
 
-### not take -&gt; fail
+### not -&gt; fail
 
 ``` r
 AR$TPF <- transactions$TPF %>%
@@ -817,14 +828,37 @@ AR$TPF <- transactions$TPF %>%
   
   # Confidence and Lift
   filter(
+    str_detect(lhs, "not"),
     str_detect(rhs, "fail|pass") # only keep rhsTake for computing confidence and lift
+    ) %>%
+  compute_conf_lift %>%
+  
+  # rhs must be fail, count >= 5
+  filter(
+    str_detect(rhs, "fail")
+    )
+```
+
+### not -&gt; low
+
+``` r
+AR$THL <- transactions$THL %>%
+  
+  make_AR(
+    data_support = d_support$PF_HL, 
+    type_rule = rate.low
+    ) %>%
+  
+  # only keep lhs is not and rhs is low or high to compute Confidence and Lift
+  filter(
+    str_detect(lhs, "not"),
+    str_detect(rhs, "low|high")
     ) %>%
   compute_conf_lift %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
-    str_detect(lhs, "not"),
-    str_detect(rhs, "fail")
+    str_detect(rhs, "low")
     )
 ```
 
@@ -899,14 +933,6 @@ SR$taken <- sequences$taken %>%
   )
 ```
 
-    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
-    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-    ## 20, ...].
-
-    ## Warning: Expected 2 pieces. Missing pieces filled with `NA` in 14390
-    ## rows [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-    ## 20, ...].
-
 ### fail -&gt; fail
 
 ``` r
@@ -945,7 +971,7 @@ SR$HL <- sequences$HL %>%
     )
 ```
 
-#### not take -&gt; fail
+### not -&gt; fail
 
 ``` r
 SR$TPF <- d_transcript_cum %>%
@@ -997,26 +1023,61 @@ SR$TPF <- d_transcript_cum %>%
   filter(
     str_detect(rhs, "fail")
     )
-
-print(SR$TPF)
 ```
 
-    ## # A tibble: 18,501 x 14
-    ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome     n support
-    ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>       <int>   <dbl>
-    ##  1 HUM1~ HUM1003    not         HUM1~ HUM1007    fail           23 9.18e-3
-    ##  2 HUM1~ HUM1003    not         HUM1~ HUM1010    fail            2 7.98e-4
-    ##  3 HUM1~ HUM1003    not         HUM1~ HUM1011    fail           10 3.99e-3
-    ##  4 HUM1~ HUM1003    not         HUM1~ HUM1012    fail            3 1.20e-3
-    ##  5 HUM1~ HUM1003    not         HUM1~ HUM1013    fail           15 5.99e-3
-    ##  6 HUM1~ HUM1003    not         HUM1~ HUM1014    fail            3 1.20e-3
-    ##  7 HUM1~ HUM1003    not         HUM2~ HUM2003    fail           35 1.40e-2
-    ##  8 HUM1~ HUM1003    not         HUM2~ HUM2005    fail           14 5.59e-3
-    ##  9 HUM1~ HUM1003    not         HUM2~ HUM2007    fail            4 1.60e-3
-    ## 10 HUM1~ HUM1003    not         HUM2~ HUM2008    fail            4 1.60e-3
-    ## # ... with 18,491 more rows, and 6 more variables: rate.fail <dbl>,
-    ## #   rhs.support <dbl>, lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>,
-    ## #   confidence <dbl>, lift <dbl>
+### not -&gt; low
+
+``` r
+SR$THL <- d_transcript_cum %>%
+  
+  # rhs
+  unnest(
+    rhs,
+    .drop = FALSE
+    ) %>%
+  filter(
+    str_detect(rhs, "high|low")
+    ) %>%
+  
+  # lhs
+  unnest(
+    lhs,
+    .drop = FALSE
+    ) %>%
+  filter(
+    str_detect(lhs, "not")
+    ) %>%
+  
+  # rule
+  unite(
+    col = "rule",
+    lhs, rhs,
+    sep = " => "
+    ) %>%
+  
+  # rule support
+  count(
+    rule
+    ) %>%
+  mutate(
+    support = n / n_students
+    ) %>%
+  
+  # regular fucntions
+  clean_rules %>%
+  
+  compute_rhs.support(
+    data_support = d_support$PF_HL,
+    type_rule    = rate.low
+    ) %>%
+  
+  compute_conf_lift %>%
+  
+  # lhs not, rhs low
+  filter(
+    str_detect(rhs, "low")
+    )
+```
 
 ### grade less than or equal to x -&gt; grade less than or equal to 6
 
@@ -1088,7 +1149,7 @@ edit_rules <- function(rules){
     ) %>%
     
     filter(
-      count >= 5
+      count >= 10
       ) %>%
     
     mutate_if(
@@ -1124,39 +1185,39 @@ SR <- lapply(
 ```
 
 ``` r
-print(AR$TPF)
+print(AR$THL)
 ```
 
-    ## # A tibble: 12,935 x 9
+    ## # A tibble: 13,446 x 9
     ##    lhs   rhs   support count confidence rhs.support  lift lhs.rhsTake.sup~
     ##    <chr> <chr>   <dbl> <dbl>      <dbl>       <dbl> <dbl>            <dbl>
-    ##  1 SSC2~ SSC1~  0.0587   147      0.175       0.213 0.822            0.336
-    ##  2 HUM2~ SSC1~  0.0587   147      0.174       0.213 0.818            0.337
-    ##  3 UGR3~ SSC1~  0.0587   147      0.174       0.213 0.816            0.338
-    ##  4 SCI3~ SSC1~  0.0587   147      0.173       0.213 0.812            0.340
-    ##  5 HUM3~ SSC1~  0.0587   147      0.173       0.213 0.814            0.339
-    ##  6 SCI3~ SSC1~  0.0587   147      0.173       0.213 0.813            0.339
-    ##  7 SSC3~ SSC1~  0.0587   147      0.172       0.213 0.809            0.341
-    ##  8 UGR2~ SSC1~  0.0583   146      0.180       0.213 0.845            0.324
-    ##  9 HUM2~ SSC1~  0.0583   146      0.173       0.213 0.811            0.338
-    ## 10 SCI2~ SSC1~  0.0583   146      0.175       0.213 0.824            0.332
-    ## # ... with 12,925 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+    ##  1 SCI2~ SCI2~   0.138   345      0.371       0.416 0.891            0.371
+    ##  2 SCI3~ SCI2~   0.138   345      0.371       0.416 0.890            0.372
+    ##  3 SCI3~ SCI2~   0.138   345      0.369       0.416 0.887            0.373
+    ##  4 HUM2~ SCI2~   0.138   345      0.371       0.416 0.891            0.371
+    ##  5 SCI3~ SCI2~   0.138   345      0.369       0.416 0.887            0.373
+    ##  6 SSC3~ SCI2~   0.138   345      0.369       0.416 0.887            0.373
+    ##  7 SCI2~ SCI2~   0.137   344      0.369       0.416 0.887            0.372
+    ##  8 SCI2~ SCI2~   0.137   344      0.370       0.416 0.888            0.372
+    ##  9 SCI3~ SCI2~   0.137   344      0.369       0.416 0.887            0.372
+    ## 10 SCI3~ SCI2~   0.137   344      0.370       0.416 0.888            0.372
+    ## # ... with 13,436 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
 
 ``` r
-print(SR$TPF)
+print(SR$THL)
 ```
 
-    ## # A tibble: 13,123 x 9
+    ## # A tibble: 13,725 x 9
     ##    lhs   rhs   support count confidence rhs.support  lift lhs.rhsTake.sup~
     ##    <chr> <chr>   <dbl> <dbl>      <dbl>       <dbl> <dbl>            <dbl>
-    ##  1 HUM1~ SSC1~  0.0603   151      0.177       0.213 0.832            0.340
-    ##  2 HUM1~ SSC1~  0.0603   151      0.177       0.213 0.834            0.340
-    ##  3 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.833            0.340
-    ##  4 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.832            0.340
-    ##  5 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.831            0.341
-    ##  6 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.832            0.340
-    ##  7 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.830            0.341
-    ##  8 HUM2~ SSC1~  0.0603   151      0.177       0.213 0.832            0.340
-    ##  9 HUM2~ SSC1~  0.0603   151      0.176       0.213 0.829            0.342
-    ## 10 HUM2~ SSC1~  0.0603   151      0.176       0.213 0.827            0.342
-    ## # ... with 13,113 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+    ##  1 HUM2~ SCI2~   0.146   367      0.385       0.416 0.925            0.380
+    ##  2 HUM2~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
+    ##  3 HUM3~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
+    ##  4 SCI1~ SCI2~   0.146   367      0.385       0.416 0.925            0.380
+    ##  5 SCI2~ SCI2~   0.146   367      0.384       0.416 0.923            0.381
+    ##  6 SCI2~ SCI2~   0.146   367      0.386       0.416 0.927            0.379
+    ##  7 SCI2~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
+    ##  8 SCI2~ SCI2~   0.146   367      0.384       0.416 0.923            0.381
+    ##  9 SCI3~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
+    ## 10 SCI3~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
+    ## # ... with 13,715 more rows, and 1 more variable: lhs.rhsTake.count <dbl>

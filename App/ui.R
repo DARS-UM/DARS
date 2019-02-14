@@ -13,7 +13,7 @@ fluidPage(
       # Input: button for the type of rules
       radioButtons(
         inputId = "rules",
-        label = "Type of rules",
+        label   = "Type of rules",
         choices = c(
           "Association rules" = "AR",
           "Sequence rules"    = "SR"
@@ -30,6 +30,7 @@ fluidPage(
           "fail => fail"                   = "PF",
           "Low grade (< 6.5) => low grade" = "HL",
           "not taken or fail => fail"      = "TPF",
+          "not taken or fail => low"       = "THL",
           "less than => less than"         = "G"
         ),
         selected = "taken"

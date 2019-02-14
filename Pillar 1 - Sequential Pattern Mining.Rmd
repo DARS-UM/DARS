@@ -224,8 +224,8 @@ n_students  <- length(student_all)
 ```
 
 ### Take / not take, pass / fail / not take
-```{r d_transactions TPF}
-d_transactions$TPF <- expand.grid(
+```{r d_transactions T_PF_HL}
+d_transactions$T_PF_HL <- expand.grid(
   
   # Expand along students (sequenceID) and courses (itemID)
   sequenceID       = student_all,
@@ -243,12 +243,19 @@ d_transactions$TPF <- expand.grid(
   mutate(
     
     TPF = case_when(
-      is.na(Grade)        ~ "not taken",
+      is.na(Grade)        ~ "not",
       Grade <  pass_grade ~ "fail",
       Grade >= pass_grade ~ "pass"
       ),
+    THL = case_when(
+      is.na(Grade)        ~ "not",
+      Grade <  high_grade ~ "low",
+      Grade >= high_grade ~ "high"
+      ),
 
-    item_TPF = paste(item, TPF, sep = "_")
+    item_TPF = paste(item, TPF, sep = "_"),
+    
+    item_THL = paste(item, THL, sep = "_")
     
     )
 ```
@@ -387,10 +394,11 @@ transactions <- list()
 transactions$taken <- make_transaction(item = item   )
 transactions$PF    <- make_transaction(item = item_PF)
 transactions$HL    <- make_transaction(item = item_HL)
-transactions$TPF   <- make_transaction(data = d_transactions$TPF, item = item_TPF)
+transactions$TPF   <- make_transaction(data = d_transactions$T_PF_HL, item = item_TPF)
+transactions$THL   <- make_transaction(data = d_transactions$T_PF_HL, item = item_THL)
 transactions$G     <- make_transaction(data = d_transactions$G  , item = item_G  )
 
-# inspect(head(transactions, 10))
+# inspect(head(transactions$taken, 10))
 ```
 
 
@@ -523,6 +531,7 @@ rm(
   
   make_transaction, transactions, 
   make_sequence, sequences
+  
   )
 ```
 
@@ -787,7 +796,7 @@ AR$HL <- transactions$HL %>%
     )
 ```
 
-### not take -> fail
+### not -> fail
 ```{r AR TPF, cache = TRUE}
 AR$TPF <- transactions$TPF %>%
   
@@ -798,18 +807,41 @@ AR$TPF <- transactions$TPF %>%
   
   # Confidence and Lift
   filter(
+    str_detect(lhs, "not"),
     str_detect(rhs, "fail|pass") # only keep rhsTake for computing confidence and lift
+    ) %>%
+  compute_conf_lift %>%
+  
+  # rhs must be fail, count >= 5
+  filter(
+    str_detect(rhs, "fail")
+    )
+```
+
+### not -> low
+```{r AR THL, cache = TRUE}
+AR$THL <- transactions$THL %>%
+  
+  make_AR(
+    data_support = d_support$PF_HL, 
+    type_rule = rate.low
+    ) %>%
+  
+  # only keep lhs is not and rhs is low or high to compute Confidence and Lift
+  filter(
+    str_detect(lhs, "not"),
+    str_detect(rhs, "low|high")
     ) %>%
   compute_conf_lift %>%
   
   # lhs and rhs must be fail, count >= 5
   filter(
-    str_detect(lhs, "not"),
-    str_detect(rhs, "fail")
+    str_detect(rhs, "low")
     )
 ```
 
 ### grade less than or equal to x -> grade less than or equal to 6
+
 ```{r AR grade, cache = TRUE}
 AR$G <- transactions$G %>%
   
@@ -865,7 +897,7 @@ AR$G <- transactions$G %>%
 We apply make_SR to get different types of sequential rules:
 
 ### take -> take
-```{r SR taken, cache = TRUE}
+```{r SR taken, cache = TRUE, warning = FALSE}
 SR <- list()
 
 SR$taken <- sequences$taken %>%
@@ -912,7 +944,7 @@ SR$HL <- sequences$HL %>%
     )
 ```
 
-### not take -> fail
+### not -> fail
 ```{r SR TPF, cache = TRUE}
 SR$TPF <- d_transcript_cum %>%
   
@@ -962,6 +994,59 @@ SR$TPF <- d_transcript_cum %>%
   # lhs not, rhs low
   filter(
     str_detect(rhs, "fail")
+    )
+```
+
+### not -> low
+```{r SR THL, cache = TRUE}
+SR$THL <- d_transcript_cum %>%
+  
+  # rhs
+  unnest(
+    rhs,
+    .drop = FALSE
+    ) %>%
+  filter(
+    str_detect(rhs, "high|low")
+    ) %>%
+  
+  # lhs
+  unnest(
+    lhs,
+    .drop = FALSE
+    ) %>%
+  filter(
+    str_detect(lhs, "not")
+    ) %>%
+  
+  # rule
+  unite(
+    col = "rule",
+    lhs, rhs,
+    sep = " => "
+    ) %>%
+  
+  # rule support
+  count(
+    rule
+    ) %>%
+  mutate(
+    support = n / n_students
+    ) %>%
+  
+  # regular fucntions
+  clean_rules %>%
+  
+  compute_rhs.support(
+    data_support = d_support$PF_HL,
+    type_rule    = rate.low
+    ) %>%
+  
+  compute_conf_lift %>%
+  
+  # lhs not, rhs low
+  filter(
+    str_detect(rhs, "low")
     )
 ```
 
@@ -1031,7 +1116,7 @@ edit_rules <- function(rules){
     ) %>%
     
     filter(
-      count >= 5
+      count >= 10
       ) %>%
     
     mutate_if(
@@ -1067,8 +1152,8 @@ SR <- lapply(
 ```
 
 ```{r show rules}
-print(AR$TPF)
-print(SR$TPF)
+print(AR$THL)
+print(SR$THL)
 ```
 
 ```{r save rules, include = FALSE}

@@ -1,7 +1,4 @@
 base
-Matrix
-arules
-arulesSequences
 tidyverse
 ggplot2
 tibble
@@ -11,4 +8,7 @@ purrr
 dplyr
 stringr
 forcats
+Matrix
+arules
+arulesSequences
 bindrcpp
