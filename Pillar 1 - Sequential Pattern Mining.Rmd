@@ -460,6 +460,7 @@ rm(make_sequence #, d_transactions
 ```
 
 ## Support
+We calculate the support for all rules manually.
 ```{r}
 
 #
@@ -502,7 +503,7 @@ d_support$PF_HL <- d_transactions$taken_PF_HL %>%
 
 
 #
-# Probability oh having a grade equal or lower than x
+# Probability of having a grade equal or lower than x
 d_support$G <- d_transactions$taken_PF_HL %>%
   group_by(
     item
