@@ -13,6 +13,7 @@ library(tidyverse)
 This contains AR and SR
 ```{r setup}
 load("App/rules.RDATA")
+load("Output/transaction_df.RDATA")
 ```
 
 First we gather a sample of students to provide recommendations to:
