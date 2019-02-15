@@ -9,6 +9,19 @@ output: pdf_document
 library(tidyverse)
 ```
 
+#CHECKING WHAT DATA SET TO USE
+```{r}
+(nrow(d_transcript)-nrow(d_transactions$taken_PF_HL))
+
+s.1 <- data.frame(`Student ID` = unique(d_transactions$taken_PF_HL$sequenceID), first = 1)
+s.2 <- data.frame(`Student ID` = unique(d_transcript$`Student ID`), first = 2)
+(nrow(s.1)-nrow(s.2))
+
+missing_students <- full_join(s.1,s.2, by = "Student.ID") %>% 
+  filter(is.na(first.x)) %>%
+  select(Student.ID)
+```
+
 #Setup
 This contains AR and SR
 ```{r setup}
@@ -18,9 +31,6 @@ load("Output/transaction_df.RDATA")
 
 First we gather a sample of students to provide recommendations to. We use `d_transactions$taken_PF_HL`
 ```{r sample}
-
-student <- "6060984"
-
 students <- unique(d_transactions$taken_PF_HL$sequenceID)
 size = floor(length(students)/10)
 
@@ -31,6 +41,7 @@ s1 <- sample(
   x    = students,
   size = size 
 )
+
 #
 ##Transcripts of selected students
 target_transcript <- d_transactions$taken_PF_HL %>%
@@ -82,8 +93,8 @@ recommendations %>%
   left_join(prospective_courses, by= c("rhs"="Course ID")) %>%
   drop_na()
 ```
+
 ###PF
-Note we need to take the d_transactions, not the transcripts! cause we need the columns item_PF
 ```{r prospective red flag}
 prospective_RedFlag <- AR$PF %>%
   left_join(prospective_courses, by = c("lhs"="item_PF"))%>%
@@ -93,7 +104,6 @@ prospective_RedFlag <- AR$PF %>%
   arrange(desc(RHS_vote))
 
 ```
-
 ###HL
 ```{r expected low result}
 expect_low_result <- AR$HL  %>%
@@ -102,11 +112,53 @@ expect_low_result <- AR$HL  %>%
   group_by(rhs) %>%
   mutate(RHS_vote= n())%>%
   arrange(desc(RHS_vote))
-
 ```
 
 
+##Matching sequences to students
+###Taken
+```{r will take}
+d_suggestions<- SR$taken %>%
+  left_join(sample_transcript, by = c("lhs"="item"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
 
+recommendations <- taken_match[1:5,] %>% select(rhs)
+  
+
+```
+####Check
+```{r evaluation}
+recommendations %>%
+  left_join(prospective_courses, by= c("rhs"="Course ID")) %>%
+  drop_na()
+```
+
+###PF
+```{r prospective red flag}
+d_prospective_RedFlag <- SR$PF %>%
+  left_join(prospective_courses, by = c("lhs"="item_PF"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+d_prospective_RedFlag
+
+```
+###HL
+```{r expected low result}
+d_expect_low_result <- AR$HL  %>%
+  left_join(prospective_courses, by = c("lhs"="item_HL"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+d_expect_low_result
+```
 
 
 
