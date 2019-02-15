@@ -5,7 +5,14 @@ date: "`r Sys.Date()`"
 output: 
   github_document:
     toc: TRUE
+editor_options: 
+  chunk_output_type: console
 ---
+
+```{r setup, include = T}
+knitr::opts_chunk$set(cache.path = "Cache/Data Preparation/")
+```
+
 
 ```{r libraries, message = FALSE}
 library(tidyverse)
@@ -103,7 +110,7 @@ d_transcript <- rbind(
 ```
 
 # Variable Engineering
-## Program Data
+## Course Data
 The analysis performed on the course data is aimed at discoving what the contribution of each course is towards the fullfilment of the AoDs, and comparing different types of curricula, or programs, based on this infromation. 
 
 ### AoD
@@ -148,7 +155,7 @@ for(i in 1 : nrow(d_assessment)){
   AoD         <- lists$AoD[AoD_covered]
   
   if(length(AoD) >= 1) d_AoD_assessment <- rbind(d_AoD_assessment,
-                                                 as.tibble(cbind(observation,
+                                                 as_tibble(cbind(observation,
                                                                  AoD)))
 }
 rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
@@ -464,9 +471,27 @@ print(d_description) # stop words (on, the, of, etc, are excluded)
 
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 ```{r}
+
 d_transcript <- d_transcript %>%
+  
+  # Remove variables with only one value
+  select_if(
+    function(x) n_distinct(x) > 1
+  ) %>%
+  
+  # Remove variables with more than 99% NA
+  select_if(
+    function(x) mean(is.na(x)) < 0.99
+  )
+
+
+d_transcript <- d_transcript %>%
+  
   # only keep one observation (with the final grade) per student-course
-  filter(`Appraisal (Description)` == "Grade supervisor", `Appraisal Type`=="7055") %>%
+  filter(
+    `Appraisal (Description)` == "Grade supervisor",
+    `Appraisal Type`=="7055"
+    ) %>%
   select(`Student Number`,
          `Module (Abbrev.)`,
          `Module (Desc.)`,

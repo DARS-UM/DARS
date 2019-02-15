@@ -7,6 +7,11 @@ output:
     toc: TRUE
 ---
 
+```{r setup, include = T}
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/")
+```
+
+
 ```{r library, message = F}
 library(tidyverse)
 library(tidytext)
