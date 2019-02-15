@@ -497,11 +497,11 @@ d_transcript <- d_transcript %>%
   
   # Select: Student ID, course ID, when course taken and grade 
   select(
-    `Student ID` = `Student Number`,
-    `Course ID`  = `Module (Abbrev.)`,
-    `Academic Year`,
-    Period       = `Academic Session`,
-    Grade        = `Grade symbol`
+    `Student ID`   = `Student Number`,
+    `Course ID`    = `Module (Abbrev.)`,
+    Year_numerical =`Academic Year`,
+    Period         = `Academic Session`,
+    Grade          = `Grade symbol`
     ) %>%
   
   # Clean grade variable
@@ -548,12 +548,12 @@ d_transcript <- d_transcript %>%
       ),
     
     time = paste(
-      `Academic Year`, substr(Period, 1, 1),
+      Year_numerical, substr(Period, 1, 1),
       sep = ""
       ),
     
     `Academic Year`= paste(
-      `Academic Year`, `Academic Year` + 1,
+      Year_numerical, Year_numerical + 1,
       sep = "-")
     
     )
