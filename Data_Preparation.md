@@ -20,7 +20,6 @@ DARS
         -   [Stemming](#stemming)
         -   [Removing Stopwords](#removing-stopwords)
     -   [Student Data](#student-data-1)
-        -   [Selecting Variables](#selecting-variables)
 -   [Save Data](#save-data)
 
 ``` r
@@ -173,6 +172,7 @@ d_transcript <- rbind(
       `End Date` = col_character()
       )
     ),
+  
   read_csv(
     "./Input/Raw Grades/grades2.csv",
     col_types = cols(
@@ -184,6 +184,7 @@ d_transcript <- rbind(
       `End Date` = col_character()
       )
     )
+  
   )
 ```
 
@@ -811,8 +812,6 @@ Student Data
 
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
-### Selecting Variables
-
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 
 ``` r
@@ -824,11 +823,10 @@ d_transcript <- d_transcript %>%
     !str_detect(`Module (Abbrev.)`, "EXT")
     ) %>%
   
-  # folowing guidelines of Richard Vos, only consider: `Appraisal (Description)` == "Grade supervisor" and 
+  # folowing guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type`          == "7055"
   filter(
     `Appraisal (Description)` == "Grade supervisor",
     `Appraisal Type`          == "7055" # removes ~ 15 observations
-    
   ) %>%
   
   # Remove variables with only one value
