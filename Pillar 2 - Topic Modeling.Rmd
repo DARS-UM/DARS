@@ -329,43 +329,6 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 
 # LDA
 
-## Ideal Number of Topics (RUN ON UM COMPUTER)
-
-```{r LDA number topics, eval = FALSE}
-
-my_control <- list(
-  
-  nstart = 10,
-  seed   = 1 : 10,
-  best   = TRUE,
-  
-  burnin = 500
-  iter   = 2000,
-  thin   = 100
-  
-)
-
-result <- FindTopicsNumber(
-  
-  d_description_cast,
-  topics = seq(from = 20, to = 150, by = 5),
-  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
-  method = "Gibbs",
-  control = my_control,
-  mc.cores = 1L
-  
-)
-
-save(result,
-     file = "LDA_ntopics.RDATA")
-```
-
-```{r LDA number topics plot}
-load("LDA_ntopics.RDATA")
-FindTopicsNumber_plot(result)
-```
-
-## Fitting Model
 ```{r my_cast_tdm}
 my_cast_tdm <- function(data, level) data %>%
   count(`Course ID`, word) %>%
@@ -377,6 +340,115 @@ d_manual_cast <- my_cast_tdm(d_manual)
 
 rm(my_cast_tdm)
 ```
+
+## Ideal Number of Topics (RUN ON UM COMPUTER)
+
+```{r}
+my_control <- list(
+  
+  nstart = 10,
+  seed   = 1 : 10,
+  best   = TRUE,
+  
+  burnin = 500,
+  iter   = 2000,
+  thin   = 100
+  
+)
+```
+
+```{r}
+my_FindTopicsNumber <- function(data_cast, n_topics){
+  
+  FindTopicsNumber(
+  
+  dtm = data_cast,
+  topics = n_topics,
+  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+  method = "Gibbs",
+  control = my_control,
+  mc.cores = 1L
+  
+  )
+  
+  
+}
+```
+
+```{r}
+start.time <- Sys.time()
+
+result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_descrition,
+     file = "Output/LDA_ntopics_description.RDATA")
+
+print(time.taken)
+```
+
+
+```{r}
+start.time <- Sys.time()
+
+result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_overview ,
+     file = "Output/LDA_ntopics_overview.RDATA")
+
+print(time.taken)
+```
+
+```{r, eval = F}
+start.time <- Sys.time()
+
+result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 155, by = 10))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_manual,
+     file = "Output/LDA_ntopics_manual.RDATA")
+
+print(time.taken)
+```
+
+
+from 20, to 40, by 5 topics takes
+22min for overview
+11min for description
+5.5hrs for manuals 
+
+
+```{r LDA number topics plot}
+
+load("Output/LDA_ntopics_description.RDATA")
+
+load("Output/LDA_ntopics_overview.RDATA")
+
+load("Output/LDA_ntopics_manual.RDATA")
+
+result_descrition %>%
+  select(-Griffiths2004) %>%
+  FindTopicsNumber_plot
+
+result_overview %>%
+  select(-Griffiths2004) %>%
+  FindTopicsNumber_plot
+
+result_manual %>%
+  select(-Griffiths2004) %>%
+  FindTopicsNumber_plot
+
+```
+
+## Fitting Model
+
 
 ```{r LDA fit, cache = TRUE}
 n_topics <- 5
@@ -422,7 +494,7 @@ save(list = list_nam,
 
 ## Visualization
 ### Functions
-```{r LDA prepare}
+```{r LDA prepare, eval = F}
 prepare_data_LDA_beta <- function(results){
   
   tidy(results, matrix = "beta") %>%
@@ -471,7 +543,7 @@ LDA_description_120 %>% prepare_data_LDA_beta
 LDA_description_120 %>% prepare_data_LDA_gamma(level = Cluster)
 ```
 
-```{r LDA visualize}
+```{r LDA visualize, eval = F}
 visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
   
   data_prepared %>%
@@ -540,7 +612,7 @@ visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
 }
 ```
 
-```{r LDA visualize all distrib}
+```{r LDA visualize all distrib, eval = F}
 visualize_LDA_all_distrib <- function(data, level = Course, id_plot = "test"){
 
   # Beta distribution
@@ -561,7 +633,7 @@ visualize_LDA_all_distrib <- function(data, level = Course, id_plot = "test"){
 }
 ```
 
-```{r LDA visualize all level}
+```{r LDA visualize all level, eval = F}
 visualize_LDA_all_level <- function(data, id_plot = "test"){
   
   data %>% 
@@ -580,7 +652,7 @@ visualize_LDA_all_level <- function(data, id_plot = "test"){
 ```
 
 ### Plots
-```{r LDA plot, cache = TRUE}
+```{r LDA plot, cache = TRUE, eval = F}
 load("LDA.RDATA")
 
 LDA_description_5 %>% visualize_LDA_all_level(id_plot = "description_k5")
@@ -590,7 +662,7 @@ LDA_overview_5 %>% visualize_LDA_all_level(id_plot = "overview_k5")
 LDA_manual_5 %>% visualize_LDA_all_level(id_plot = "manual_k5")
 ```
 
-```{r label, eval = FALSE}
+```{r label, eval = FALSE, eval = F}
 tidy(LDA_manual_10, "beta") %>%
   filter(beta > 1e-3) %>%
   bind_tf_idf(term = term, document = topic, n = beta) %>%
