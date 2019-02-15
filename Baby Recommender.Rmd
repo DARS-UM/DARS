@@ -19,7 +19,13 @@ s.2 <- data.frame(`Student ID` = unique(d_transcript$`Student ID`), first = 2)
 
 missing_students <- full_join(s.1,s.2, by = "Student.ID") %>% 
   filter(is.na(first.x)) %>%
-  select(Student.ID)
+  pull(Student.ID)
+
+
+View(d_transcript%>%
+  filter(`Student ID` %in% missing_students)) #students lost mostly only have external and core courses, there are a few internal courses missing: e.g. SSC1001
+
+
 ```
 
 #Setup
