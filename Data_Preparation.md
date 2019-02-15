@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-01-29
+2019-02-15
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -11,7 +11,7 @@ DARS
         -   [Course Manuals](#course-manuals)
     -   [Student Data](#student-data)
 -   [Variable Engineering](#variable-engineering)
-    -   [Program Data](#program-data)
+    -   [Course Data](#course-data-1)
         -   [AoD](#aod)
         -   [Courses](#courses)
     -   [Textual Data](#textual-data-1)
@@ -21,13 +21,11 @@ DARS
         -   [Removing Stopwords](#removing-stopwords)
     -   [Student Data](#student-data-1)
         -   [Selecting Variables](#selecting-variables)
-        -   [Keeping UCM program only](#keeping-ucm-program-only)
-        -   [Clean Grade Variable](#clean-grade-variable)
 -   [Save Data](#save-data)
--   [TODO](#todo)
-    -   [Estimating concentrations](#estimating-concentrations)
-        -   [Getting UCM\_YEAR](#getting-ucm_year)
-        -   [Removing master Program data and Cleaning Capstone Data](#removing-master-program-data-and-cleaning-capstone-data)
+
+``` r
+knitr::opts_chunk$set(cache.path = "Cache/Data Preparation/")
+```
 
 ``` r
 library(tidyverse)
@@ -45,7 +43,7 @@ The datasets we use are saved as spreadsheet on our google drive *DARS* (with ex
 Setup
 -----
 
-First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. `lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and two columns containing binary vectors indicating which assessment types and AoD we will consider when ploting the data[1]. Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
+First, we import the spreadsheet with information pertraining the Aims of the Degree (AoD) and Assessments from the drive and save it under `lists_brut`. `lists_brut` contains 4 columns, under which we find the `19` types of assessment, the `18` aims of the degree (AoD) of the degree, and two columns containing binary vectors indicating which assessment types and AoD we will consider when ploting the data\[^1\]. Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
 
 ``` r
 lists_brut <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347')
@@ -70,20 +68,20 @@ print(d_course)
 
     ## # A tibble: 280 x 11
     ##    `Course ID` `Course Title` Period `Period (additi~ `Period (additi~
-    ##    <chr>       <chr>          <chr>  <chr>            <chr>           
-    ##  1 AAM2001     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  2 AAM2002     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  3 AAM2003     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  4 AAM2004     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  5 AAM2005     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  6 AAM2006     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  7 AAM2007     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  8 CAP3000     Capstone       Perio~ Period 4         <NA>            
-    ##  9 COR1002     Philosophy of~ Perio~ Period 5         <NA>            
-    ## 10 COR1003     Contemporary ~ Perio~ Period 4         <NA>            
+    ##    <chr>       <chr>          <chr>  <chr>            <lgl>           
+    ##  1 AAM2001     Academic Advi~ Perio~ <NA>             NA              
+    ##  2 AAM2002     Academic Advi~ Perio~ <NA>             NA              
+    ##  3 AAM2003     Academic Advi~ Perio~ <NA>             NA              
+    ##  4 AAM2004     Academic Advi~ Perio~ <NA>             NA              
+    ##  5 AAM2005     Academic Advi~ Perio~ <NA>             NA              
+    ##  6 AAM2006     Academic Advi~ Perio~ <NA>             NA              
+    ##  7 AAM2007     Academic Advi~ Perio~ <NA>             NA              
+    ##  8 CAP3000     Capstone       Perio~ Period 4         NA              
+    ##  9 COR1002     Philosophy of~ Perio~ Period 5         NA              
+    ## 10 COR1003     Contemporary ~ Perio~ Period 4         NA              
     ## # ... with 270 more rows, and 6 more variables: Concentration <chr>,
     ## #   `Concentration (additional)` <chr>, Cluster <chr>, `Missing from ILO
-    ## #   File` <int>, `Most Recent Catalogue` <chr>, Type <chr>
+    ## #   File` <dbl>, `Most Recent Catalogue` <chr>, Type <chr>
 
 ``` r
 d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
@@ -192,8 +190,8 @@ d_transcript <- rbind(
 Variable Engineering
 ====================
 
-Program Data
-------------
+Course Data
+-----------
 
 The analysis performed on the course data is aimed at discoving what the contribution of each course is towards the fullfilment of the AoDs, and comparing different types of curricula, or programs, based on this infromation.
 
@@ -271,15 +269,9 @@ for(i in 1 : nrow(d_assessment)){
   AoD         <- lists$AoD[AoD_covered]
   
   if(length(AoD) >= 1) d_AoD_assessment <- rbind(d_AoD_assessment,
-                                                 as.tibble(cbind(observation,
+                                                 as_tibble(cbind(observation,
                                                                  AoD)))
 }
-```
-
-    ## Warning: `as.tibble()` is deprecated, use `as_tibble()` (but mind the new semantics).
-    ## This warning is displayed once per session.
-
-``` r
 rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 ```
 
@@ -407,8 +399,8 @@ print(d_course)
     ## 10 COR1003     Contemporary ~ History     3            3 Paper, Written ~
     ## # ... with 270 more rows, and 10 more variables: n_AoD <int>, `AoD
     ## #   Covered` <chr>, Period <chr>, `Period (additional)` <chr>, `Period
-    ## #   (additional bis)` <chr>, Concentration <chr>, `Concentration
-    ## #   (additional)` <chr>, `Missing from ILO File` <int>, `Most Recent
+    ## #   (additional bis)` <lgl>, Concentration <chr>, `Concentration
+    ## #   (additional)` <chr>, `Missing from ILO File` <dbl>, `Most Recent
     ## #   Catalogue` <chr>, Type <chr>
 
 The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
@@ -438,8 +430,8 @@ print(filter(d_course, `Course ID` %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2
     ## 8 UGR2005     Artistic Rese~ Methods    NA            2 Paper, Research~
     ## # ... with 10 more variables: n_AoD <int>, `AoD Covered` <chr>,
     ## #   Period <chr>, `Period (additional)` <chr>, `Period (additional
-    ## #   bis)` <chr>, Concentration <chr>, `Concentration (additional)` <chr>,
-    ## #   `Missing from ILO File` <int>, `Most Recent Catalogue` <chr>,
+    ## #   bis)` <lgl>, Concentration <chr>, `Concentration (additional)` <chr>,
+    ## #   `Missing from ILO File` <dbl>, `Most Recent Catalogue` <chr>,
     ## #   Type <chr>
 
 Finally, we add a series of informative variable at the course level.
@@ -564,18 +556,18 @@ print(d_description)
 ```
 
     ## # A tibble: 831 x 4
-    ##    `Course ID` `Academic Year` Overview                        Description
-    ##    <chr>       <chr>           <chr>                           <lgl>      
-    ##  1 COR1002     2014-2015       "COR1002 - Philosophy of Scien~ NA         
-    ##  2 COR1003     2014-2015       "COR1003 - Contemporary World ~ NA         
-    ##  3 COR1004     2014-2015       "COR1004 - Political Philosoph~ NA         
-    ##  4 COR1005     2014-2015       "COR1005 - Modeling Nature\r\n~ NA         
-    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural Studies I:~ NA         
-    ##  6 HUM1007     2014-2015       "HUM1007 - Introduction to Phi~ NA         
-    ##  7 HUM1010     2014-2015       "HUM1010 - Common Foundations ~ NA         
-    ##  8 HUM1011     2014-2015       "HUM1011 - Introduction to Art~ NA         
-    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Songs and Poetr~ NA         
-    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea of Europe:~ NA         
+    ##    `Course ID` `Academic Year` Overview                         Description
+    ##    <chr>       <chr>           <chr>                            <lgl>      
+    ##  1 COR1002     2014-2015       "COR1002 - Philosophy of Scienc~ NA         
+    ##  2 COR1003     2014-2015       "COR1003 - Contemporary World H~ NA         
+    ##  3 COR1004     2014-2015       "COR1004 - Political Philosophy~ NA         
+    ##  4 COR1005     2014-2015       "COR1005 - Modeling Nature\r\nC~ NA         
+    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural Studies I: ~ NA         
+    ##  6 HUM1007     2014-2015       "HUM1007 - Introduction to Phil~ NA         
+    ##  7 HUM1010     2014-2015       "HUM1010 - Common Foundations o~ NA         
+    ##  8 HUM1011     2014-2015       "HUM1011 - Introduction to Art;~ NA         
+    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Songs and Poetry~ NA         
+    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea of Europe: ~ NA         
     ## # ... with 821 more rows
 
 ##### Extracting Descriptions
@@ -645,18 +637,18 @@ print(d_description)
 ```
 
     ## # A tibble: 831 x 4
-    ##    `Course ID` `Academic Year` Overview             Description           
-    ##    <chr>       <chr>           <chr>                <chr>                 
-    ##  1 COR1002     2014-2015       "COR1002 - Philosop~ Starting from classic~
-    ##  2 COR1003     2014-2015       "COR1003 - Contempo~ The course intends to~
-    ##  3 COR1004     2014-2015       "COR1004 - Politica~ Politics is a complex~
-    ##  4 COR1005     2014-2015       "COR1005 - Modeling~ The aim of the course~
-    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural~ Cultural Studies is a~
-    ##  6 HUM1007     2014-2015       "HUM1007 - Introduc~ One of the greatest a~
-    ##  7 HUM1010     2014-2015       "HUM1010 - Common F~ What do Europeans hav~
-    ##  8 HUM1011     2014-2015       "HUM1011 - Introduc~ The traditional term ~
-    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Song~ This course is based ~
-    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea~ This course deals wit~
+    ##    `Course ID` `Academic Year` Overview              Description           
+    ##    <chr>       <chr>           <chr>                 <chr>                 
+    ##  1 COR1002     2014-2015       "COR1002 - Philosoph~ Starting from classic~
+    ##  2 COR1003     2014-2015       "COR1003 - Contempor~ The course intends to~
+    ##  3 COR1004     2014-2015       "COR1004 - Political~ Politics is a complex~
+    ##  4 COR1005     2014-2015       "COR1005 - Modeling ~ The aim of the course~
+    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural ~ Cultural Studies is a~
+    ##  6 HUM1007     2014-2015       "HUM1007 - Introduct~ One of the greatest a~
+    ##  7 HUM1010     2014-2015       "HUM1010 - Common Fo~ What do Europeans hav~
+    ##  8 HUM1011     2014-2015       "HUM1011 - Introduct~ The traditional term ~
+    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Songs~ This course is based ~
+    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea ~ This course deals wit~
     ## # ... with 821 more rows
 
 #### Extracting Text: Course Manuals
@@ -731,7 +723,7 @@ dictionary <- select(d_overview, `Course ID`, word) %>%
 filter(dictionary, word != word_stem)
 ```
 
-    ## # A tibble: 11,125 x 2
+    ## # A tibble: 11,129 x 2
     ##    word        word_stem 
     ##    <chr>       <chr>     
     ##  1 humanities  humanity  
@@ -744,7 +736,7 @@ filter(dictionary, word != word_stem)
     ##  8 foundations foundation
     ##  9 starting    start     
     ## 10 positions   position  
-    ## # ... with 11,115 more rows
+    ## # ... with 11,119 more rows
 
 Finally, we create a function `stem_with_dictionary` that performs a left join on the dataframe it takes as input with `dictionary`, thus adding the word stems to the original dataframe.
 
@@ -825,91 +817,112 @@ Our dataframe contains many variables and rows that are either empty or meaningl
 
 ``` r
 d_transcript <- d_transcript %>%
-  # only keep one observation (with the final grade) per student-course
-  filter(`Appraisal (Description)` == "Grade supervisor", `Appraisal Type`=="7055") %>%
-  select(`Student Number`,
-         `Module (Abbrev.)`,
-         `Module (Desc.)`,
-         `Program (Abbreviation)`,
-         `Grade symbol`,
-         `Academic Year`,
-         `Academic Session`,
-         `Number rep. attemp`) %>%
-  rename(`Student ID` = `Student Number`,
-         `Course ID` = `Module (Abbrev.)`,
-         `Course Title` = `Module (Desc.)`,
-         Grade = `Grade symbol`,
-         `Study Program` = `Program (Abbreviation)`,
-         Year_numerical = `Academic Year`,
-         Period = `Academic Session`,
-         `Number Repeated Attempt` = `Number rep. attemp`) %>%
-  distinct
+  
+  # for simplicity, only keep courses of UCM program
+  filter(
+    `Program (Abbreviation)` == "7501",
+    !str_detect(`Module (Abbrev.)`, "EXT")
+    ) %>%
+  
+  # folowing guidelines of Richard Vos, only consider: `Appraisal (Description)` == "Grade supervisor" and 
+  filter(
+    `Appraisal (Description)` == "Grade supervisor",
+    `Appraisal Type`          == "7055" # removes ~ 15 observations
+    
+  ) %>%
+  
+  # Remove variables with only one value
+  select_if(
+    function(x) n_distinct(x) > 1
+    ) %>%
+  
+  # Remove variables with more than 99% NA
+  select_if(
+    function(x) mean(is.na(x)) < 0.99
+    ) %>%
+  
+  # Select: Student ID, course ID, when course taken and grade 
+  select(
+    `Student ID` = `Student Number`,
+    `Course ID`  = `Module (Abbrev.)`,
+    `Academic Year`,
+    Period       = `Academic Session`,
+    Grade        = `Grade symbol`
+    ) %>%
+  
+  # Clean grade variable
+  mutate(
+    
+    Grade = case_when(
+      is.na(Grade)  ~ "0",
+      Grade == "NG" ~ "0",
+      TRUE          ~ str_replace(
+        Grade,
+        pattern     = ",",
+        replacement = "."
+      )
+    ) %>% 
+      as.numeric
+    
+  ) %>%
+
+  # if student took resit (recorder in same year and period), only keep failing grade
+  # group_by(
+  #   `Student ID`,
+  #   `Course ID`,
+  #   Year,
+  #   Period
+  #   ) %>%
+  # summarize(
+  #   Grade = min(Grade)
+  #   ) %>%
+  # ungroup %>%
+  
+  # Clean Time variables
+  mutate(
+    
+    Period = case_when(
+      Period == 1   ~ "1 to 6"  ,
+      Period == 2   ~ "1 to 3"  ,
+      Period == 3   ~ "4 to 6"  ,
+      between(Period, 100, 199) ~ "1",
+      between(Period, 200, 299) ~ "2",
+      between(Period, 300, 399) ~ "3",
+      between(Period, 400, 499) ~ "4",
+      between(Period, 500, 599) ~ "5",
+      between(Period, 600, 660) ~ "6"
+      ),
+    
+    time = paste(
+      `Academic Year`, substr(Period, 1, 1),
+      sep = ""
+      ),
+    
+    `Academic Year`= paste(
+      `Academic Year`, `Academic Year` + 1,
+      sep = "-")
+    
+    )
 ```
-
-Each faculty had a different code for their calendars, we want to standardise them so we can compare. We convert everything into UCM calendar codes (the correspondance between calendars was given to us by R. Vos) and save it under a variable `Period`. We also create another variable:
-
-``` r
-d_transcript <- d_transcript %>%
-  mutate(Period = case_when(Period == 1   ~ "1 to 6"  ,
-                            Period == 2   ~ "1 to 3"  ,
-                            Period == 3   ~ "4 to 6"  ,
-                            Period == 680 ~ "5"     , # exception
-                            Period == 350 ~ "3 to 5", # exception
-                            Period == 403 ~ "4 to 5", # exception
-                            Period == 900 ~ "1 to 6", # exception
-                            between(Period, 100, 199) ~ "1",
-                            between(Period, 200, 299) ~ "2",
-                            between(Period, 300, 399) ~ "3",
-                            between(Period, 400, 499) ~ "4",
-                            between(Period, 500, 599) ~ "5",
-                            between(Period, 600, 660) ~ "6",
-                            between(Period, 901, 999) ~ "1")
-         ) %>%
-  mutate(`Academic Year`= paste(Year_numerical, Year_numerical + 1, sep = "-"))
-```
-
-### Keeping UCM program only
-
-``` r
-d_transcript <- d_transcript %>%
-  filter(`Study Program` == "7501") %>%
-  select(- `Study Program`)
-```
-
-### Clean Grade Variable
-
-``` r
-d_transcript <- d_transcript %>%
-  mutate(Grade = case_when(Grade == "NG" ~ "NA",
-                           TRUE          ~ Grade),
-         Grade = str_replace(string = Grade, pattern = ",",replace = "."),
-         Grade = as.numeric(Grade)) %>%
-  filter(!is.na(Grade)) %>%
-  mutate(Fail = Grade < 5.5)
-```
-
-    ## Warning in evalq(as.numeric(Grade), <environment>): NAs introduced by
-    ## coercion
 
 ``` r
 print(d_transcript)
 ```
 
-    ## # A tibble: 79,240 x 9
-    ##    `Student ID` `Course ID` `Course Title` Grade Year_numerical Period
-    ##    <chr>        <chr>       <chr>          <dbl>          <dbl> <chr> 
-    ##  1 6051398      COR1005     Theory Constr~   5.7           2012 1     
-    ##  2 6051398      SSC1009     Introduction ~   7.8           2012 1     
-    ##  3 6051398      SKI1008     Introduction ~   7.9           2012 1     
-    ##  4 6051398      SCI1016     Sustainable D~   5.8           2012 2     
-    ##  5 6051398      SKI1009     Introduction ~   7.5           2012 2     
-    ##  6 6051398      HUM1013     The Idea of E~   5.9           2012 2     
-    ##  7 6051398      PRO1010     Introducing A~   8.2           2012 3     
-    ##  8 6051398      SKI1004     Research Meth~   4.6           2012 4     
-    ##  9 6051398      SKI1004     Research Meth~   5.6           2012 4     
-    ## 10 6051398      SCI2012     Globalization~   5.5           2012 4     
-    ## # ... with 79,230 more rows, and 3 more variables: `Number Repeated
-    ## #   Attempt` <dbl>, `Academic Year` <chr>, Fail <lgl>
+    ## # A tibble: 80,182 x 6
+    ##    `Student ID` `Course ID` `Academic Year` Period Grade time 
+    ##    <chr>        <chr>       <chr>           <chr>  <dbl> <chr>
+    ##  1 6051398      COR1005     2012-2013       1        5.7 20121
+    ##  2 6051398      SSC1009     2012-2013       1        7.8 20121
+    ##  3 6051398      SKI1008     2012-2013       1        7.9 20121
+    ##  4 6051398      SCI1016     2012-2013       2        5.8 20122
+    ##  5 6051398      SKI1009     2012-2013       2        7.5 20122
+    ##  6 6051398      HUM1013     2012-2013       2        5.9 20122
+    ##  7 6051398      PRO1010     2012-2013       3        8.2 20123
+    ##  8 6051398      SKI1004     2012-2013       4        4.6 20124
+    ##  9 6051398      SKI1004     2012-2013       4        5.6 20124
+    ## 10 6051398      SCI2012     2012-2013       4        5.5 20124
+    ## # ... with 80,172 more rows
 
 Save Data
 =========
@@ -921,279 +934,3 @@ save(lists, d_course, d_AoD, d_assessment, d_transcript,
      d_overview, d_description, d_manual,
      file = "Output/data_pillar_2.RDATA")
 ```
-
-TODO
-====
-
-Estimating concentrations
--------------------------
-
-For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops"
-
-``` r
-d_concentration <- d_course %>%
-  select(Code, Concentration, `Concentration (additional)`) %>%
-  gather(key = X, value = Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
-  left_join(d_transcript, by = c("Code" = "Course Code")) %>%
-  select(Concentration, `Student ID Number`) %>%
-  count(Concentration, `Student ID Number`) %>%
-  spread(key = Concentration, value = n, fill = 0) %>%
-  mutate(n_course = HUM + SCI + SSC,
-         `Student Concentration` = case_when(
-           n_course < 20 ~ "not enough courses",
-           HUM > 5 & SSC > 5 & SCI > 5 ~ "confused",
-           HUM > 5 & SSC > 5           ~ "HUM/SCI",
-           HUM > 5                     ~ "HUM",
-                     SSC > 5 & SCI > 5 ~ "SSC/SCI",
-                     SSC > 5           ~ "SSC",
-                               SCI > 5 ~ "SCI"
-  ))
- 
-  transmute(student_Concentration = case_when(
-    (HUM  >  2    &   SSC >  2   &  SCI <= 2) ~ "HUM/SSC",
-    (HUM  >  2    &   SSC <= 2   &  SCI >  2) ~ "HUM/SCI",
-    (HUM  >  2    &   SSC <= 2   &  SCI <= 2) ~ "HUM",
-    (HUM  <= 2    &   SSC >  2   &  SCI >  2)  ~ "SSC/SCI",
-    (HUM  <= 2    &   SSC >  2   &  SCI <= 2) ~ "SSC",
-    (HUM  <= 2    &   SSC <= 2   &  SCI >  2)  ~ "SCI",
-    (HUM  <  2    &   SSC <  2   &  SCI <  2) ~ "UNDECIDED",
-    (HUM  >  2    &   SSC >  2   &  SCI >  2) ~ "CONFUSED", #normal cases ^
-    (HUM > SCI    &   HUM > SSC)              ~ "HUM",
-    (SSC > SCI    &   SSC > HUM)              ~ "SSC",
-    (SCI > HUM    &   SCI > SSC)              ~ "HUM",
-    TRUE ~ "oops"
-  ))
-```
-
-Since we will need to check each student with an "oops" concentration to see what happened, lets separate this data for later:
-
-``` r
-checkup <- filter(d_student_concentration, student_Concentration == "oops") 
-```
-
-### Getting UCM\_YEAR
-
-In order to compare the trajectories of students, we would like to know if the courses were taken in their first, second, third, or whatever year. However, we only have the calendar years. Lets find out to what year of study each calendar year corresponds per student.
-
-First, lets find out, which year was a student's first year and which year was a student's last year (we will also create a variable `Subs_year` that we will substract later to transform from Calendar Year to UCM Year, and a second variable `LengthUCM` that shows us how many years each student stayed at the college):
-
-``` r
-d_year <- d_grade %>%
-  select(ID, Code, Year, Period, Grade,`Booking Status Description`, `Course concentration`) %>%
-  group_by(ID) %>%
-  summarise(FirstYear=min(Year), LastYear=max(Year)) %>%
-  mutate(LengthUCM = LastYear-FirstYear, Subs_year=FirstYear-1)
-```
-
-Now, lets make a dataframe of students against years, where the year appears in the corresponding cell if a student was in the college at that time:
-
-``` r
-d_year1 <- d_grade %>%
-  select(ID, Code, Year, Period, Grade, `Booking Status Description`, `Course concentration`) %>%  
-  group_by( ID, Year) %>%
-  summarise(Count = n())%>%
-  mutate(Present = case_when(Count > 0 ~ Year))%>%
-  select(-Count) %>%
-  spread(Year,Present, fill = 0)
-```
-
-Now we have collected all the years a student has been at the college in a single row (one row per student), and we also know what is the first and last year of each student. Let's join these dataframes:
-
-``` r
-d_time <- left_join(d_year1, d_year)
-```
-
-Ideally, we would like to have a dataframe of students against calendar years filled with the corresponding UCM year (e.g. if the year 2017 was the first year of student 45, we would like to see the cell corresponding to student 45 and year 2017 marked with a "1").
-
-``` r
-var_years <- as.character(2007:2017)
-d_time <- d_time %>% 
-  mutate_at(
-    vars(var_years),
-    funs(. - Subs_year)) %>%
-  mutate_at(
-    vars(var_years),
-    funs(case_when(. < 0 ~ 9999999999, #HORRIBLE FIX
-                   T     ~ .)))
-d_time[d_time == 9999999999] <- NA
-```
-
-Now, lets get the data as we want it for our analysis. For our analysis we would like to know what course a student took, when, whether they passed or failed, what grade they got, what the concentration of the student is, and what the concentration of the course is (we will convert grades to numeric here). Then, we would like to know on what year of their studies the student took the course.For this we will create a years dictionary and join it with our student data:
-
-``` r
-d_students <- d_grade %>%
-  select(ID, Code, Year, Period, Grade, Attempt,`Booking Status Description`, `Course concentration`) %>%
-  arrange(ID, Year, Period)%>%
-  left_join(d_student_concentration, by="ID") %>%
-  mutate(Grade = as.numeric( sub(",",".", Grade))) %>%
-  replace_na(list(Grade=-1))
-# Years dictionary:
-year_dic <- d_time %>%
-  select(-FirstYear,-LastYear,-LengthUCM,-Subs_year)%>%
-  gather(Cal_Year,UCM_Year,var_years)%>%
-  drop_na(.) %>%
-  mutate(Year=as.integer(Cal_Year))%>%
-  select(-Cal_Year)
-#adding the ucm year to transcripts:
-d_students <- d_students %>%
-  left_join(year_dic, by=c("ID","Year"))
-#removing repeated values:
-d_students <- d_students[!duplicated(d_students),]
-```
-
-### Removing master Program data and Cleaning Capstone Data
-
-We noticed that we had the data for people who stayed at this university for their masters. To filter these courses out we find out in which year people took their capstone courses.
-
-For this we keep only the capstones. We expect some people to have repeated capstones:
-
-``` r
-capstone_count <- d_students %>%
-  filter(Code=="CAP3000") %>%
-  group_by(ID)%>%
-  summarise(Count=n())
-capstone_count
-```
-
-However, what is surptising is that some people have two different passed capstones:
-
-``` r
-passed_capstone_count <- d_students %>%
-  filter(Code=="CAP3000", `Booking Status Description`=="Completed with Success") %>%
-  group_by(ID) %>%
-  summarise(Count=n(), Max = max(Grade), Min = min(Grade), Attempts= max(Attempt))
-```
-
-We can check the grades for people who had repeated passed capstones (lets just bring them to the top of the list):
-
-``` r
-passed_capstone_count %>%
-  arrange(desc(Count), desc(Min), Attempts)
-```
-
-There are 1712 people who did capstone. We see that most students who have two passed Capstones, have in reality only 1, since the other capstone had a failing grade and the passing grade was on the second attempt (count starts at 0) was indeed failed. However there are two students who indeed have two different passed Capstones: one is student 282995 who has two different passing grades(because of a change in grading system at the collegue during the year 2008-2009), the other is student 544450 who has the same grade passed at two different moment in time.
-
-We can check if there are any students with passing capstone who do not have a grade of at least 5.5. We do this by looking at the lowest Max values:
-
-``` r
-passed_capstone_count %>%
-  arrange(Max)
-```
-
-We see the lowest grade for a passing capstone is 5.6, so this is fine.
-
-Now lets just keep the highest value for each student and correct for student 282995:
-
-``` r
-passed_capstone_grades <- passed_capstone_count %>%
-  mutate(`Booking Status Description`= "Completed with Success", Code="CAP3000", Grade= case_when(ID== 282995~7.7,
-                                                                                  T~Max)) %>%
-  select( ID, Code, Grade,`Booking Status Description`)
-passed_capstone_grades
-```
-
-#### Capstone Year
-
-Now we can figure out the Capstone Year.
-
-First we get the years for which there is a corresponding passing capstone grade, and check for repetition:
-
-``` r
-capstone_finish_year <- inner_join(passed_capstone_grades, d_students) 
-head(capstone_finish_year)
-count_before <- passed_capstone_grades %>%
-  group_by(ID) %>%
-  summarise(counts_of_id= n())
-count_after <- capstone_finish_year %>%
-  group_by(ID) %>%
-  summarise(counts_of_id= n())%>%
-  filter(counts_of_id > 1)  #these students have repeated capstones.
-count_after
-```
-
-From count\_after we see that student 544450 has two passed capstones at different moments in time, we already knew this and we must ask Richard why this is the case. However, since both capstones where passed in 2010, this creates no problem for our current purposes. However, let's remove the later version. We will also rename `Year` to `Capstone Year` and keep only the columns `Capstone Year` and `ID`
-
-``` r
-to_remove <- capstone_finish_year%>%
-  filter(ID==544450)
-to_remove <- to_remove[duplicated(to_remove$ID),]
-capstone_finish_year <- capstone_finish_year%>%
-  anti_join(to_remove) %>%
-  rename(`Capstone Year`= Year)%>%
-  select(ID,`Capstone Year`)
-  
-capstone_finish_year
-```
-
-Lets create a dataframe where we include the capstone year. Then, if a course is given later than the capstone year, we want to remove it. Therefore, lets substitute na values with the year 9999 (or will ucm be open in the year 9999?).
-
-``` r
-d_transcripts <- d_students %>%
-  group_by(ID) %>%
-  left_join(capstone_finish_year) %>%
-  ungroup() %>%
-  replace_na(list(`Capstone Year`=9999)) %>%
-  mutate(`After Graduation`=`Capstone Year`-`Year`)
-d_transcripts
-```
-
-Now we will remove all courses with negative `After Graduation`:
-
-``` r
-master_courses <- d_transcripts%>%
-  filter(`After Graduation`<0)
-d_transcripts <- d_transcripts %>%
-  anti_join(master_courses)
-head(d_transcripts)
-```
-
-One last thing. The variable `Booking Status Description` shows whether a student passed or failed the course. However, some mistakes in the way the data was handled meant that the course status of some students was never confirmed. We need to ASK RICHARD, but for the moment, we will just look at the grades of those courses which were not confirmed to change into pass and fail.
-
-``` r
-booked <- filter(d_transcripts, d_transcripts$`Booking Status Description`=="Booked")%>%
-  mutate(`Booking Status Description`= case_when(Grade<5.5~"Completed Unsuccessfully",
-                                                 Grade>5.5~"Completed with Success"))
-clean_transcripts <- d_transcripts %>% 
-  left_join(booked, by= c("ID", "Code", "Year", "Period", "Grade", "Attempt", "Course concentration", "student_Concentration", "Capstone Year", "After Graduation"), suffix=c("-old", "-new"))%>%
-  select(-`After Graduation`)%>%
-  mutate(Pass= case_when(
-    (`Booking Status Description-new`=="Completed with Success")~"Pass",
-    (`Booking Status Description-new`=="Completed Unsuccessfully")~"Fail",
-    (`Booking Status Description-old`=="Completed with Success")~"Pass",
-    (`Booking Status Description-old`=="Completed Unsuccessfully")~"Fail",
-    T~"error in clean_transcripts"
-  )) %>%
-  select(-`Booking Status Description-new`,-`Booking Status Description-old`,-"UCM_Year-new")
-```
-
-#### Ordering in Time
-
-We would like to have a column `Time` that codes for both year and period (e.g. Year\_1 Period\_2 should be 1.2), as well as a column `Periods` with the year and period as numbers (e.g. Year\_2 Period\_1 should be period 7).
-
-CHECK: we still have students who's first record is of their last year. This appears as UCM\_Year=1.
-
-``` r
-a_clean_transcripts <- clean_transcripts%>%
-  separate(Period, 
-           c("T1","T2","T3","T4","T5","T6"), 
-           sep="," 
-           ) %>%
-  gather( key = "Time", value = "Period", T1,T2,T3,T4,T5,T6) %>%
-  drop_na(Period) %>%
-  select(-Time) %>%
-  mutate(Periods = (`UCM_Year-old` - 1) * 6 + 
-           as.numeric(Period)
-         )
-  
-a_clean_transcripts$Time= paste(a_clean_transcripts$`UCM_Year-old`,
-                                a_clean_transcripts$Period, 
-                                sep="."
-                                )
-#FINAL DATA:
-d_transcript <-a_clean_transcripts%>%
-  select(-`UCM_Year-old`,-Period)
-```
-
-NOTES: The data is now arranged so as to respect the order in time for each individual student. However, the comparison is still tricky as people who finished in 2008 will have CAP recorded as taken on their first year since this is all the data we have. COMMENT SOFIA: save a\_clean\_transcript as d\_transcript
-
-[1] We do not include all assessments and all AoDs on the plots in order to keep them readable.

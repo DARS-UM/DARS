@@ -1,0 +1,186 @@
+---
+title: "Pillar A1"
+author: "DARS"
+date: "2/15/2019"
+output: pdf_document
+---
+
+```{r library}
+library(tidyverse)
+```
+
+#CHECKING WHAT DATA SET TO USE
+```{r}
+(nrow(d_transcript)-nrow(d_transactions$taken_PF_HL))
+
+s.1 <- data.frame(`Student ID` = unique(d_transactions$taken_PF_HL$sequenceID), first = 1)
+s.2 <- data.frame(`Student ID` = unique(d_transcript$`Student ID`), first = 2)
+(nrow(s.1)-nrow(s.2))
+
+missing_students <- full_join(s.1,s.2, by = "Student.ID") %>% 
+  filter(is.na(first.x)) %>%
+  pull(Student.ID)
+
+
+View(d_transcript%>%
+  filter(`Student ID` %in% missing_students)) #students lost mostly only have external and core courses, there are a few internal courses missing: e.g. SSC1001
+
+
+```
+
+#Setup
+This contains AR and SR
+```{r setup}
+load("App/rules.RDATA")
+load("Output/transaction_df.RDATA")
+```
+
+First we gather a sample of students to provide recommendations to. We use `d_transactions$taken_PF_HL`
+```{r sample}
+students <- unique(d_transactions$taken_PF_HL$sequenceID)
+size = floor(length(students)/10)
+
+#
+##Sample student IDs
+set.seed(123)
+s1 <- sample(
+  x    = students,
+  size = size 
+)
+
+#
+##Transcripts of selected students
+target_transcript <- d_transactions$taken_PF_HL %>%
+  filter(
+    sequenceID %in% s1
+  ) %>%
+  select(-`Period (additional)`, -`Period (additional bis)`, -`Concentration (additional)`)
+
+```
+
+For a single student:
+```{r truncated transcript}
+
+course_sample_size <- 5
+
+student <- "6036972"
+
+student_transcript <- target_transcript %>% 
+    filter(sequenceID == student) %>%
+  arrange(Year_numerical, Period)
+
+length_student_transcript <- nrow(student_transcript)
+
+#
+##Truncated student transcript
+sample_transcript      <- student_transcript[1:course_sample_size,]
+prospective_courses <- student_transcript[(course_sample_size+1):(course_sample_size+2),] #%>% 
+  #select(sequenceID, `Course ID`)
+```
+
+
+##Matching rules to students:
+###Taken
+```{r will take}
+taken_match <- AR$taken %>%
+  left_join(sample_transcript, by = c("lhs"="item"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+recommendations <- taken_match[1:5,] %>% select(rhs)
+  
+
+```
+####Check
+```{r evaluation}
+recommendations %>%
+  left_join(prospective_courses, by= c("rhs"="Course ID")) %>%
+  drop_na()
+```
+
+###PF
+```{r prospective red flag}
+prospective_RedFlag <- AR$PF %>%
+  left_join(prospective_courses, by = c("lhs"="item_PF"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+```
+###HL
+```{r expected low result}
+expect_low_result <- AR$HL  %>%
+  left_join(prospective_courses, by = c("lhs"="item_HL"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+```
+
+
+##Matching sequences to students
+###Taken
+```{r will take}
+d_suggestions<- SR$taken %>%
+  left_join(sample_transcript, by = c("lhs"="item"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+recommendations <- taken_match[1:5,] %>% select(rhs)
+  
+
+```
+####Check
+```{r evaluation}
+recommendations %>%
+  left_join(prospective_courses, by= c("rhs"="Course ID")) %>%
+  drop_na()
+```
+
+###PF
+```{r prospective red flag}
+d_prospective_RedFlag <- SR$PF %>%
+  left_join(prospective_courses, by = c("lhs"="item_PF"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+d_prospective_RedFlag
+
+```
+###HL
+```{r expected low result}
+d_expect_low_result <- AR$HL  %>%
+  left_join(prospective_courses, by = c("lhs"="item_HL"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+d_expect_low_result
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

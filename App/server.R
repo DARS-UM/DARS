@@ -4,8 +4,7 @@
 # Setup
 library(shiny)
 library(dplyr)
-load("AR.RDATA")
-load("SR.RDATA")
+load("rules.RDATA")
 
 
 #
@@ -16,7 +15,7 @@ function(input, output) {
     
     expr = {
       
-      # Use chosen data set
+      # Selected type of rules
       get(input$rules)[[input$item]] %>%
         
         # filter rows based on the ranges of the three buttons
