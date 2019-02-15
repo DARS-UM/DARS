@@ -95,6 +95,8 @@ find_course <- function(code){
 find_course("HUM1005")
 ```
 
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
+
     ## [1] "Songs and Poetry: Theory and Analysis"
 
 Data Exploration
