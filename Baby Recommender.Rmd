@@ -1,0 +1,118 @@
+---
+title: "Pillar A1"
+author: "DARS"
+date: "2/15/2019"
+output: pdf_document
+---
+
+```{r library}
+library(tidyverse)
+```
+
+#Setup
+This contains AR and SR
+```{r setup}
+load("App/rules.RDATA")
+```
+
+First we gather a sample of students to provide recommendations to:
+```{r sample}
+
+student <- "6060984"
+  
+students <- unique(d_transcript$`Student ID`)
+size = floor(length(students)/10)
+
+#
+##Sample student IDs
+set.seed(123)
+s1 <- sample(
+  x    = students,
+  size = size 
+)
+#
+##Transcripts of selected students
+target_transcript <- d_transcript    %>%
+  mutate(Period= substr(Period,1,1)) %>%
+  filter(
+    `Student ID` %in% s1
+  )
+
+```
+
+For a single student:
+```{r truncated transcript}
+
+course_sample_size <- 5
+
+student <- "6087742"
+
+student_transcript <- target_transcript %>% 
+    filter(`Student ID` == student) %>%
+  arrange(Year_numerical, Period)
+
+length_student_transcript <- nrow(student_transcript)
+
+#
+##Truncated student transcript
+sample_transcript      <- student_transcript[1:course_sample_size,]
+prospective_courses <- student_transcript[(course_sample_size+1):(course_sample_size+3),] %>% 
+  select(`Student ID`, `Course ID`)
+```
+
+
+##Matching rules to students:
+###Taken
+```{r will take}
+taken_match <- AR$taken %>%
+  left_join(sample_transcript, by = c("lhs"="Course ID"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+recommendations <- taken_match[1:5,] %>% select(rhs)
+  
+
+```
+
+###PF
+Note we need to take the d_transactions, not the transcripts! cause we need the columns item_PF
+```{r will take}
+AR$PF
+taken_redFlag <- AR$PF %>%
+  left_join(prospective_courses, by = c("lhs"="Course ID"))%>%
+  drop_na() %>%
+  group_by(rhs) %>%
+  mutate(RHS_vote= n())%>%
+  arrange(desc(RHS_vote))
+
+```
+
+###HL
+```{r will take}
+AR$HL
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
