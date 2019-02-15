@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-02-14
+2019-02-15
 
 -   [Setup](#setup)
 -   [Data Exploration](#data-exploration)
@@ -35,6 +35,10 @@ DARS
         -   [not -&gt; low](#not---low-1)
         -   [grade less than or equal to x -&gt; grade less than or equal to 6](#grade-less-than-or-equal-to-x---grade-less-than-or-equal-to-6-1)
     -   [Editing rules](#editing-rules)
+
+``` r
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 1/")
+```
 
 ``` r
 library(tidyverse)

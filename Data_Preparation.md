@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-01-29
+2019-02-15
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -11,7 +11,7 @@ DARS
         -   [Course Manuals](#course-manuals)
     -   [Student Data](#student-data)
 -   [Variable Engineering](#variable-engineering)
-    -   [Program Data](#program-data)
+    -   [Course Data](#course-data-1)
         -   [AoD](#aod)
         -   [Courses](#courses)
     -   [Textual Data](#textual-data-1)
@@ -28,6 +28,10 @@ DARS
     -   [Estimating concentrations](#estimating-concentrations)
         -   [Getting UCM\_YEAR](#getting-ucm_year)
         -   [Removing master Program data and Cleaning Capstone Data](#removing-master-program-data-and-cleaning-capstone-data)
+
+``` r
+knitr::opts_chunk$set(cache.path = "Cache/Data Preparation/")
+```
 
 ``` r
 library(tidyverse)
@@ -70,20 +74,20 @@ print(d_course)
 
     ## # A tibble: 280 x 11
     ##    `Course ID` `Course Title` Period `Period (additi~ `Period (additi~
-    ##    <chr>       <chr>          <chr>  <chr>            <chr>           
-    ##  1 AAM2001     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  2 AAM2002     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  3 AAM2003     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  4 AAM2004     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  5 AAM2005     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  6 AAM2006     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  7 AAM2007     Academic Advi~ Perio~ <NA>             <NA>            
-    ##  8 CAP3000     Capstone       Perio~ Period 4         <NA>            
-    ##  9 COR1002     Philosophy of~ Perio~ Period 5         <NA>            
-    ## 10 COR1003     Contemporary ~ Perio~ Period 4         <NA>            
+    ##    <chr>       <chr>          <chr>  <chr>            <lgl>           
+    ##  1 AAM2001     Academic Advi~ Perio~ <NA>             NA              
+    ##  2 AAM2002     Academic Advi~ Perio~ <NA>             NA              
+    ##  3 AAM2003     Academic Advi~ Perio~ <NA>             NA              
+    ##  4 AAM2004     Academic Advi~ Perio~ <NA>             NA              
+    ##  5 AAM2005     Academic Advi~ Perio~ <NA>             NA              
+    ##  6 AAM2006     Academic Advi~ Perio~ <NA>             NA              
+    ##  7 AAM2007     Academic Advi~ Perio~ <NA>             NA              
+    ##  8 CAP3000     Capstone       Perio~ Period 4         NA              
+    ##  9 COR1002     Philosophy of~ Perio~ Period 5         NA              
+    ## 10 COR1003     Contemporary ~ Perio~ Period 4         NA              
     ## # ... with 270 more rows, and 6 more variables: Concentration <chr>,
     ## #   `Concentration (additional)` <chr>, Cluster <chr>, `Missing from ILO
-    ## #   File` <int>, `Most Recent Catalogue` <chr>, Type <chr>
+    ## #   File` <dbl>, `Most Recent Catalogue` <chr>, Type <chr>
 
 ``` r
 d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
@@ -192,8 +196,8 @@ d_transcript <- rbind(
 Variable Engineering
 ====================
 
-Program Data
-------------
+Course Data
+-----------
 
 The analysis performed on the course data is aimed at discoving what the contribution of each course is towards the fullfilment of the AoDs, and comparing different types of curricula, or programs, based on this infromation.
 
@@ -271,15 +275,9 @@ for(i in 1 : nrow(d_assessment)){
   AoD         <- lists$AoD[AoD_covered]
   
   if(length(AoD) >= 1) d_AoD_assessment <- rbind(d_AoD_assessment,
-                                                 as.tibble(cbind(observation,
+                                                 as_tibble(cbind(observation,
                                                                  AoD)))
 }
-```
-
-    ## Warning: `as.tibble()` is deprecated, use `as_tibble()` (but mind the new semantics).
-    ## This warning is displayed once per session.
-
-``` r
 rm(map_assessment_AoD, observation, AoD, AoD_covered, assessments, i)
 ```
 
@@ -407,8 +405,8 @@ print(d_course)
     ## 10 COR1003     Contemporary ~ History     3            3 Paper, Written ~
     ## # ... with 270 more rows, and 10 more variables: n_AoD <int>, `AoD
     ## #   Covered` <chr>, Period <chr>, `Period (additional)` <chr>, `Period
-    ## #   (additional bis)` <chr>, Concentration <chr>, `Concentration
-    ## #   (additional)` <chr>, `Missing from ILO File` <int>, `Most Recent
+    ## #   (additional bis)` <lgl>, Concentration <chr>, `Concentration
+    ## #   (additional)` <chr>, `Missing from ILO File` <dbl>, `Most Recent
     ## #   Catalogue` <chr>, Type <chr>
 
 The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
@@ -438,8 +436,8 @@ print(filter(d_course, `Course ID` %in% c("UGR2001", "UGR2002", "UGR2003", "UGR2
     ## 8 UGR2005     Artistic Rese~ Methods    NA            2 Paper, Research~
     ## # ... with 10 more variables: n_AoD <int>, `AoD Covered` <chr>,
     ## #   Period <chr>, `Period (additional)` <chr>, `Period (additional
-    ## #   bis)` <chr>, Concentration <chr>, `Concentration (additional)` <chr>,
-    ## #   `Missing from ILO File` <int>, `Most Recent Catalogue` <chr>,
+    ## #   bis)` <lgl>, Concentration <chr>, `Concentration (additional)` <chr>,
+    ## #   `Missing from ILO File` <dbl>, `Most Recent Catalogue` <chr>,
     ## #   Type <chr>
 
 Finally, we add a series of informative variable at the course level.
@@ -564,18 +562,18 @@ print(d_description)
 ```
 
     ## # A tibble: 831 x 4
-    ##    `Course ID` `Academic Year` Overview                        Description
-    ##    <chr>       <chr>           <chr>                           <lgl>      
-    ##  1 COR1002     2014-2015       "COR1002 - Philosophy of Scien~ NA         
-    ##  2 COR1003     2014-2015       "COR1003 - Contemporary World ~ NA         
-    ##  3 COR1004     2014-2015       "COR1004 - Political Philosoph~ NA         
-    ##  4 COR1005     2014-2015       "COR1005 - Modeling Nature\r\n~ NA         
-    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural Studies I:~ NA         
-    ##  6 HUM1007     2014-2015       "HUM1007 - Introduction to Phi~ NA         
-    ##  7 HUM1010     2014-2015       "HUM1010 - Common Foundations ~ NA         
-    ##  8 HUM1011     2014-2015       "HUM1011 - Introduction to Art~ NA         
-    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Songs and Poetr~ NA         
-    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea of Europe:~ NA         
+    ##    `Course ID` `Academic Year` Overview                         Description
+    ##    <chr>       <chr>           <chr>                            <lgl>      
+    ##  1 COR1002     2014-2015       "COR1002 - Philosophy of Scienc~ NA         
+    ##  2 COR1003     2014-2015       "COR1003 - Contemporary World H~ NA         
+    ##  3 COR1004     2014-2015       "COR1004 - Political Philosophy~ NA         
+    ##  4 COR1005     2014-2015       "COR1005 - Modeling Nature\r\nC~ NA         
+    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural Studies I: ~ NA         
+    ##  6 HUM1007     2014-2015       "HUM1007 - Introduction to Phil~ NA         
+    ##  7 HUM1010     2014-2015       "HUM1010 - Common Foundations o~ NA         
+    ##  8 HUM1011     2014-2015       "HUM1011 - Introduction to Art;~ NA         
+    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Songs and Poetry~ NA         
+    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea of Europe: ~ NA         
     ## # ... with 821 more rows
 
 ##### Extracting Descriptions
@@ -645,18 +643,18 @@ print(d_description)
 ```
 
     ## # A tibble: 831 x 4
-    ##    `Course ID` `Academic Year` Overview             Description           
-    ##    <chr>       <chr>           <chr>                <chr>                 
-    ##  1 COR1002     2014-2015       "COR1002 - Philosop~ Starting from classic~
-    ##  2 COR1003     2014-2015       "COR1003 - Contempo~ The course intends to~
-    ##  3 COR1004     2014-2015       "COR1004 - Politica~ Politics is a complex~
-    ##  4 COR1005     2014-2015       "COR1005 - Modeling~ The aim of the course~
-    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural~ Cultural Studies is a~
-    ##  6 HUM1007     2014-2015       "HUM1007 - Introduc~ One of the greatest a~
-    ##  7 HUM1010     2014-2015       "HUM1010 - Common F~ What do Europeans hav~
-    ##  8 HUM1011     2014-2015       "HUM1011 - Introduc~ The traditional term ~
-    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Song~ This course is based ~
-    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea~ This course deals wit~
+    ##    `Course ID` `Academic Year` Overview              Description           
+    ##    <chr>       <chr>           <chr>                 <chr>                 
+    ##  1 COR1002     2014-2015       "COR1002 - Philosoph~ Starting from classic~
+    ##  2 COR1003     2014-2015       "COR1003 - Contempor~ The course intends to~
+    ##  3 COR1004     2014-2015       "COR1004 - Political~ Politics is a complex~
+    ##  4 COR1005     2014-2015       "COR1005 - Modeling ~ The aim of the course~
+    ##  5 HUM1003     2014-2015       "HUM1003 - Cultural ~ Cultural Studies is a~
+    ##  6 HUM1007     2014-2015       "HUM1007 - Introduct~ One of the greatest a~
+    ##  7 HUM1010     2014-2015       "HUM1010 - Common Fo~ What do Europeans hav~
+    ##  8 HUM1011     2014-2015       "HUM1011 - Introduct~ The traditional term ~
+    ##  9 HUM1012     2014-2015       "HUM1012 - Pop Songs~ This course is based ~
+    ## 10 HUM1013     2014-2015       "HUM1013 - The Idea ~ This course deals wit~
     ## # ... with 821 more rows
 
 #### Extracting Text: Course Manuals
@@ -731,7 +729,7 @@ dictionary <- select(d_overview, `Course ID`, word) %>%
 filter(dictionary, word != word_stem)
 ```
 
-    ## # A tibble: 11,125 x 2
+    ## # A tibble: 11,129 x 2
     ##    word        word_stem 
     ##    <chr>       <chr>     
     ##  1 humanities  humanity  
@@ -744,7 +742,7 @@ filter(dictionary, word != word_stem)
     ##  8 foundations foundation
     ##  9 starting    start     
     ## 10 positions   position  
-    ## # ... with 11,115 more rows
+    ## # ... with 11,119 more rows
 
 Finally, we create a function `stem_with_dictionary` that performs a left join on the dataframe it takes as input with `dictionary`, thus adding the word stems to the original dataframe.
 
@@ -825,8 +823,25 @@ Our dataframe contains many variables and rows that are either empty or meaningl
 
 ``` r
 d_transcript <- d_transcript %>%
+  
+  # Remove variables with only one value
+  select_if(
+    function(x) n_distinct(x) > 1
+  ) %>%
+  
+  # Remove variables with more than 99% NA
+  select_if(
+    function(x) mean(is.na(x)) < 0.99
+  )
+
+
+d_transcript <- d_transcript %>%
+  
   # only keep one observation (with the final grade) per student-course
-  filter(`Appraisal (Description)` == "Grade supervisor", `Appraisal Type`=="7055") %>%
+  filter(
+    `Appraisal (Description)` == "Grade supervisor",
+    `Appraisal Type`=="7055"
+    ) %>%
   select(`Student Number`,
          `Module (Abbrev.)`,
          `Module (Desc.)`,
