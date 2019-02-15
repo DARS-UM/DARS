@@ -309,7 +309,13 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
     item_G = paste(item, grade_ceil, sep = "_")
     )
 ```
-
+####Save d_transactions
+```{r save d_transaction}
+save(
+  d_transactions,
+  file = "Output/transaction_df.RDATA"
+  )
+```
 ### Transcript with preceding courses (for SR by hand)
 ```{r d_transcript_cum, cache = TRUE, warning = FALSE}
 d_transcript_cum <- d_transactions$taken_PF_HL %>%
