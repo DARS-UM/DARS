@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-02-15
+2019-02-18
 
 -   [Setup](#setup)
 -   [Data Exploration](#data-exploration)
@@ -35,10 +35,6 @@ DARS
         -   [not -&gt; low](#not---low-1)
         -   [grade less than or equal to x -&gt; grade less than or equal to 6](#grade-less-than-or-equal-to-x---grade-less-than-or-equal-to-6-1)
     -   [Editing rules](#editing-rules)
-
-``` r
-knitr::opts_chunk$set(cache.path = "Cache/Pillar 1/")
-```
 
 ``` r
 library(tidyverse)
@@ -1166,7 +1162,7 @@ Editing rules
 The function edit\_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 
 ``` r
-edit_rules <- function(rules){
+filter_rules <- function(rules){
   
   rules %>%
     
@@ -1176,24 +1172,7 @@ edit_rules <- function(rules){
     
     filter(
       count >= 10
-      ) %>%
-    
-    mutate_if(
-      is.numeric,
-      funs(round(., 5))
-    ) %>%
-    
-    select(
-      lhs       , rhs,
-      support   , count,
-      confidence, rhs.support,
-      lift,
-      matches("rhsTake")
-    ) %>%
-    
-    arrange(
-      desc(count)
-    )
+      )
   
 }
 ```
@@ -1201,12 +1180,12 @@ edit_rules <- function(rules){
 ``` r
 AR <- lapply(
   X   = AR,
-  FUN = edit_rules
+  FUN = filter_rules
   )
 
 SR <- lapply(
   X   = SR,
-  FUN = edit_rules
+  FUN = filter_rules
   )
 ```
 
@@ -1214,36 +1193,40 @@ SR <- lapply(
 print(AR$THL)
 ```
 
-    ## # A tibble: 14,678 x 9
-    ##    lhs   rhs   support count confidence rhs.support  lift lhs.rhsTake.sup~
-    ##    <chr> <chr>   <dbl> <dbl>      <dbl>       <dbl> <dbl>            <dbl>
-    ##  1 SCI3~ SCI2~   0.139   353      0.376       0.422 0.891            0.370
-    ##  2 SCI3~ SCI2~   0.139   353      0.375       0.422 0.888            0.371
-    ##  3 HUM2~ SCI2~   0.139   353      0.377       0.422 0.893            0.369
-    ##  4 SSC3~ SCI2~   0.139   353      0.375       0.422 0.888            0.371
-    ##  5 SCI2~ SCI2~   0.139   352      0.376       0.422 0.890            0.369
-    ##  6 SCI2~ SCI2~   0.139   352      0.374       0.422 0.887            0.370
-    ##  7 SCI2~ SCI2~   0.139   352      0.375       0.422 0.888            0.370
-    ##  8 SCI3~ SCI2~   0.139   352      0.374       0.422 0.887            0.370
-    ##  9 SCI3~ SCI2~   0.139   352      0.375       0.422 0.888            0.370
-    ## 10 SCI3~ SCI2~   0.139   352      0.374       0.422 0.886            0.370
-    ## # ... with 14,668 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+    ## # A tibble: 14,678 x 14
+    ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome support
+    ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>         <dbl>
+    ##  1 SSC1~ SSC1007    not         HUM2~ HUM2030    low         0.00394
+    ##  2 SCI1~ SCI1009    not         HUM2~ HUM2030    low         0.00394
+    ##  3 SCI2~ SCI2034    not         HUM2~ HUM2030    low         0.00394
+    ##  4 SSC2~ SSC2006    not         HUM2~ HUM2030    low         0.00394
+    ##  5 SSC2~ SSC2024    not         HUM2~ HUM2030    low         0.00394
+    ##  6 SSC2~ SSC2027    not         HUM2~ HUM2030    low         0.00394
+    ##  7 SSC2~ SSC2004    not         HUM2~ HUM2030    low         0.00394
+    ##  8 SSC2~ SSC2036    not         HUM2~ HUM2030    low         0.00394
+    ##  9 SSC3~ SSC3047    not         HUM2~ HUM2030    low         0.00394
+    ## 10 SSC3~ SSC3002    not         HUM2~ HUM2030    low         0.00394
+    ## # ... with 14,668 more rows, and 7 more variables: confidence <dbl>,
+    ## #   lift <dbl>, count <dbl>, rate.low <dbl>, rhs.support <dbl>,
+    ## #   lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>
 
 ``` r
 print(SR$THL)
 ```
 
-    ## # A tibble: 14,907 x 9
-    ##    lhs   rhs   support count confidence rhs.support  lift lhs.rhsTake.sup~
-    ##    <chr> <chr>   <dbl> <dbl>      <dbl>       <dbl> <dbl>            <dbl>
-    ##  1 HUM2~ SCI2~   0.148   376      0.391       0.422 0.926            0.379
-    ##  2 HUM2~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
-    ##  3 HUM3~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
-    ##  4 SCI2~ SCI2~   0.148   376      0.390       0.422 0.924            0.380
-    ##  5 SCI2~ SCI2~   0.148   376      0.392       0.422 0.928            0.378
-    ##  6 SCI2~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
-    ##  7 SCI2~ SCI2~   0.148   376      0.390       0.422 0.924            0.380
-    ##  8 SCI3~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
-    ##  9 SCI3~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
-    ## 10 SCI3~ SCI2~   0.148   376      0.390       0.422 0.924            0.380
-    ## # ... with 14,897 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+    ## # A tibble: 14,907 x 15
+    ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome     n support
+    ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>       <int>   <dbl>
+    ##  1 HUM1~ HUM1003    not         HUM1~ HUM1007    low            74 0.0291 
+    ##  2 HUM1~ HUM1003    not         HUM1~ HUM1011    low            48 0.0189 
+    ##  3 HUM1~ HUM1003    not         HUM1~ HUM1012    low            16 0.00630
+    ##  4 HUM1~ HUM1003    not         HUM1~ HUM1013    low            58 0.0228 
+    ##  5 HUM1~ HUM1003    not         HUM1~ HUM1014    low            16 0.00630
+    ##  6 HUM1~ HUM1003    not         HUM2~ HUM2003    low            87 0.0343 
+    ##  7 HUM1~ HUM1003    not         HUM2~ HUM2005    low            40 0.0157 
+    ##  8 HUM1~ HUM1003    not         HUM2~ HUM2007    low            15 0.00591
+    ##  9 HUM1~ HUM1003    not         HUM2~ HUM2008    low            18 0.00709
+    ## 10 HUM1~ HUM1003    not         HUM2~ HUM2013    low            19 0.00748
+    ## # ... with 14,897 more rows, and 7 more variables: rate.low <dbl>,
+    ## #   rhs.support <dbl>, lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>,
+    ## #   confidence <dbl>, lift <dbl>, count <dbl>
