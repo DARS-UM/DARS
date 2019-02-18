@@ -348,7 +348,7 @@ rm(my_cast_tdm)
 
 ## Ideal Number of Topics (RUN ON UM COMPUTER)
 
-```{r}
+```{r controls}
 my_control <- list(
   
   nstart = 10,
@@ -362,7 +362,7 @@ my_control <- list(
 )
 ```
 
-```{r}
+```{r function my_FindTopicsNumber }
 my_FindTopicsNumber <- function(data_cast, n_topics){
   
   FindTopicsNumber(
@@ -380,7 +380,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
 }
 ```
 
-```{r}
+```{r description topics, cache = TRUE}
 start.time <- Sys.time()
 
 result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
@@ -388,14 +388,14 @@ result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
-save(result_descrition,
+save(result_description,
      file = "Output/LDA_ntopics_description.RDATA")
 
 print(time.taken)
 ```
 
 
-```{r}
+```{r overview topics, cache = TRUE}
 start.time <- Sys.time()
 
 result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
@@ -409,7 +409,7 @@ save(result_overview ,
 print(time.taken)
 ```
 
-```{r, eval = F}
+```{r manual topics, cache = TRUE}
 start.time <- Sys.time()
 
 result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 155, by = 10))
@@ -438,7 +438,7 @@ load("Output/LDA_ntopics_overview.RDATA")
 
 load("Output/LDA_ntopics_manual.RDATA")
 
-result_descrition %>%
+result_description %>%
   select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
