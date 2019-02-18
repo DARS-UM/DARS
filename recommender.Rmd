@@ -1,0 +1,175 @@
+---
+title: "Recommender"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache.path = "Cache/Recommender/")
+```
+
+# Set up
+
+## Libraries, import data
+
+```{r library, message = FALSE}
+library(tidyverse)
+```
+
+```{r loading data, cache = TRUE}
+load("Output/data_pillar_1.RDATA")
+load("App/rules.RDATA")
+rm(AR)
+```
+
+For convenience:
+```{r for convenience II}
+course_all <- d_course %>%
+  inner_join(
+    d_transcript,
+    by = "Course ID"
+    ) %>%
+  distinct(
+    `Course ID`
+    ) %>%
+  # remove semester abroad, skills and projects
+  filter(
+    ! str_detect(`Course ID`, patter = "SA|SKI|PRO")
+    ) %>%
+  pull
+
+pass_grade <- 5.5
+high_grade <- 6.5
+```
+
+
+## Background data
+```{r student profile}
+set.seed(1)
+
+
+#
+# student profile
+
+# number of course taken by student so far
+n_course <- 25
+
+
+student <- list(
+  
+  # transcript: tibble with course and grade
+  transcript = tibble(
+    
+    course = sample(
+      x       = course_all,
+      size    = n_course,
+      replace = FALSE
+      ),
+    
+    grade = rnorm(
+      n    = n_course,
+      mean = 7,
+      sd   = 2
+      )
+    
+    ),
+  
+  # interest of student (to be used with topic model)
+  interest = c("key", "words", "related", "to", "topics")
+    
+)
+
+
+#
+# list of courses offered following semester
+pool_courses <- sample(
+  x       = course_all,
+  size    = 60,
+  replace = FALSE
+  )
+```
+
+# Red Flags
+
+```{r red flags}
+augment_student_transcript <- function(transcript){
+  
+  transcript %>%
+    
+    mutate(
+      fail       = grade < pass_grade,
+      low        = grade < high_grade,
+      grade_ceil = ceiling(grade)
+      )
+  
+}
+
+
+#
+# past courses with low grade
+course_low <- student$transcript %>%
+  augment_student_transcript %>%
+  filter(low) %>%
+  pull(course)
+
+
+
+#
+# Red flags
+red_flags <- SR$HL %>%
+  
+  # select appropriate rules
+  filter(
+    rhs_course %in% pool_courses,
+    lhs_course %in% course_low
+    ) %>%
+  
+  # if several rule with same rhs, keep rule with highest confidence
+  group_by(
+    rhs_course
+    ) %>%
+  top_n(
+    n  = 1,
+    wt = confidence
+    ) %>%
+  ungroup %>%
+  
+  # provide explanation
+  transmute(
+    
+    explanation = paste(
+      "Red flag for ",
+      rhs_course,
+      ": you obtained less than 6.5/10 in ",
+      lhs_course,
+      "\n",
+      "and ",
+      round(confidence * 100, digits = 1),
+      "% of the ",
+      lhs.rhsTake.count,
+      " students who have taken ", 
+      rhs_course,
+      "\n",
+      "after obtaining a similar grade in ",
+      lhs_course,
+      "\n",
+      "did not do well in ",
+      rhs_course,
+      ".",
+      sep = ""
+      ),
+    
+    course = rhs_course
+    
+    )
+
+print(red_flags)
+
+cat(red_flags[[1,1]])
+```
+
