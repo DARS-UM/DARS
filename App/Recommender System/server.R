@@ -2,31 +2,52 @@ function(input, output) {
   
   output$red_flags <- renderUI({
     
-    n_course <- 25
     
     student <- list(
       
-      # transcript: tibble with course and grade
-      transcript = tibble(
-        
-        course = sample(
-          x       = course_all,
-          size    = n_course,
-          replace = FALSE
-        ),
-        
-        grade = rnorm(
-          n    = n_course,
-          mean = 5,
-          sd   = 2
-        )
-        
-      ),
-      
+      # transcript of student: tibble with course and grade
+      transcript = d_transcript %>%
+        filter(
+          `Student ID` == input$student
+          ) %>%
+        select(
+          course = `Course ID`,
+          grade  = Grade
+          ),
+
       # interest of student (to be used with topic model)
       interest = c("key", "words", "related", "to", "topics")
       
     )
+
+    
+    
+    # # fake student
+    # n_course <- 25
+    # 
+    # student <- list(
+    #   
+    #   # transcript: tibble with course and grade
+    #   transcript = tibble(
+    #     
+    #     course = sample(
+    #       x       = course_all,
+    #       size    = n_course,
+    #       replace = FALSE
+    #     ),
+    #     
+    #     grade = rnorm(
+    #       n    = n_course,
+    #       mean = 5,
+    #       sd   = 2
+    #     )
+    #     
+    #   ),
+    #   
+    #   # interest of student (to be used with topic model)
+    #   interest = c("key", "words", "related", "to", "topics")
+    #   
+    # )
     
     
     course_low <-  student$transcript %>%
@@ -62,15 +83,15 @@ function(input, output) {
           ":<br/>",
           "You obtained less than 6.5/10 in ",
           lhs_course,
-          "and ",
+          " and ",
           round(confidence * 100, digits = 1),
           "% of the ",
           lhs.rhsTake.count,
           " students who have taken ", 
           rhs_course,
-          "after obtaining a similar grade in ",
+          " after obtaining a similar grade in ",
           lhs_course,
-          "did not do well in ",
+          " did not do well in ",
           rhs_course,
           ".",
           sep = ""
