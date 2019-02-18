@@ -78,7 +78,15 @@ We compute summary statistics (minimum, maximum, mean, median, standard deviatio
 # function providing statistics
 provide_statistics <- function(data, var){
   
-  data %>%
+  data %>% 
+    
+    mutate(
+      Grade = case_when(
+        Grade >= 5.5 ~ Grade,
+        T            ~ as.numeric(NA)
+        )
+      ) %>%
+    
     filter(
       !is.na(!!enquo(var))
       ) %>%
@@ -88,18 +96,18 @@ provide_statistics <- function(data, var){
     
     summarise(
       Count           = n(),
-      Min             = min(Grade),
-      Max             = max(Grade),
-      Mean            = mean(Grade),
-      Median          = median(Grade),
-      IQR             = IQR(Grade),
-      SD              = sd(Grade),
-      `Low Rate`      = mean(Grade < high_grade),
-      `Fail Rate`     = mean(Grade < pass_grade)
+      Min             = min(Grade, na.rm = TRUE),
+      Max             = max(Grade, na.rm = TRUE),
+      Mean            = mean(Grade, na.rm = TRUE),
+      Median          = median(Grade, na.rm = TRUE),
+      IQR             = IQR(Grade, na.rm = TRUE),
+      SD              = sd(Grade, na.rm = TRUE),
+      `Low Rate`      = mean(is.na(Grade) | Grade < high_grade),
+      `Fail Rate`     = mean(is.na(Grade))
       ) %>%
     
     mutate_at(
-      vars(Mean, SD, `Low Rate`, `Fail Rate`),
+      vars(Mean, SD, `Low Rate`, `Fail Rate`, IQR),
       round,
       digits = 2
     )
@@ -220,7 +228,7 @@ d_transactions$taken_PF_HL <- d_course %>%
     )
 ```
 
-
+For convenience:
 ```{r for convenience II}
 course_all  <- unique(d_transactions$taken_PF_HL$item      )
 student_all <- unique(d_transactions$taken_PF_HL$sequenceID)
@@ -271,7 +279,8 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
   # Spread along ceiling grades
   mutate(
     grade_ceil = ceiling(Grade),
-    Values     = TRUE
+    Values     = TRUE,
+    id         = 1 : n() # to ensure each row is unique
     ) %>%
   spread(
     key   = grade_ceil, 
