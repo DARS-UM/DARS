@@ -20,7 +20,6 @@ DARS
         -   [Stemming](#stemming)
         -   [Removing Stopwords](#removing-stopwords)
     -   [Student Data](#student-data-1)
-        -   [Selecting Variables](#selecting-variables)
 -   [Save Data](#save-data)
 
 ``` r
@@ -173,6 +172,7 @@ d_transcript <- rbind(
       `End Date` = col_character()
       )
     ),
+  
   read_csv(
     "./Input/Raw Grades/grades2.csv",
     col_types = cols(
@@ -184,6 +184,7 @@ d_transcript <- rbind(
       `End Date` = col_character()
       )
     )
+  
   )
 ```
 
@@ -811,8 +812,6 @@ Student Data
 
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
-### Selecting Variables
-
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 
 ``` r
@@ -824,11 +823,10 @@ d_transcript <- d_transcript %>%
     !str_detect(`Module (Abbrev.)`, "EXT")
     ) %>%
   
-  # folowing guidelines of Richard Vos, only consider: `Appraisal (Description)` == "Grade supervisor" and 
+  # folowing guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type`          == "7055"
   filter(
     `Appraisal (Description)` == "Grade supervisor",
     `Appraisal Type`          == "7055" # removes ~ 15 observations
-    
   ) %>%
   
   # Remove variables with only one value
@@ -843,11 +841,11 @@ d_transcript <- d_transcript %>%
   
   # Select: Student ID, course ID, when course taken and grade 
   select(
-    `Student ID` = `Student Number`,
-    `Course ID`  = `Module (Abbrev.)`,
-    `Academic Year`,
-    Period       = `Academic Session`,
-    Grade        = `Grade symbol`
+    `Student ID`   = `Student Number`,
+    `Course ID`    = `Module (Abbrev.)`,
+    Year_numerical =`Academic Year`,
+    Period         = `Academic Session`,
+    Grade          = `Grade symbol`
     ) %>%
   
   # Clean grade variable
@@ -894,12 +892,12 @@ d_transcript <- d_transcript %>%
       ),
     
     time = paste(
-      `Academic Year`, substr(Period, 1, 1),
+      Year_numerical, substr(Period, 1, 1),
       sep = ""
       ),
     
     `Academic Year`= paste(
-      `Academic Year`, `Academic Year` + 1,
+      Year_numerical, Year_numerical + 1,
       sep = "-")
     
     )
@@ -909,20 +907,20 @@ d_transcript <- d_transcript %>%
 print(d_transcript)
 ```
 
-    ## # A tibble: 80,182 x 6
-    ##    `Student ID` `Course ID` `Academic Year` Period Grade time 
-    ##    <chr>        <chr>       <chr>           <chr>  <dbl> <chr>
-    ##  1 6051398      COR1005     2012-2013       1        5.7 20121
-    ##  2 6051398      SSC1009     2012-2013       1        7.8 20121
-    ##  3 6051398      SKI1008     2012-2013       1        7.9 20121
-    ##  4 6051398      SCI1016     2012-2013       2        5.8 20122
-    ##  5 6051398      SKI1009     2012-2013       2        7.5 20122
-    ##  6 6051398      HUM1013     2012-2013       2        5.9 20122
-    ##  7 6051398      PRO1010     2012-2013       3        8.2 20123
-    ##  8 6051398      SKI1004     2012-2013       4        4.6 20124
-    ##  9 6051398      SKI1004     2012-2013       4        5.6 20124
-    ## 10 6051398      SCI2012     2012-2013       4        5.5 20124
-    ## # ... with 80,172 more rows
+    ## # A tibble: 80,182 x 7
+    ##    `Student ID` `Course ID` Year_numerical Period Grade time 
+    ##    <chr>        <chr>                <dbl> <chr>  <dbl> <chr>
+    ##  1 6051398      COR1005               2012 1        5.7 20121
+    ##  2 6051398      SSC1009               2012 1        7.8 20121
+    ##  3 6051398      SKI1008               2012 1        7.9 20121
+    ##  4 6051398      SCI1016               2012 2        5.8 20122
+    ##  5 6051398      SKI1009               2012 2        7.5 20122
+    ##  6 6051398      HUM1013               2012 2        5.9 20122
+    ##  7 6051398      PRO1010               2012 3        8.2 20123
+    ##  8 6051398      SKI1004               2012 4        4.6 20124
+    ##  9 6051398      SKI1004               2012 4        5.6 20124
+    ## 10 6051398      SCI2012               2012 4        5.5 20124
+    ## # ... with 80,172 more rows, and 1 more variable: `Academic Year` <chr>
 
 Save Data
 =========

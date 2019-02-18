@@ -99,9 +99,9 @@ find_course <- function(code){
 find_course("HUM1005")
 ```
 
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
+    ## Warning: Unknown or uninitialised column: 'Course Title'.
 
-    ## [1] "Songs and Poetry: Theory and Analysis"
+    ## NULL
 
 Data Exploration
 ================
@@ -113,7 +113,15 @@ We compute summary statistics (minimum, maximum, mean, median, standard deviatio
 # function providing statistics
 provide_statistics <- function(data, var){
   
-  data %>%
+  data %>% 
+    
+    mutate(
+      Grade = case_when(
+        Grade >= 5.5 ~ Grade,
+        T            ~ as.numeric(NA)
+        )
+      ) %>%
+    
     filter(
       !is.na(!!enquo(var))
       ) %>%
@@ -123,18 +131,18 @@ provide_statistics <- function(data, var){
     
     summarise(
       Count           = n(),
-      Min             = min(Grade),
-      Max             = max(Grade),
-      Mean            = mean(Grade),
-      Median          = median(Grade),
-      IQR             = IQR(Grade),
-      SD              = sd(Grade),
-      `Low Rate`      = mean(Grade < high_grade),
-      `Fail Rate`     = mean(Grade < pass_grade)
+      Min             = min(Grade, na.rm = TRUE),
+      Max             = max(Grade, na.rm = TRUE),
+      Mean            = mean(Grade, na.rm = TRUE),
+      Median          = median(Grade, na.rm = TRUE),
+      IQR             = IQR(Grade, na.rm = TRUE),
+      SD              = sd(Grade, na.rm = TRUE),
+      `Low Rate`      = mean(is.na(Grade) | Grade < high_grade),
+      `Fail Rate`     = mean(is.na(Grade))
       ) %>%
     
     mutate_at(
-      vars(Mean, SD, `Low Rate`, `Fail Rate`),
+      vars(Mean, SD, `Low Rate`, `Fail Rate`, IQR),
       round,
       digits = 2
     )
@@ -244,6 +252,8 @@ d_transactions$taken_PF_HL <- d_course %>%
     )
 ```
 
+For convenience:
+
 ``` r
 course_all  <- unique(d_transactions$taken_PF_HL$item      )
 student_all <- unique(d_transactions$taken_PF_HL$sequenceID)
@@ -296,7 +306,8 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
   # Spread along ceiling grades
   mutate(
     grade_ceil = ceiling(Grade),
-    Values     = TRUE
+    Values     = TRUE,
+    id         = 1 : n() # to ensure each row is unique
     ) %>%
   spread(
     key   = grade_ceil, 
@@ -333,6 +344,15 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
   mutate(
     item_G = paste(item, grade_ceil, sep = "_")
     )
+```
+
+#### Save d\_transactions
+
+``` r
+save(
+  d_transactions,
+  file = "Output/transaction_df.RDATA"
+  )
 ```
 
 ### Transcript with preceding courses (for SR by hand)
@@ -1194,36 +1214,36 @@ SR <- lapply(
 print(AR$THL)
 ```
 
-    ## # A tibble: 13,446 x 9
+    ## # A tibble: 14,678 x 9
     ##    lhs   rhs   support count confidence rhs.support  lift lhs.rhsTake.sup~
     ##    <chr> <chr>   <dbl> <dbl>      <dbl>       <dbl> <dbl>            <dbl>
-    ##  1 SCI2~ SCI2~   0.138   345      0.371       0.416 0.891            0.371
-    ##  2 SCI3~ SCI2~   0.138   345      0.371       0.416 0.890            0.372
-    ##  3 SCI3~ SCI2~   0.138   345      0.369       0.416 0.887            0.373
-    ##  4 HUM2~ SCI2~   0.138   345      0.371       0.416 0.891            0.371
-    ##  5 SCI3~ SCI2~   0.138   345      0.369       0.416 0.887            0.373
-    ##  6 SSC3~ SCI2~   0.138   345      0.369       0.416 0.887            0.373
-    ##  7 SCI2~ SCI2~   0.137   344      0.369       0.416 0.887            0.372
-    ##  8 SCI2~ SCI2~   0.137   344      0.370       0.416 0.888            0.372
-    ##  9 SCI3~ SCI2~   0.137   344      0.369       0.416 0.887            0.372
-    ## 10 SCI3~ SCI2~   0.137   344      0.370       0.416 0.888            0.372
-    ## # ... with 13,436 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+    ##  1 SCI3~ SCI2~   0.139   353      0.376       0.422 0.891            0.370
+    ##  2 SCI3~ SCI2~   0.139   353      0.375       0.422 0.888            0.371
+    ##  3 HUM2~ SCI2~   0.139   353      0.377       0.422 0.893            0.369
+    ##  4 SSC3~ SCI2~   0.139   353      0.375       0.422 0.888            0.371
+    ##  5 SCI2~ SCI2~   0.139   352      0.376       0.422 0.890            0.369
+    ##  6 SCI2~ SCI2~   0.139   352      0.374       0.422 0.887            0.370
+    ##  7 SCI2~ SCI2~   0.139   352      0.375       0.422 0.888            0.370
+    ##  8 SCI3~ SCI2~   0.139   352      0.374       0.422 0.887            0.370
+    ##  9 SCI3~ SCI2~   0.139   352      0.375       0.422 0.888            0.370
+    ## 10 SCI3~ SCI2~   0.139   352      0.374       0.422 0.886            0.370
+    ## # ... with 14,668 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
 
 ``` r
 print(SR$THL)
 ```
 
-    ## # A tibble: 13,725 x 9
+    ## # A tibble: 14,907 x 9
     ##    lhs   rhs   support count confidence rhs.support  lift lhs.rhsTake.sup~
     ##    <chr> <chr>   <dbl> <dbl>      <dbl>       <dbl> <dbl>            <dbl>
-    ##  1 HUM2~ SCI2~   0.146   367      0.385       0.416 0.925            0.380
-    ##  2 HUM2~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
-    ##  3 HUM3~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
-    ##  4 SCI1~ SCI2~   0.146   367      0.385       0.416 0.925            0.380
-    ##  5 SCI2~ SCI2~   0.146   367      0.384       0.416 0.923            0.381
-    ##  6 SCI2~ SCI2~   0.146   367      0.386       0.416 0.927            0.379
-    ##  7 SCI2~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
-    ##  8 SCI2~ SCI2~   0.146   367      0.384       0.416 0.923            0.381
-    ##  9 SCI3~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
-    ## 10 SCI3~ SCI2~   0.146   367      0.384       0.416 0.922            0.381
-    ## # ... with 13,715 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+    ##  1 HUM2~ SCI2~   0.148   376      0.391       0.422 0.926            0.379
+    ##  2 HUM2~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
+    ##  3 HUM3~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
+    ##  4 SCI2~ SCI2~   0.148   376      0.390       0.422 0.924            0.380
+    ##  5 SCI2~ SCI2~   0.148   376      0.392       0.422 0.928            0.378
+    ##  6 SCI2~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
+    ##  7 SCI2~ SCI2~   0.148   376      0.390       0.422 0.924            0.380
+    ##  8 SCI3~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
+    ##  9 SCI3~ SCI2~   0.148   376      0.390       0.422 0.923            0.380
+    ## 10 SCI3~ SCI2~   0.148   376      0.390       0.422 0.924            0.380
+    ## # ... with 14,897 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
