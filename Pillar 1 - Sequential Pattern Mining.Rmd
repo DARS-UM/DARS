@@ -9,7 +9,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include = T}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(cache.path = "Cache/Pillar 1/")
 ```
 
@@ -1126,7 +1126,7 @@ SR$G <- sequences$G %>%
 ## Editing rules
 The function edit_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 ```{r edit_rules}
-edit_rules <- function(rules){
+filter_rules <- function(rules){
   
   rules %>%
     
@@ -1136,24 +1136,7 @@ edit_rules <- function(rules){
     
     filter(
       count >= 10
-      ) %>%
-    
-    mutate_if(
-      is.numeric,
-      funs(round(., 5))
-    ) %>%
-    
-    select(
-      lhs       , rhs,
-      support   , count,
-      confidence, rhs.support,
-      lift,
-      matches("rhsTake")
-    ) %>%
-    
-    arrange(
-      desc(count)
-    )
+      )
   
 }
 ```
@@ -1161,12 +1144,12 @@ edit_rules <- function(rules){
 ```{r edit rules}
 AR <- lapply(
   X   = AR,
-  FUN = edit_rules
+  FUN = filter_rules
   )
 
 SR <- lapply(
   X   = SR,
-  FUN = edit_rules
+  FUN = filter_rules
   )
 ```
 
@@ -1178,6 +1161,6 @@ print(SR$THL)
 ```{r save rules, include = FALSE}
 save(
   AR, SR,
-  file = "App/rules.RDATA"
+  file = "App/rules/rules.RDATA"
   )
 ```
