@@ -1,0 +1,101 @@
+---
+title: "Topic Scores"
+author: "DARS"
+date: "2/18/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+load("Output/LDA.RDATA")
+load("Output/data_pillar_1.RDATA")
+load("Output/LDA_overview_5.RDATA")
+```
+
+## function get gamma and beta
+```{r getting functions}
+get_beta <- function(results){
+  
+  tidy(results, matrix = "beta") %>%
+    mutate(topic = paste("Topic", topic)) %>%
+      arrange(topic, desc(beta))
+  
+}
+
+get_gamma <- function(results){
+  
+  tidy(results, matrix = "gamma") %>%
+    mutate(topic = paste("Topic", topic)) %>%
+      arrange(topic, desc(gamma))
+  
+}
+
+```
+##getting gamma and beta data 
+```{r getting beta and gamma}
+beta_descriptions <- LDA_overview_5 %>%
+  get_beta
+
+gamma_descriptions <- LDA_overview_5 %>%
+  get_gamma
+```
+
+## simulating students and key words
+```{r student simulation}
+set.seed(126)
+
+terms <- unique(beta_descriptions$term)
+
+student <- list()
+student$kw <- c("international", "economic", "conflict", "develop", "policy") #sample(terms, 5)
+```
+
+##getting top courses per student
+```{r topic score student}
+student$topic_score <- beta_descriptions%>%
+  filter(term %in% student$kw) %>%
+  group_by(topic)%>% #maybe we can do this with transcripts afterwards
+  summarize(B_score= sum(beta))%>%
+  ungroup()%>%
+  mutate(Total_b      = sum(B_score),
+         B_proportion = B_score/Total_b) %>%
+  arrange(desc(B_score))
+
+```
+
+##Getting courses
+```{r course_score}
+
+student$course_score <- gamma_descriptions     %>%
+  full_join(student$topic_score, by = "topic") %>%
+  mutate(X = gamma * B_proportion)             %>%
+  group_by(document)                           %>%
+  summarise(course_score = sum(X))             %>%
+  arrange(desc(course_score)) %>%
+  left_join(
+    select(d_course, `Course ID`, `Course Title`),
+    by = c("document" = "Course ID")
+    )
+
+student$course_score
+```
+###Other comparison functions
+```{r other functions}
+#
+##Binary
+
+```
+### Comparing results
+```{r}
+bla %>%
+  mutate(no= row_number())
+
+b <- gamma_descriptions %>%
+  full_join(student$topic_score, by="topic") %>%
+  mutate(X = gamma*Beta_score) %>%
+  arrange(desc(X))%>%
+  mutate(no= row_number())
+
+a %>% full_join(b, by="no") %>%
+  mutate(equal= case_when(document.x==document.y~T,
+                          T~F))
+```
