@@ -1012,7 +1012,9 @@ SR$TPF <- d_transcript_cum %>%
   
   # lhs not, rhs low
   filter(
-    str_detect(rhs, "fail")
+    str_detect(rhs, "fail"),
+    lift > 1,
+    confidence >= 0.40
     )
 ```
 
@@ -1063,9 +1065,11 @@ SR$THL <- d_transcript_cum %>%
   
   compute_conf_lift %>%
   
-  # lhs not, rhs low
+  # constraints to respect
   filter(
-    str_detect(rhs, "low")
+    str_detect(rhs, "low"),
+    lift > 1,
+    confidence >= 0.40
     )
 ```
 
@@ -1162,5 +1166,10 @@ print(SR$THL)
 save(
   AR, SR,
   file = "App/rules/rules.RDATA"
+  )
+
+save(
+  AR, SR,
+  file = "App/Recommender System/rules.RDATA"
   )
 ```
