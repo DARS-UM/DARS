@@ -1,7 +1,31 @@
+library(tidyverse)
+library(tidytext)
+library(stringr)
+
+load("rules.RDATA")
+load("data_pillar_1.RDATA")
+load("LDA_overview.RDATA")
+
+
+
 function(input, output) {
   
   output$red_flags <- renderUI({
     
+    pass_grade <- 5.5
+    high_grade <- 6.5
+    
+    augment_student_transcript <- function(transcript){
+      
+      transcript %>%
+        
+        mutate(
+          fail       = grade < pass_grade,
+          low        = grade < high_grade,
+          grade_ceil = ceiling(grade)
+        )
+      
+    }
     
     student <- list(
       
@@ -97,7 +121,124 @@ function(input, output) {
           sep = ""
         )
         
-      ) %>%
+      )
+    
+    if(nrow(red_flags) == 0){
+      
+      "No red flag"
+      
+    }else{
+      
+      red_flags  %>%
+        
+        pull %>%
+        
+        sort %>% 
+        
+        paste0(
+          collapse = "<br/><br/>"
+        ) %>% 
+        
+        HTML
+    }
+    
+    
+  })
+  
+  output$course_recommendation <- renderUI({
+    
+    
+    #
+    # Set up
+    get_beta <- function(results){
+      
+      tidytext::tidy(results, matrix = "beta") %>%
+        mutate(topic = paste("Topic", topic)) %>%
+        arrange(topic, desc(beta))
+      
+    }
+    
+    get_gamma <- function(results){
+      
+      tidytext::tidy(results, matrix = "gamma") %>%
+        mutate(topic = paste("Topic", topic)) %>%
+        arrange(topic, desc(gamma))
+      
+    }
+    
+    beta_description <- lapply(
+      LDA_model,
+      get_beta
+      )
+    
+    gamma_descriptions <- lapply(
+      LDA_model,
+      get_gamma
+      )
+    
+    key_words <- c(
+      input$key_words,
+      input$key_word_1,
+      input$key_word_2,
+      input$key_word_3,
+      input$key_word_4,
+      input$key_word_5
+      )
+    
+    
+    #
+    # Topic Score
+    student$topic_score <- beta_description$k35 %>%
+      filter(
+        term %in% key_words
+        ) %>%
+      group_by(
+        topic
+        )%>% #maybe we can do this with transcripts afterwards
+      summarize(
+        topic_score = sum(beta)
+        )%>%
+      ungroup() %>%
+      mutate(topic_score_proportion = topic_score / sum(topic_score))
+    
+    
+    #
+    # Course Score
+    student$course_score <- gamma_descriptions$k35 %>%
+      full_join(
+        student$topic_score,
+        by = "topic"
+        ) %>%
+      group_by(
+        document
+        ) %>%
+      summarise(
+        course_score = sum(gamma * B_proportion)
+        ) %>%
+      ungroup
+      
+    
+    #
+    # Course recommendation
+    student$course_score  %>%
+      
+      top_n(
+        n  = 5,
+        wt = course_score
+        ) %>%
+      
+      left_join(
+        select(d_course, `Course ID`, `Course Title`),
+        by = c("document" = "Course ID")
+        ) %>%
+      
+      transmute(
+        recommendation = paste(
+          "Course Recommendation", 
+          document, `Course Title`,
+          "because ..."
+          )
+        ) %>%
       
       pull %>%
       
@@ -105,7 +246,7 @@ function(input, output) {
       
       paste0(
         collapse = "<br/><br/>"
-        ) %>% 
+      ) %>% 
       
       HTML
     

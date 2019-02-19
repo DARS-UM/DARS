@@ -3,10 +3,12 @@
 # set up
 
 # libraries
-library(dplyr)
+library(tidyverse)
+library(tidytext)
 library(shiny)
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
+load("LDA_overview.RDATA")
 
 # set seed
 set.seed(1)
@@ -32,61 +34,114 @@ course_following_semester <- sample(
   replace = FALSE
   ) %>% sort
 
-pass_grade <- 5.5
-high_grade <- 6.5
-
-# 
-augment_student_transcript <- function(transcript){
-  
-  transcript %>%
-    
-    mutate(
-      fail       = grade < pass_grade,
-      low        = grade < high_grade,
-      grade_ceil = ceiling(grade)
-    )
-  
-}
-
 
 
 #
 # ui
-fluidPage(
+navbarPage(
   
   # App title
-  titlePanel("Recommender System"),
+  title = "Recommender System",
   
-  # Sidebar layout
-  sidebarLayout(
+  tabPanel(
     
-    # Sidebar panel for inputs
-    sidebarPanel(
+    # Panel Title
+    title = "Red Flag",
+    
+    # Sidebar layout
+    sidebarLayout(
       
-      # Input: student id number
-      textInput(
-        inputId = "student",
-        label   = "Student ID",
-        value   = "6087587"
+      # Sidebar panel for inputs
+      sidebarPanel(
+        
+        # Input: student id number
+        textInput(
+          inputId = "student",
+          label   = "Student ID",
+          value   = "6087587"
+          ),
+        
+        # Input: button for the courses students wants to take following semester
+        checkboxGroupInput(
+          inputId  = "course_chosen",
+          label    = "Tentative Courses for following period",
+          choices  = course_following_semester,
+          selected = course_following_semester,
+          inline   = TRUE
+          )
+        
         ),
       
-      # Input: button for the courses students wants to take following semester
-      checkboxGroupInput(
-        inputId  = "course_chosen",
-        label    = "Tentative Courses for following period",
-        choices  = course_following_semester,
-        selected = course_following_semester,
-        inline   = TRUE
+      # Main panel for displaying outputs
+      mainPanel(
+        
+        # Output: dataset
+        htmlOutput(
+          outputId = "red_flags"
+          )
+        
         )
       
-      ),
+      )
     
-    # Main panel for displaying outputs
-    mainPanel(
+    ),
+  
+  tabPanel(
+    
+    # Panel Title
+    title = "Course Recommender",
+    
+    # Sidebar layout
+    sidebarLayout(
       
-      # Output: dataset
-      htmlOutput(
-        outputId = "red_flags"
+      # Sidebar panel for inputs
+      sidebarPanel(
+        
+        # Input: button for the courses students wants to take following semester
+        checkboxGroupInput(
+          inputId  = "key_words",
+          label    = "Academic Interest",
+          choices  = c(
+            "climate", "sustainability", "change", "development", "develop","sustain", "sustainable",
+            "//",
+            "international", "economic", "conflict", "develop", "policy", "war"
+            ),
+          selected = c("international", "economic", "conflict", "develop", "policy", "war"),
+          inline   = TRUE
+          ),
+        
+        # Input: additional key word 1-5
+        textInput(
+          inputId = "key_word_1",
+          label   = "Additional Key Word 1"
+          ),
+        textInput(
+          inputId = "key_word_2",
+          label   = "Additional Key Word 2"
+          ),
+        textInput(
+          inputId = "key_word_3",
+          label   = "Additional Key Word 3"
+          ),
+        textInput(
+          inputId = "key_word_4",
+          label   = "Additional Key Word 4"
+          ),
+        textInput(
+          inputId = "key_word_5",
+          label   = "Additional Key Word 5"
+          )
+        
+        ),
+      
+      # Main panel for displaying outputs
+      mainPanel(
+        
+        # Output: dataset
+        htmlOutput(
+          outputId = "course_recommendation"
+          )
+        
         )
       
       )
