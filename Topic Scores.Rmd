@@ -111,27 +111,3 @@ student$course_score <- gamma_descriptions$k35     %>%
 View(student$topic_score)
 View(student$course_score)
 ```
-###Other comparison functions
-```{r other functions}
-#
-##Binary
-product <- function(a = gamma, b = B_score){
-  X = a*b
-}
-
-```
-### Comparing results
-```{r}
-bla %>%
-  mutate(no= row_number())
-
-b <- gamma_descriptions %>%
-  full_join(student$topic_score, by="topic") %>%
-  mutate(X = gamma*Beta_score) %>%
-  arrange(desc(X))%>%
-  mutate(no= row_number())
-
-a %>% full_join(b, by="no") %>%
-  mutate(equal= case_when(document.x==document.y~T,
-                          T~F))
-```
