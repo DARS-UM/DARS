@@ -76,19 +76,19 @@ View(topics)
 terms <- unique(beta_description$k35$term)
 
 student <- list()
-student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war") #sample(terms, 5)
+student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war", "philosophy") #sample(terms, 5)
 student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable") #sample(terms, 5)
 ```
 
 ##getting top courses per student
 ```{r topic score student}
-student$topic_score <- beta_description$k35%>%
-  filter(term %in% student$kw_policy) %>%
-  group_by(topic)%>% #maybe we can do this with transcripts afterwards
-  summarize(B_score= sum(beta))%>%
-  ungroup()%>%
+student$topic_score <- beta_description$k35 %>%
+  filter(term %in% student$kw_policy)       %>%
+  group_by(topic)                           %>% #maybe we can do this with transcripts afterwards
+  summarize(B_score= sum(beta))             %>%
+  ungroup()                                 %>%
   mutate(Total_b      = sum(B_score),
-         B_proportion = B_score/Total_b) %>%
+         B_proportion = B_score/Total_b)    %>%
   arrange(desc(B_score))
 
 ```
@@ -97,18 +97,72 @@ student$topic_score <- beta_description$k35%>%
 ```{r course_score}
 
 student$course_score <- gamma_descriptions$k35     %>%
-  full_join(student$topic_score, by = "topic") %>%
-  mutate(X = gamma * B_proportion)             %>%
-  group_by(document)                           %>%
-  summarise(course_score = sum(X))             %>%
-  arrange(desc(course_score)) %>%
+  full_join(student$topic_score, by = "topic")     %>%
+  mutate(X = gamma * B_proportion)                 %>%
+  group_by(document)                               %>%
+  summarise(course_score = sum(X))                 %>%
+  arrange(desc(course_score))                      %>%
   left_join(
     select(d_course, `Course ID`, `Course Title`),
     by = c("document" = "Course ID")
     )
 ```
+
 ###View
 ```{r View course}
 View(student$topic_score)
 View(student$course_score)
 ```
+
+##Explaining outcome
+###key words contribution to topic b_score
+```{r topic score student}
+#
+## standardizing function (within topic)
+standardize <- function (col) {
+  col/sum(col)
+}
+
+#
+##key word Contributions to Topic
+ kw_to_topics <- beta_description$k35                                 %>%
+  filter(term %in% student$kw_policy)                                 %>%
+  arrange(topic, desc(beta))                                          %>%
+  group_by(topic)                                                     %>%
+  mutate(beta_sum=sum(beta),
+         beta_rank=beta/beta_sum)                                     %>%
+  select(-beta_sum, -beta)
+```
+
+
+##Topic contribution to course
+```{r course_score}
+#
+##Extracts recommended courses n = 5
+my_courses <- top_n(x = student$course_score, n = 5, wt =course_score) %>% 
+  pull(document)
+
+#
+## Topic contribution to course
+key_words <- gamma_descriptions$k35                             %>%
+  filter(document %in% my_courses)                 %>%
+  arrange(document, gamma)                         %>%
+  full_join(kw_to_topics, by = "topic" ) %>%
+  arrange(document, desc(gamma), desc(beta_rank) ) %>%
+  group_by(document #, 
+           #gamma
+           )                                       %>%
+  filter(row_number() %in% 1:3)                    %>%  #makes most sense with just 1 kw # group_by(document) %>% filter(row_number() %in% 1:9) 
+  group_by(document)                               %>%
+  summarise(key_words = list(Reduce(f= c,
+                               x = term)))
+
+
+
+
+```
+
+
+
+
+

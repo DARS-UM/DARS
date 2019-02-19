@@ -297,7 +297,7 @@ function(input, output) {
         document
         ) %>%
       summarise(
-        course_score = sum(gamma * B_proportion)
+        course_score = sum(gamma * topic_score_proportion)
         ) %>%
       ungroup
       
