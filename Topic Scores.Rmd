@@ -128,10 +128,10 @@ standardize <- function (col) {
  kw_to_topics <- beta_description$k35                                 %>%
   filter(term %in% student$kw_policy)                                 %>%
   arrange(topic, desc(beta))                                          %>%
-  spread(key=topic, value=beta)                                       %>%
-  mutate_at(.vars = vars(num_range("Topic ",1:35)),
-            .funs = standardize)                                      %>%
-   gather(key = "topic", value = "beta_rank", num_range("Topic ", 1:35))
+  group_by(topic)                                                     %>%
+  mutate(beta_sum=sum(beta),
+         beta_rank=beta/beta_sum)                                     %>%
+  select(-beta_sum, -beta)
 ```
 
 
