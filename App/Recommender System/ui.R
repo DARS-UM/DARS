@@ -63,19 +63,20 @@ fluidPage(
     # Sidebar panel for inputs
     sidebarPanel(
       
+      # Input: student id number
+      textInput(
+        inputId = "student",
+        label   = "Student ID",
+        value   = "6087587"
+        ),
+      
       # Input: button for the courses students wants to take following semester
       checkboxGroupInput(
         inputId  = "course_chosen",
-        label    = "Tentative Courses for following semester",
+        label    = "Tentative Courses for following period",
         choices  = course_following_semester,
-        selected = course_following_semester
-        ),
-      
-      
-      # Input: student id
-      textInput(
-        inputId = "student",
-        label   = "Student ID"
+        selected = course_following_semester,
+        inline   = TRUE
         )
       
       ),
