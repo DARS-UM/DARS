@@ -4,9 +4,11 @@
 
 # libraries
 library(tidyverse)
+library(tidytext)
 library(shiny)
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
+load("LDA_overview.RDATA")
 
 # set seed
 set.seed(1)
@@ -31,22 +33,6 @@ course_following_semester <- sample(
   size    = 60,
   replace = FALSE
   ) %>% sort
-
-pass_grade <- 5.5
-high_grade <- 6.5
-
-# 
-augment_student_transcript <- function(transcript){
-  
-  transcript %>%
-    
-    mutate(
-      fail       = grade < pass_grade,
-      low        = grade < high_grade,
-      grade_ceil = ceiling(grade)
-    )
-  
-}
 
 
 
@@ -115,7 +101,12 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = c("List", "of", "Key", "Words"),
+          choices  = c(
+            "climate", "sustainability", "change", "development", "develop","sustain", "sustainable",
+            "//",
+            "international", "economic", "conflict", "develop", "policy", "war"
+            ),
+          selected = c("international", "economic", "conflict", "develop", "policy", "war"),
           inline   = TRUE
           ),
         
@@ -141,7 +132,7 @@ navbarPage(
           label   = "Additional Key Word 5"
           )
         
-      ),
+        ),
       
       # Main panel for displaying outputs
       mainPanel(
@@ -149,12 +140,12 @@ navbarPage(
         # Output: dataset
         htmlOutput(
           outputId = "course_recommendation"
-        )
+          )
         
-      )
+        )
       
-    )
+      )
     
-  )
+    )
   
   )
