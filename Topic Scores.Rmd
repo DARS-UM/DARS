@@ -4,14 +4,28 @@ author: "DARS"
 date: "2/18/2019"
 output: pdf_document
 ---
-
+#Set up
+##Libraries
+```{r libraries}
+```
+##Raw Data
 ```{r setup, include=FALSE}
-load("Output/LDA.RDATA")
+#
+##d_course and d_transcript
 load("Output/data_pillar_1.RDATA")
-load("Output/LDA_overview_5.RDATA")
+
+#
+##LDA_models
+load("Output/LDA_overview.RDATA")
+
+#
+##Topic Models test for ideal number of topics
+load("Output/LDA_ntopics_description.RDATA")
+load("Output/LDA_ntopics_overview.RDATA")
+
 ```
 
-## function get gamma and beta
+## Getting Functions (gamma and beta) 
 ```{r getting functions}
 get_beta <- function(results){
   
@@ -30,29 +44,29 @@ get_gamma <- function(results){
 }
 
 ```
-##getting gamma and beta data 
-```{r getting beta and gamma}
-beta_descriptions <- LDA_overview_5 %>%
-  get_beta
 
-gamma_descriptions <- LDA_overview_5 %>%
+##Getting applied (gamma and beta) 
+```{r getting beta and gamma}
+beta_descriptions <- LDA_model %>%
+  get_beta 
+
+gamma_descriptions <- LDA_model %>%
   get_gamma
 ```
 
 ## simulating students and key words
 ```{r student simulation}
-set.seed(126)
-
 terms <- unique(beta_descriptions$term)
 
 student <- list()
-student$kw <- c("international", "economic", "conflict", "develop", "policy") #sample(terms, 5)
+student$kw_policy <- c("international", "economic", "conflict", "develop", "policy") #sample(terms, 5)
+student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable") #sample(terms, 5)
 ```
 
 ##getting top courses per student
 ```{r topic score student}
 student$topic_score <- beta_descriptions%>%
-  filter(term %in% student$kw) %>%
+  filter(term %in% student$kw_climate) %>%
   group_by(topic)%>% #maybe we can do this with transcripts afterwards
   summarize(B_score= sum(beta))%>%
   ungroup()%>%
@@ -76,12 +90,15 @@ student$course_score <- gamma_descriptions     %>%
     by = c("document" = "Course ID")
     )
 
-student$course_score
+View(student$course_score)
 ```
 ###Other comparison functions
 ```{r other functions}
 #
 ##Binary
+product <- function(a = gamma, b = B_score){
+  X = a*b
+}
 
 ```
 ### Comparing results
