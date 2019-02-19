@@ -47,26 +47,42 @@ get_gamma <- function(results){
 
 ##Getting applied (gamma and beta) 
 ```{r getting beta and gamma}
-beta_descriptions <- LDA_model %>%
-  get_beta 
+# k=10, 20, 35
+beta_description <- lapply(
+  LDA_model,
+  get_beta
+)
 
-gamma_descriptions <- LDA_model %>%
+gamma_descriptions <- lapply(
+  LDA_model,
   get_gamma
-```
+)
 
+```
+##Inspect topics
+```{r inspect topics}
+topics <- beta_description$k35 %>%
+  group_by(topic) %>%
+  top_n(10, beta)
+
+#
+##View
+View(topics)
+
+```
 ## simulating students and key words
 ```{r student simulation}
-terms <- unique(beta_descriptions$term)
+terms <- unique(beta_description$k35$term)
 
 student <- list()
-student$kw_policy <- c("international", "economic", "conflict", "develop", "policy") #sample(terms, 5)
+student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war") #sample(terms, 5)
 student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable") #sample(terms, 5)
 ```
 
 ##getting top courses per student
 ```{r topic score student}
-student$topic_score <- beta_descriptions%>%
-  filter(term %in% student$kw_climate) %>%
+student$topic_score <- beta_description$k35%>%
+  filter(term %in% student$kw_policy) %>%
   group_by(topic)%>% #maybe we can do this with transcripts afterwards
   summarize(B_score= sum(beta))%>%
   ungroup()%>%
@@ -79,7 +95,7 @@ student$topic_score <- beta_descriptions%>%
 ##Getting courses
 ```{r course_score}
 
-student$course_score <- gamma_descriptions     %>%
+student$course_score <- gamma_descriptions$k35     %>%
   full_join(student$topic_score, by = "topic") %>%
   mutate(X = gamma * B_proportion)             %>%
   group_by(document)                           %>%
@@ -89,7 +105,10 @@ student$course_score <- gamma_descriptions     %>%
     select(d_course, `Course ID`, `Course Title`),
     by = c("document" = "Course ID")
     )
-
+```
+###View
+```{r View course}
+View(student$topic_score)
 View(student$course_score)
 ```
 ###Other comparison functions
