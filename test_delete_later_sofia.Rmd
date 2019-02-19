@@ -76,7 +76,7 @@ View(topics)
 terms <- unique(beta_description$k35$term)
 
 student <- list()
-student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war") #sample(terms, 5)
+student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war", "philosophy") #sample(terms, 5)
 student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable") #sample(terms, 5)
 ```
 
@@ -89,35 +89,39 @@ standardize <- function (col) {
 #
 ##key word Contributions to Topic
  contribution_to_topics <- beta_description$k35                       %>%
-  filter(term %in% student$kw_policy)       %>%
-  arrange(topic, desc(beta))                %>%
-  spread(key=topic, value=beta)             %>%
+  filter(term %in% student$kw_policy)                                 %>%
+  arrange(topic, desc(beta))                                          %>%
+  spread(key=topic, value=beta)                                       %>%
   mutate_at(.vars = vars(num_range("Topic ",1:35)),
-            .funs = standardize)
+            .funs = standardize)                                      %>%
+   gather(key = "topic", value = "beta_rank", num_range("Topic ", 1:35))
   
 ```
 
 ##Topic contribution to course
 ```{r course_score}
+#
+##Extracts recommended courses
 my_courses <- top_n(x = student$course_score, n = 5, wt =course_score) %>% 
   pull(document)
 
 #
 ## Topic contribution to course
-gamma_descriptions$k35     %>%
-  filter(document %in% my_courses)%>%
-  arrange(document, gamma)
-  full_join(student$topic_score, by = "topic") %>%
-  group_by(document, topic)                           %>%
-  summarise(total_gamma= sum(gamma))
-  mutate(X = gamma * B_proportion)             %>%
-  group_by(document)                           %>%
-  summarise(course_score = sum(X))             %>%
-  arrange(desc(course_score))                  %>%
-  left_join(
-    select(d_course, `Course ID`, `Course Title`),
-    by = c("document" = "Course ID")
-    )
+key_words <- gamma_descriptions$k35                             %>%
+  filter(document %in% my_courses)                 %>%
+  arrange(document, gamma)                         %>%
+  full_join(contribution_to_topics, by = "topic" ) %>%
+  arrange(document, desc(gamma), desc(beta_rank) ) %>%
+  group_by(document #, 
+           #gamma
+           )                                       %>%
+  filter(row_number() %in% 1:3)                    %>%  #makes most sense with just 1 kw # group_by(document) %>% filter(row_number() %in% 1:9) 
+  group_by(document)                               %>%
+  summarise(key_words = list(Reduce(f= c,
+                               x = term)))
+
+
+
 
 ```
 ###View
