@@ -1,3 +1,6 @@
+library(tidyverse)
+library(stringr)
+
 function(input, output) {
   
   output$red_flags <- renderUI({
@@ -97,17 +100,26 @@ function(input, output) {
           sep = ""
         )
         
-      ) %>%
+      )
+    
+    if(nrow(red_flags) == 0){
       
-      pull %>%
+      "No red flag"
       
-      sort %>% 
+    }else{
       
-      paste0(
-        collapse = "<br/><br/>"
+      red_flags  %>%
+        
+        pull %>%
+        
+        sort %>% 
+        
+        paste0(
+          collapse = "<br/><br/>"
         ) %>% 
-      
-      HTML
+        
+        HTML
+    }
     
     
   })
