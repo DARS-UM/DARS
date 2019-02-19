@@ -176,14 +176,25 @@ function(input, output) {
       get_gamma
       )
     
-    key_words <- c(
-      input$key_words,
+    key_words_additional <- c(
       input$key_word_1,
       input$key_word_2,
       input$key_word_3,
       input$key_word_4,
       input$key_word_5
       )
+    
+    
+    stem_hunspell <- function(term) {
+      stems   <- hunspell_stem(term)[[1]] # look up the term in the dictionary
+      n_stems <- length(stems)            # number of stems
+      if (n_stems == 0) term              # if no stems, return original term
+      else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
+    }
+    
+    key_words_additional <- sapply(key_words_additional, stem_hunspell)
+    
+    key_words <- c(input$key_words, key_words_additional)
     
     
     #
