@@ -99,10 +99,14 @@ standardize <- function (col) {
 
 ##Topic contribution to course
 ```{r course_score}
+my_courses <- top_n(x = student$course_score, n = 5, wt =course_score) %>% 
+  pull(document)
 
 #
 ## Topic contribution to course
 gamma_descriptions$k35     %>%
+  filter(document %in% my_courses)%>%
+  arrange(document, gamma)
   full_join(student$topic_score, by = "topic") %>%
   group_by(document, topic)                           %>%
   summarise(total_gamma= sum(gamma))

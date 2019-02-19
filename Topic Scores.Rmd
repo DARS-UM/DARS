@@ -82,13 +82,13 @@ student$kw_climate <- c("climate", "sustainability", "change", "development", "d
 
 ##getting top courses per student
 ```{r topic score student}
-student$topic_score <- beta_description$k35%>%
-  filter(term %in% student$kw_policy) %>%
-  group_by(topic)%>% #maybe we can do this with transcripts afterwards
-  summarize(B_score= sum(beta))%>%
-  ungroup()%>%
+student$topic_score <- beta_description$k35 %>%
+  filter(term %in% student$kw_policy)       %>%
+  group_by(topic)                           %>% #maybe we can do this with transcripts afterwards
+  summarize(B_score= sum(beta))             %>%
+  ungroup()                                 %>%
   mutate(Total_b      = sum(B_score),
-         B_proportion = B_score/Total_b) %>%
+         B_proportion = B_score/Total_b)    %>%
   arrange(desc(B_score))
 
 ```
@@ -112,3 +112,6 @@ student$course_score <- gamma_descriptions$k35     %>%
 View(student$topic_score)
 View(student$course_score)
 ```
+
+
+
