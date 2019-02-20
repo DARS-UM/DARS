@@ -9,6 +9,7 @@ output: pdf_document
 ```{r libraries}
 library(tidyverse)
 ```
+
 ##Raw Data
 ```{r setup, include=FALSE}
 #
@@ -78,6 +79,7 @@ terms <- unique(beta_description$k35$term)
 student <- list()
 student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war", "philosophy") #sample(terms, 5)
 student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable") #sample(terms, 5)
+
 ```
 
 ##getting top courses per student
@@ -88,7 +90,23 @@ standardize <- function (col) {
 
 #
 ##key word Contributions to Topic
- contribution_to_topics <- beta_description$k35                       %>%
+ contribution_to_topics #<- 
+beta_description$k35                       %>%
+  filter(term %in% student$kw_policy)                                 %>%
+  arrange(topic, desc(beta))                                          %>%
+  group_by(topic) %>%
+  #this is new
+  mutate(beta_sum=sum(beta),
+         beta_rank=beta/beta_sum) %>%
+  select(-beta_sum, -beta)
+  #
+  spread(key=topic, value=beta)                                       %>%
+  mutate_at(.vars = vars(num_range("Topic ",1:35)),
+            .funs = standardize)                                      %>%
+   gather(key = "topic", value = "beta_rank", num_range("Topic ", 1:35))
+  
+  
+  beta_description$k35                       %>%
   filter(term %in% student$kw_policy)                                 %>%
   arrange(topic, desc(beta))                                          %>%
   spread(key=topic, value=beta)                                       %>%
@@ -130,5 +148,21 @@ View(student$topic_score)
 View(student$course_score)
 ```
 
+###Selecting key words
+```{r}
+test <- beta_description$k35 %>%
+  group_by(topic) %>%
+  top_n(3, beta) %>%
+  group_by(topic) %>%
+  summarise(key_words= list(Reduce(f= c, x = term)))
 
+kw <- unique(Reduce(x = test$key_words, f= c))
+
+kw_stopwords =c("student", "skill", "academic", "bate", "participant", "gain", "primarily", "main", "2016", "action", "level", "issue", "concept", "close", "day", "edition", "primary", "project", "method", "apply", "busy", "address", "role", "post", "oxford", "cuss", "lecture", "pbl")
+
+setdiff(kw, kw_stopwords)
+
+
+
+```
 
