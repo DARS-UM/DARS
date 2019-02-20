@@ -342,7 +342,7 @@ function(input, output) {
       
       # Recommendations
       top_n(
-        n  = 1,
+        n  = 3,
         wt = course_score
         ) %>%
       
