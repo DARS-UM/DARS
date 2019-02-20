@@ -174,5 +174,7 @@ kw_stopwords =c(
   "theory", "search", "perspective"
                 )
 kw <- setdiff(top_words, kw_stopwords)
+
+save(kw, file="App/Recommender System/LDA_keyword_DELETE_.RDATA")
 ```
 
