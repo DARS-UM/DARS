@@ -340,19 +340,21 @@ function(input, output) {
       
       # Recommendations
       top_n(
-        n  = 3,
+        n  = 20,
         wt = course_score
         ) %>%
       
       # Key words per recommendation
       left_join(
+        gamma_distribution$k35,
+        by = "document"
+      ) %>%
+      
+      left_join(
         beta_distribution$k35,
         by = "topic"
         ) %>%
-      left_join(
-        gamma_distribution$k35,
-        by = "topic"
-        ) %>%
+     
       filter(
         term %in% key_words
         ) %>%
@@ -372,6 +374,7 @@ function(input, output) {
         n  = 3,
         wt = word_contribution_to_document
         ) %>%
+      arrange(word_contribution_to_document) %>%
       summarize(
         key_words = paste(term, collapse = ", ")
         ) %>%
@@ -387,7 +390,7 @@ function(input, output) {
         recommendation = paste(
           "Course Recommendation", 
           document, `Course Title`,
-          "because ..."
+          "because you selected the key words:" , key_words
           )
         ) %>%
       
