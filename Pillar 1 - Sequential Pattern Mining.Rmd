@@ -1012,9 +1012,7 @@ SR$TPF <- d_transcript_cum %>%
   
   # lhs not, rhs low
   filter(
-    str_detect(rhs, "fail"),
-    lift > 1,
-    confidence >= 0.40
+    str_detect(rhs, "fail")
     )
 ```
 
@@ -1067,9 +1065,7 @@ SR$THL <- d_transcript_cum %>%
   
   # constraints to respect
   filter(
-    str_detect(rhs, "low"),
-    lift > 1,
-    confidence >= 0.40
+    str_detect(rhs, "low")
     )
 ```
 
@@ -1112,19 +1108,9 @@ SR$G <- sequences$G %>%
     # exclude rules with same course on lhs and rhs
     lhs_course != rhs_course,
     # rhs is grade less than or equal to 6
-    rhs_outcome == 6
-    ) %>%
-  
-  # for each combination of course (lhs and rhs), keep AR with highest lift (most informative)
-  group_by(
-    lhs_course,
-    rhs_course
-    ) %>%
-  top_n(
-    n = 1,
-    lift
-    ) %>%
-  ungroup
+    rhs_outcome <= 6,
+    lhs_outcome <= 7
+    )
 ```
 
 ## Editing rules
@@ -1136,10 +1122,12 @@ filter_rules <- function(rules){
     
     mutate(
       count = support * n_students
-    ) %>%
+      ) %>%
     
     filter(
-      count >= 10
+      count      >= 10,
+      lift       >= 1,
+      confidence >= 0.4
       )
   
 }
