@@ -135,7 +135,7 @@ standardize <- function (col) {
 ```
 
 
-##Topic contribution to course
+###Topic contribution to course
 ```{r course_score}
 #
 ##Extracts recommended courses n = 5
@@ -156,13 +156,23 @@ key_words <- gamma_descriptions$k35                             %>%
   group_by(document)                               %>%
   summarise(key_words = list(Reduce(f= c,
                                x = term)))
-
-
-
-
 ```
 
+##Selectig keywords
+```{r}
+top_kw <- beta_description$k35 %>%
+  group_by(topic) %>%
+  top_n(3, beta) %>%
+  pull(term)
 
+kw <- unique(top_kw)
+
+kw_stopwords =c("student", "skill", "academic", "bate", "participant", "gain", "primarily", "main", "2016", "action", "level", "issue", "concept", "close", "day", "edition", "primary", "project", "method", "apply", "busy", "address", "role", "post", "oxford", "cuss", "lecture", "pbl",
+    #unsure:
+               "theory", "search", "perspective"
+                )
+kw <- setdiff(kw, kw_stopwords)
+```
 
 
 
