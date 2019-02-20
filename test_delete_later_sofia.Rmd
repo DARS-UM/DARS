@@ -150,19 +150,18 @@ View(student$course_score)
 
 ###Selecting key words
 ```{r}
-test <- beta_description$k35 %>%
+top_kw <- beta_description$k35 %>%
   group_by(topic) %>%
   top_n(3, beta) %>%
-  group_by(topic) %>%
-  summarise(key_words= list(Reduce(f= c, x = term)))
+  pull(term)
 
-kw <- unique(Reduce(x = test$key_words, f= c))
+kw <- unique(top_kw)
 
-kw_stopwords =c("student", "skill", "academic", "bate", "participant", "gain", "primarily", "main", "2016", "action", "level", "issue", "concept", "close", "day", "edition", "primary", "project", "method", "apply", "busy", "address", "role", "post", "oxford", "cuss", "lecture", "pbl")
-
-setdiff(kw, kw_stopwords)
-
-
+kw_stopwords =c("student", "skill", "academic", "bate", "participant", "gain", "primarily", "main", "2016", "action", "level", "issue", "concept", "close", "day", "edition", "primary", "project", "method", "apply", "busy", "address", "role", "post", "oxford", "cuss", "lecture", "pbl",
+    #unsure:
+               "theory", "search", "perspective"
+                )
+kw <- setdiff(kw, kw_stopwords)
 
 ```
 
