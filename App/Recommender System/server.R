@@ -249,6 +249,7 @@ function(input, output) {
         ) %>% 
         
         HTML
+      
     }
     
     
@@ -341,7 +342,7 @@ function(input, output) {
       
       # Recommendations
       top_n(
-        n  = 5,
+        n  = 1,
         wt = course_score
         ) %>%
       
