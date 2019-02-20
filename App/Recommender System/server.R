@@ -12,46 +12,32 @@ function(input, output) {
   
   output$red_flags <- renderUI({
     
-    pass_grade <- 5.5
-    high_grade <- 6.5
     
-    augment_student_transcript <- function(transcript){
+    #
+    # Set up
+    
+    # Student profile
+    student <- list()
+     
+    # Student transcript
+    student$transcript <- d_transcript %>%
       
-      transcript %>%
-        
-        mutate(
-          fail       = grade < pass_grade,
-          low        = grade < high_grade,
-          grade_ceil = ceiling(grade)
+      filter(
+        `Student ID` == input$student
+        ) %>%
+      
+      select(
+        course = `Course ID`,
+        grade  = Grade
+        ) %>%
+      
+      mutate(
+        fail       = grade < 5.5,
+        low        = grade < 6.5,
+        grade_ceil = ceiling(grade)
         )
-      
-    }
     
-    student <- list(
-      
-      # transcript of student: tibble with course and grade
-      transcript = d_transcript %>%
-        
-        filter(
-          `Student ID` == input$student
-          ) %>%
-        
-        select(
-          course = `Course ID`,
-          grade  = Grade
-          ) %>%
-        
-        augment_student_transcript,
-
-      # interest of student (to be used with topic model)
-      interest = c("key", "words", "related", "to", "topics")
-      
-    )
-    
-    course_all <- unique(d_course$`Course ID`)
-    
-    student$course_not_taken <- setdiff(course_all, student$transcript$course)
-
+    # Courses with low score
     student$course_low <- student$transcript %>%
       filter(
         low
@@ -60,29 +46,39 @@ function(input, output) {
         course
         )
     
+    # Courses with fail score
     student$course_fail <- student$transcript %>%
       filter(
         fail
-      ) %>%
+        ) %>%
       pull(
         course
+        )
+    
+    # Course not taken
+    student$course_not_taken <- setdiff(
+      x = d_course$`Course ID`, # list of all courses offered
+      y = student$transcript$course
       )
     
     
-    rule_not <- SR$THL %>%
+    
+    #
+    # Red Flags
+    
+    # rules
+    rules <- list()
+    
+    # rules not
+    rules$not <- SR$THL %>%
       
-      select(
-        rhs_course,
-        lhs_course,
-        confidence,
-        lhs.rhsTake.count
-        ) %>%
-      
+      # select appropriate rules
       filter(
-        rhs_course %in% input$course_chosen,
-        lhs_course %in% student$course_not_taken
+        lhs_course %in% student$course_not_taken,
+        rhs_course %in% input$course_chosen
         ) %>%
       
+      # provide explanation
       mutate(
         explanation = paste(
           "Red flag for ",
@@ -98,26 +94,20 @@ function(input, output) {
           rhs_course,
           " without first taking ",
           lhs_course,
-          " did not do well in ",
+          " obtained less than 6.5/10 in  ",
           rhs_course,
           ".",
           sep = ""
         )
       )
     
-    rule_low <- SR$HL %>%
+    
+    # rules low
+    rules$low <- SR$HL %>%
       
-      select(
-        rhs_course,
-        lhs_course,
-        confidence,
-        lhs.rhsTake.count
-      ) %>%
-      
-      # select appropriate rules
       filter(
-        rhs_course %in% input$course_chosen,
-        lhs_course %in% student$course_low
+        lhs_course %in% student$course_low,
+        rhs_course %in% input$course_chosen
         ) %>%
       
       mutate(
@@ -133,28 +123,22 @@ function(input, output) {
           lhs.rhsTake.count,
           " students who have taken ", 
           rhs_course,
-          " after obtaining a similar grade in ",
+          " after obtaining less than 6.5/10 in ",
           lhs_course,
-          " did not do well in ",
+          " obtained less than 6.5/10 in  ",
           rhs_course,
           ".",
           sep = ""
           )
         )
     
-    rule_fail <- SR$PF %>%
+    
+    # rules fail
+    rules$fail <- SR$PF %>%
       
-      select(
-        rhs_course,
-        lhs_course,
-        confidence,
-        lhs.rhsTake.count
-      ) %>%
-      
-      # select appropriate rules
       filter(
-        rhs_course %in% input$course_chosen,
-        lhs_course %in% student$course_fail
+        lhs_course %in% student$course_fail,
+        rhs_course %in% input$course_chosen
         ) %>%
       
       mutate(
@@ -172,7 +156,7 @@ function(input, output) {
           rhs_course,
           " after failing ",
           lhs_course,
-          " did not do well in ",
+          " also failed ",
           rhs_course,
           ".",
           sep = ""
@@ -180,11 +164,63 @@ function(input, output) {
       )
     
     
-    rules <- rbind(
-      rule_not,
-      rule_low,
-      rule_fail
+    # rules grade
+    rules$grade <- SR$G %>%
+      
+      left_join(
+        student$transcript,
+        by = c("lhs_course" = "course")
+        ) %>%
+      
+      # select appropriate rules
+      filter(
+        grade <= lhs_outcome, # lhs
+        rhs_course %in% input$course_chosen
       ) %>%
+      
+      mutate(
+        explanation = paste(
+          "Red flag for ",
+          rhs_course,
+          ":<br/>",
+          "You have obtained less than ",
+          lhs_outcome,
+          "/10 in ",
+          lhs_course,
+          " and ",
+          round(confidence * 100, digits = 1),
+          "% of the ",
+          lhs.rhsTake.count,
+          " students who have taken ", 
+          rhs_course,
+          " after obtaining less than ",
+          lhs_outcome,
+          "/10 in ",
+          lhs_course,
+          " obtained less than ",
+          rhs_outcome,
+          "/10 in ",
+          rhs_course,
+          ".",
+          sep = ""
+        )
+      )
+    
+    
+    rules <- rules %>%
+      
+      # bind data sets from lists `rules` into one data set
+      lapply(
+        FUN = function(rules) {
+          rules %>% select(
+            rhs_course,
+            confidence,
+            explanation
+            )      
+          }
+        ) %>%
+      
+      bind_rows %>%
       
       # if several rule with same rhs, keep rule with highest confidence
       group_by(
