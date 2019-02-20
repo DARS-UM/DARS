@@ -9,6 +9,7 @@ library(shiny)
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("LDA_overview.RDATA")
+load("LDA_keyword_DELETE_.RDATA") #TO DELETE, THIS SHOULD BE INCLUDED IN 
 
 # set seed
 set.seed(1)
@@ -34,7 +35,7 @@ course_following_semester <- sample(
   replace = FALSE
   ) %>% sort
 
-
+key_words <- kw
 
 #
 # ui
