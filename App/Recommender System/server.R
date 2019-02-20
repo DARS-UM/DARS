@@ -309,8 +309,6 @@ function(input, output) {
     
     key_words <- c(input$key_words, key_words_additional)
     
-    
-    
     #
     # Course recommendation
     student$topic_score <- beta_distribution$k35 %>%
