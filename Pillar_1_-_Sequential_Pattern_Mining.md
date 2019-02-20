@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-02-19
+2019-02-20
 
 -   [Setup](#setup)
 -   [Data Exploration](#data-exploration)
@@ -1043,9 +1043,7 @@ SR$TPF <- d_transcript_cum %>%
   
   # lhs not, rhs low
   filter(
-    str_detect(rhs, "fail"),
-    lift > 1,
-    confidence >= 0.25
+    str_detect(rhs, "fail")
     )
 ```
 
@@ -1099,9 +1097,7 @@ SR$THL <- d_transcript_cum %>%
   
   # constraints to respect
   filter(
-    str_detect(rhs, "low"),
-    lift > 1,
-    confidence >= 0.25
+    str_detect(rhs, "low")
     )
 ```
 
@@ -1145,19 +1141,9 @@ SR$G <- sequences$G %>%
     # exclude rules with same course on lhs and rhs
     lhs_course != rhs_course,
     # rhs is grade less than or equal to 6
-    rhs_outcome == 6
-    ) %>%
-  
-  # for each combination of course (lhs and rhs), keep AR with highest lift (most informative)
-  group_by(
-    lhs_course,
-    rhs_course
-    ) %>%
-  top_n(
-    n = 1,
-    lift
-    ) %>%
-  ungroup
+    rhs_outcome <= 6,
+    lhs_outcome <= 7
+    )
 ```
 
 Editing rules
@@ -1172,10 +1158,12 @@ filter_rules <- function(rules){
     
     mutate(
       count = support * n_students
-    ) %>%
+      ) %>%
     
     filter(
-      count >= 10
+      count      >= 10,
+      lift       >= 1,
+      confidence >= 0.4
       )
   
 }
@@ -1197,20 +1185,20 @@ SR <- lapply(
 print(AR$THL)
 ```
 
-    ## # A tibble: 14,678 x 14
+    ## # A tibble: 40 x 14
     ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome support
     ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>         <dbl>
-    ##  1 SSC1~ SSC1007    not         HUM2~ HUM2030    low         0.00394
-    ##  2 SCI1~ SCI1009    not         HUM2~ HUM2030    low         0.00394
-    ##  3 SCI2~ SCI2034    not         HUM2~ HUM2030    low         0.00394
-    ##  4 SSC2~ SSC2006    not         HUM2~ HUM2030    low         0.00394
-    ##  5 SSC2~ SSC2024    not         HUM2~ HUM2030    low         0.00394
-    ##  6 SSC2~ SSC2027    not         HUM2~ HUM2030    low         0.00394
-    ##  7 SSC2~ SSC2004    not         HUM2~ HUM2030    low         0.00394
-    ##  8 SSC2~ SSC2036    not         HUM2~ HUM2030    low         0.00394
-    ##  9 SSC3~ SSC3047    not         HUM2~ HUM2030    low         0.00394
-    ## 10 SSC3~ SSC3002    not         HUM2~ HUM2030    low         0.00394
-    ## # ... with 14,668 more rows, and 7 more variables: confidence <dbl>,
+    ##  1 HUM1~ HUM1007    not         HUM2~ HUM2055    low         0.00394
+    ##  2 HUM3~ HUM3045    not         HUM2~ HUM2055    low         0.00394
+    ##  3 HUM2~ HUM2014    not         HUM2~ HUM2055    low         0.00394
+    ##  4 HUM3~ HUM3042    not         HUM2~ HUM2055    low         0.00394
+    ##  5 HUM2~ HUM2054    not         HUM2~ HUM2055    low         0.00394
+    ##  6 SSC2~ SSC2046    not         SCI1~ SCI1004    low         0.00394
+    ##  7 SCI3~ SCI3046    not         SCI1~ SCI1004    low         0.00394
+    ##  8 SSC1~ SSC1007    not         SCI3~ SCI3051    low         0.00472
+    ##  9 SSC1~ SSC1009    not         SCI3~ SCI3051    low         0.00512
+    ## 10 SSC1~ SSC1027    not         SCI3~ SCI3051    low         0.00433
+    ## # ... with 30 more rows, and 7 more variables: confidence <dbl>,
     ## #   lift <dbl>, count <dbl>, rate.low <dbl>, rhs.support <dbl>,
     ## #   lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>
 
@@ -1218,19 +1206,19 @@ print(AR$THL)
 print(SR$THL)
 ```
 
-    ## # A tibble: 256 x 15
+    ## # A tibble: 32 x 15
     ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome     n support
     ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>       <int>   <dbl>
-    ##  1 HUM1~ HUM1003    not         HUM3~ HUM3040    low            26 0.0102 
-    ##  2 HUM1~ HUM1003    not         SSC2~ SSC2055    low            27 0.0106 
-    ##  3 HUM1~ HUM1003    not         SSC2~ SSC2060    low            23 0.00906
-    ##  4 HUM1~ HUM1007    not         HUM1~ HUM1013    low            55 0.0217 
-    ##  5 HUM1~ HUM1007    not         HUM2~ HUM2044    low            20 0.00787
-    ##  6 HUM1~ HUM1007    not         HUM2~ HUM2047    low            16 0.00630
-    ##  7 HUM1~ HUM1007    not         HUM2~ HUM2055    low            10 0.00394
-    ##  8 HUM1~ HUM1007    not         HUM3~ HUM3034    low            41 0.0161 
-    ##  9 HUM1~ HUM1007    not         HUM3~ HUM3036    low            36 0.0142 
-    ## 10 HUM1~ HUM1007    not         HUM3~ HUM3040    low            32 0.0126 
-    ## # ... with 246 more rows, and 7 more variables: rate.low <dbl>,
+    ##  1 HUM1~ HUM1007    not         HUM2~ HUM2055    low            10 0.00394
+    ##  2 HUM2~ HUM2005    not         HUM2~ HUM2055    low            10 0.00394
+    ##  3 HUM2~ HUM2014    not         HUM2~ HUM2055    low            10 0.00394
+    ##  4 HUM2~ HUM2051    not         HUM2~ HUM2055    low            10 0.00394
+    ##  5 HUM3~ HUM3045    not         SCI3~ SCI3051    low            11 0.00433
+    ##  6 SCI1~ SCI1009    not         SCI2~ SCI2031    low            14 0.00551
+    ##  7 SCI1~ SCI1010    not         SCI3~ SCI3051    low            12 0.00472
+    ##  8 SCI2~ SCI2017    not         SCI3~ SCI3048    low            14 0.00551
+    ##  9 SCI2~ SCI2038    not         SCI3~ SCI3051    low            13 0.00512
+    ## 10 SCI2~ SCI2039    not         SCI3~ SCI3051    low            10 0.00394
+    ## # ... with 22 more rows, and 7 more variables: rate.low <dbl>,
     ## #   rhs.support <dbl>, lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>,
     ## #   confidence <dbl>, lift <dbl>, count <dbl>
