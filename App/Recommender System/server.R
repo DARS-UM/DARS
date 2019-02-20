@@ -346,6 +346,39 @@ function(input, output) {
         wt = course_score
         ) %>%
       
+      # Key words per recommendation
+      left_join(
+        beta_distribution$k35,
+        by = "topic"
+        ) %>%
+      left_join(
+        gamma_distribution$k35,
+        by = "topic"
+        ) %>%
+      filter(
+        term %in% key_words
+        ) %>%
+      
+      group_by(
+        term,
+        document
+        ) %>%
+      summarize(
+        word_contribution_to_document = sum(gamma * beta)
+        ) %>%
+      
+      group_by(
+        document
+        ) %>%
+      top_n(
+        n  = 3,
+        wt = word_contribution_to_document
+        ) %>%
+      summarize(
+        key_words = paste(term, collapse = ", ")
+        ) %>%
+      ungroup %>%
+      
       # Editing
       left_join(
         select(d_course, `Course ID`, `Course Title`),
