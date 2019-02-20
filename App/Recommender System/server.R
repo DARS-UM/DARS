@@ -223,6 +223,8 @@ function(input, output) {
     
     #
     # Set up
+    
+    # Topic model
     get_beta <- function(results){
       
       tidytext::tidy(results, matrix = "beta") %>%
@@ -239,16 +241,17 @@ function(input, output) {
       
     }
     
-    beta_description <- lapply(
+    beta_distribution <- lapply(
       LDA_model,
       get_beta
       )
     
-    gamma_descriptions <- lapply(
+    gamma_distribution <- lapply(
       LDA_model,
       get_gamma
       )
     
+    # Key words
     key_words_additional <- c(
       input$key_word_1,
       input$key_word_2,
@@ -270,47 +273,43 @@ function(input, output) {
     key_words <- c(input$key_words, key_words_additional)
     
     
+    
     #
-    # Topic Score
-    student$topic_score <- beta_description$k35 %>%
+    # Course recommendation
+    student$topic_score <- beta_distribution$k35 %>%
+      
+      # Topic score
       filter(
         term %in% key_words
         ) %>%
       group_by(
         topic
-        )%>% #maybe we can do this with transcripts afterwards
+        ) %>%
       summarize(
         topic_score = sum(beta)
-        )%>%
-      ungroup() %>%
-      mutate(topic_score_proportion = topic_score / sum(topic_score))
-    
-    
-    #
-    # Course Score
-    student$course_score <- gamma_descriptions$k35 %>%
+        ) %>%
+      ungroup %>%
+      
+      # Course score
       full_join(
-        student$topic_score,
+        gamma_distribution$k35,
         by = "topic"
         ) %>%
       group_by(
         document
         ) %>%
       summarise(
-        course_score = sum(gamma * topic_score_proportion)
+        course_score = sum(gamma * topic_score)
         ) %>%
-      ungroup
+      ungroup %>%
       
-    
-    #
-    # Course recommendation
-    student$course_score  %>%
-      
+      # Recommendations
       top_n(
         n  = 5,
         wt = course_score
         ) %>%
       
+      # Editing
       left_join(
         select(d_course, `Course ID`, `Course Title`),
         by = c("document" = "Course ID")
