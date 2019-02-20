@@ -9,6 +9,7 @@ output: pdf_document
 ```{r libraries}
 library(tidyverse)
 ```
+
 ##Raw Data
 ```{r setup, include=FALSE}
 #
@@ -159,17 +160,19 @@ key_words <- gamma_descriptions$k35                             %>%
 
 ##Selectig keywords
 ```{r}
-top_kw <- beta_description$k35 %>%
+top_words <- beta_description$k35 %>%
   group_by(topic) %>%
   top_n(3, beta) %>%
-  pull(term)
+  pull(term)%>%
+  unique
 
-kw <- unique(top_kw)
-
-kw_stopwords =c("student", "skill", "academic", "bate", "participant", "gain", "primarily", "main", "2016", "action", "level", "issue", "concept", "close", "day", "edition", "primary", "project", "method", "apply", "busy", "address", "role", "post", "oxford", "cuss", "lecture", "pbl",
+kw_stopwords =c(
+  "student", "skill", "academic", "bate", "participant", "gain", "primarily", "main", "2016", "action", "level", "issue",
+  "concept", "close", "day", "edition", "primary", "project", "method", "apply", "busy", "address", "role", "post", "oxford",
+  "cuss", "lecture", "pbl",
     #unsure:
-               "theory", "search", "perspective"
+  "theory", "search", "perspective"
                 )
-kw <- setdiff(kw, kw_stopwords)
+kw <- setdiff(top_words, kw_stopwords)
 ```
 
