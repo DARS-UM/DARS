@@ -6,6 +6,7 @@
 library(tidyverse)
 library(tidytext)
 library(shiny)
+
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("LDA_overview.RDATA")
@@ -65,8 +66,8 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "course_chosen",
           label    = "Tentative Courses for following period",
-          choices  = course_following_semester,
-          selected = course_following_semester,
+          choices  = course_all,
+          selected = course_all,
           inline   = TRUE
           )
         
