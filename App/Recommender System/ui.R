@@ -103,11 +103,7 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = c(
-            "climate", "sustainability", "change", "development", "develop","sustain", "sustainable",
-            "//",
-            "international", "economic", "conflict", "develop", "policy", "war"
-            ),
+          choices  = kw,
           selected = c("international", "economic", "conflict", "develop", "policy", "war"),
           inline   = TRUE
           ),
