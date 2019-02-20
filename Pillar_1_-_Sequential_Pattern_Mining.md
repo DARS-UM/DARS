@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-02-18
+2019-02-19
 
 -   [Setup](#setup)
 -   [Data Exploration](#data-exploration)
@@ -1043,7 +1043,9 @@ SR$TPF <- d_transcript_cum %>%
   
   # lhs not, rhs low
   filter(
-    str_detect(rhs, "fail")
+    str_detect(rhs, "fail"),
+    lift > 1,
+    confidence >= 0.25
     )
 ```
 
@@ -1095,9 +1097,11 @@ SR$THL <- d_transcript_cum %>%
   
   compute_conf_lift %>%
   
-  # lhs not, rhs low
+  # constraints to respect
   filter(
-    str_detect(rhs, "low")
+    str_detect(rhs, "low"),
+    lift > 1,
+    confidence >= 0.25
     )
 ```
 
@@ -1214,19 +1218,19 @@ print(AR$THL)
 print(SR$THL)
 ```
 
-    ## # A tibble: 14,907 x 15
+    ## # A tibble: 256 x 15
     ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome     n support
     ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>       <int>   <dbl>
-    ##  1 HUM1~ HUM1003    not         HUM1~ HUM1007    low            74 0.0291 
-    ##  2 HUM1~ HUM1003    not         HUM1~ HUM1011    low            48 0.0189 
-    ##  3 HUM1~ HUM1003    not         HUM1~ HUM1012    low            16 0.00630
-    ##  4 HUM1~ HUM1003    not         HUM1~ HUM1013    low            58 0.0228 
-    ##  5 HUM1~ HUM1003    not         HUM1~ HUM1014    low            16 0.00630
-    ##  6 HUM1~ HUM1003    not         HUM2~ HUM2003    low            87 0.0343 
-    ##  7 HUM1~ HUM1003    not         HUM2~ HUM2005    low            40 0.0157 
-    ##  8 HUM1~ HUM1003    not         HUM2~ HUM2007    low            15 0.00591
-    ##  9 HUM1~ HUM1003    not         HUM2~ HUM2008    low            18 0.00709
-    ## 10 HUM1~ HUM1003    not         HUM2~ HUM2013    low            19 0.00748
-    ## # ... with 14,897 more rows, and 7 more variables: rate.low <dbl>,
+    ##  1 HUM1~ HUM1003    not         HUM3~ HUM3040    low            26 0.0102 
+    ##  2 HUM1~ HUM1003    not         SSC2~ SSC2055    low            27 0.0106 
+    ##  3 HUM1~ HUM1003    not         SSC2~ SSC2060    low            23 0.00906
+    ##  4 HUM1~ HUM1007    not         HUM1~ HUM1013    low            55 0.0217 
+    ##  5 HUM1~ HUM1007    not         HUM2~ HUM2044    low            20 0.00787
+    ##  6 HUM1~ HUM1007    not         HUM2~ HUM2047    low            16 0.00630
+    ##  7 HUM1~ HUM1007    not         HUM2~ HUM2055    low            10 0.00394
+    ##  8 HUM1~ HUM1007    not         HUM3~ HUM3034    low            41 0.0161 
+    ##  9 HUM1~ HUM1007    not         HUM3~ HUM3036    low            36 0.0142 
+    ## 10 HUM1~ HUM1007    not         HUM3~ HUM3040    low            32 0.0126 
+    ## # ... with 246 more rows, and 7 more variables: rate.low <dbl>,
     ## #   rhs.support <dbl>, lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>,
     ## #   confidence <dbl>, lift <dbl>, count <dbl>

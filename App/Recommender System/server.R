@@ -31,76 +31,96 @@ function(input, output) {
       
       # transcript of student: tibble with course and grade
       transcript = d_transcript %>%
+        
         filter(
           `Student ID` == input$student
           ) %>%
+        
         select(
           course = `Course ID`,
           grade  = Grade
-          ),
+          ) %>%
+        
+        augment_student_transcript,
 
       # interest of student (to be used with topic model)
       interest = c("key", "words", "related", "to", "topics")
       
     )
+    
+    course_all <- unique(d_course$`Course ID`)
+    
+    student$course_not_taken <- setdiff(course_all, student$transcript$course)
 
+    student$course_low <- student$transcript %>%
+      filter(
+        low
+        ) %>%
+      pull(
+        course
+        )
+    
+    student$course_fail <- student$transcript %>%
+      filter(
+        fail
+      ) %>%
+      pull(
+        course
+      )
     
     
-    # # fake student
-    # n_course <- 25
-    # 
-    # student <- list(
-    #   
-    #   # transcript: tibble with course and grade
-    #   transcript = tibble(
-    #     
-    #     course = sample(
-    #       x       = course_all,
-    #       size    = n_course,
-    #       replace = FALSE
-    #     ),
-    #     
-    #     grade = rnorm(
-    #       n    = n_course,
-    #       mean = 5,
-    #       sd   = 2
-    #     )
-    #     
-    #   ),
-    #   
-    #   # interest of student (to be used with topic model)
-    #   interest = c("key", "words", "related", "to", "topics")
-    #   
-    # )
+    rule_not <- SR$THL %>%
+      
+      select(
+        rhs_course,
+        lhs_course,
+        confidence,
+        lhs.rhsTake.count
+        ) %>%
+      
+      filter(
+        rhs_course %in% input$course_chosen,
+        lhs_course %in% student$course_not_taken
+        ) %>%
+      
+      mutate(
+        explanation = paste(
+          "Red flag for ",
+          rhs_course,
+          ":<br/>",
+          "You have not taken ",
+          lhs_course,
+          " and ",
+          round(confidence * 100, digits = 1),
+          "% of the ",
+          lhs.rhsTake.count,
+          " students who have taken ", 
+          rhs_course,
+          " without first taking ",
+          lhs_course,
+          " did not do well in ",
+          rhs_course,
+          ".",
+          sep = ""
+        )
+      )
     
-    
-    course_low <-  student$transcript %>%
-      augment_student_transcript %>%
-      filter(low) %>%
-      pull(course)
-    
-    
-    red_flags <- SR$HL %>%
+    rule_low <- SR$HL %>%
+      
+      select(
+        rhs_course,
+        lhs_course,
+        confidence,
+        lhs.rhsTake.count
+      ) %>%
       
       # select appropriate rules
       filter(
         rhs_course %in% input$course_chosen,
-        lhs_course %in% course_low
-      ) %>%
+        lhs_course %in% student$course_low
+        ) %>%
       
-      # if several rule with same rhs, keep rule with highest confidence
-      group_by(
-        rhs_course
-      ) %>%
-      top_n(
-        n  = 1,
-        wt = confidence
-      ) %>%
-      ungroup %>%
-      
-      # provide explanation
-      transmute(
-        
+      mutate(
         explanation = paste(
           "Red flag for ",
           rhs_course,
@@ -119,24 +139,77 @@ function(input, output) {
           rhs_course,
           ".",
           sep = ""
+          )
         )
-        
+    
+    rule_fail <- SR$PF %>%
+      
+      select(
+        rhs_course,
+        lhs_course,
+        confidence,
+        lhs.rhsTake.count
+      ) %>%
+      
+      # select appropriate rules
+      filter(
+        rhs_course %in% input$course_chosen,
+        lhs_course %in% student$course_fail
+        ) %>%
+      
+      mutate(
+        explanation = paste(
+          "Red flag for ",
+          rhs_course,
+          ":<br/>",
+          "You have failed ",
+          lhs_course,
+          " and ",
+          round(confidence * 100, digits = 1),
+          "% of the ",
+          lhs.rhsTake.count,
+          " students who have taken ", 
+          rhs_course,
+          " after failing ",
+          lhs_course,
+          " did not do well in ",
+          rhs_course,
+          ".",
+          sep = ""
+        )
       )
     
-    if(nrow(red_flags) == 0){
+    
+    rules <- rbind(
+      rule_not,
+      rule_low,
+      rule_fail
+      ) %>%
+      
+      # if several rule with same rhs, keep rule with highest confidence
+      group_by(
+        rhs_course
+        ) %>%
+      top_n(
+        n  = 1,
+        wt = confidence
+        )
+    
+    
+    if(nrow(rules) == 0){
       
       "No red flag"
       
     }else{
       
-      red_flags  %>%
+      rules  %>%
         
-        pull %>%
+        pull(explanation) %>%
         
         sort %>% 
         
         paste0(
-          collapse = "<br/><br/>"
+          collapse = "<br/><br/>" # skip a line between individual red flags
         ) %>% 
         
         HTML
