@@ -36,7 +36,7 @@ course_following_semester <- sample(
   replace = FALSE
   ) %>% sort
 
-key_words <- kw
+
 
 #
 # ui
@@ -103,15 +103,16 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = kw,
-          selected = c("international", "economic", "conflict", "develop", "policy", "war"),
+          choices  = sort(kw),
+          selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),
         
         # Input: additional key word 1-5
         textInput(
           inputId = "key_word_1",
-          label   = "Additional Key Word 1"
+          label   = "Additional Key Word 1",
+          value   = "war"
           ),
         textInput(
           inputId = "key_word_2",
