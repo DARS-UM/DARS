@@ -1,6 +1,7 @@
 library(tidyverse)
 library(tidytext)
 library(stringr)
+library(hunspell)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
@@ -314,6 +315,8 @@ function(input, output) {
     
     #
     # Course recommendation
+    student <- list()
+    
     student$topic_score <- beta_distribution$k35 %>%
       
       # Topic score
@@ -391,9 +394,9 @@ function(input, output) {
       
       transmute(
         recommendation = paste(
-          "Course Recommendation", 
-          document, `Course Title`,
-          "because you selected the key words:" , key_words
+          "Course Recommendation", "<em>","<b>",
+          document, `Course Title`,"</b>","</em>",
+          "because you selected the key words:" ,"<b>", key_words,"</b>"
           )
         ) %>%
       
