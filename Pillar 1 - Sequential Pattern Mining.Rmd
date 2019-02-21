@@ -1106,7 +1106,7 @@ SR$G <- sequences$G %>%
 ## Editing rules
 The function edit_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 ```{r edit_rules}
-edit_rules <- function(rules){
+edit_rules_rulesApp <- function(rules){
   
   rules %>%
     
@@ -1137,20 +1137,20 @@ edit_rules <- function(rules){
 ```
 
 ```{r edit rules}
-AR <- lapply(
+AR_rulesAPP <- lapply(
   X   = AR,
-  FUN = edit_rules
+  FUN = edit_rules_rulesApp
   )
 
-SR <- lapply(
+SR_rulesAPP <- lapply(
   X   = SR,
-  FUN = edit_rules
+  FUN = edit_rules_rulesApp
   )
 ```
 
 ```{r}
 save(
-  AR, SR,
+  AR_rulesAPP, SR_rulesAPP,
   file = "App/rules/rules.RDATA"
   )
 ```
@@ -1161,34 +1161,39 @@ print(SR$THL)
 ```
 
 ```{r}
-filter_rules <- function(rules){
+edit_rules_RSAPP <- function(rules){
   
   rules %>%
+    
+    mutate(
+      count = support * n_students
+      ) %>%
     
     filter(
        count      >= 10,
        lift       >= 1,
        confidence >= 0.4
       )
+  
 }
 ```
 
 ```{r}
-AR <- lapply(
+AR_RSAPP <- lapply(
   X   = AR,
-  FUN = filter_rules
+  FUN = edit_rules_RSAPP
   )
 
-SR <- lapply(
+SR_RSAPP <- lapply(
   X   = SR,
-  FUN = filter_rules
+  FUN = edit_rules_RSAPP
   )
 ```
 
 
 ```{r save rules, include = FALSE}
 save(
-  AR, SR,
+  AR_RSAPP, SR_RSAPP,
   file = "App/Recommender System/rules.RDATA"
   )
 ```
