@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-02-20
+2019-02-21
 
 -   [Setup](#setup)
 -   [Data Exploration](#data-exploration)
@@ -918,23 +918,14 @@ AR$G <- transactions$G %>%
     lift       = confidence / rhs.support
     ) %>%
   
-  
-  # reduce number of rules
+  # Reduce number of rules
   filter(
-    lhs_course  != rhs_course, # exclude rules with same course on lhs and rhs
-    rhs_outcome == 6            
-    ) %>%
-  
-  # for each combination of courses (lhs and rhs), keep AR with highest lift (most informative AR)
-  group_by(
-    lhs_course, 
-    rhs_course
-    ) %>%
-  top_n(
-    1,
-    lift
-    ) %>%
-  ungroup
+    # exclude rules with same course on lhs and rhs
+    lhs_course != rhs_course,
+    # rhs is grade less than or equal to 6
+    rhs_outcome <= 6,
+    lhs_outcome <= 7
+    )
 ```
 
 Sequence Rules
@@ -1135,7 +1126,6 @@ SR$G <- sequences$G %>%
     lift       = confidence / rhs.support
     ) %>%
   
-  
   # Reduce number of rules
   filter(
     # exclude rules with same course on lhs and rhs
@@ -1152,7 +1142,7 @@ Editing rules
 The function edit\_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 
 ``` r
-filter_rules <- function(rules){
+edit_rules <- function(rules){
   
   rules %>%
     
@@ -1160,12 +1150,95 @@ filter_rules <- function(rules){
       count = support * n_students
       ) %>%
     
-    filter(
-      count      >= 10,
-      lift       >= 1,
-      confidence >= 0.4
+    select(
+      lhs, rhs,
+      support, count,
+      confidence,
+      matches("rhsTake.support"),
+      lift,
+      matches("rhsTake.count")
+      ) %>%
+    
+     mutate_if(
+       is.numeric,
+       round,
+       digits = 3
+       ) %>%
+    
+    arrange(
+      desc(count)
       )
   
+}
+```
+
+``` r
+AR <- lapply(
+  X   = AR,
+  FUN = edit_rules
+  )
+
+SR <- lapply(
+  X   = SR,
+  FUN = edit_rules
+  )
+```
+
+``` r
+save(
+  AR, SR,
+  file = "App/rules/rules.RDATA"
+  )
+```
+
+``` r
+print(AR$THL)
+```
+
+    ## # A tibble: 19,793 x 8
+    ##    lhs   rhs   support count confidence lhs.rhsTake.sup~  lift
+    ##    <chr> <chr>   <dbl> <dbl>      <dbl>            <dbl> <dbl>
+    ##  1 SCI3~ SCI2~   0.139   353      0.376            0.37  0.891
+    ##  2 SCI3~ SCI2~   0.139   353      0.375            0.371 0.888
+    ##  3 HUM2~ SCI2~   0.139   353      0.377            0.369 0.893
+    ##  4 SSC3~ SCI2~   0.139   353      0.375            0.371 0.888
+    ##  5 SCI2~ SCI2~   0.139   352      0.376            0.369 0.89 
+    ##  6 SCI2~ SCI2~   0.139   352      0.374            0.37  0.887
+    ##  7 SCI2~ SCI2~   0.139   352      0.375            0.37  0.888
+    ##  8 SCI3~ SCI2~   0.139   352      0.374            0.37  0.887
+    ##  9 SCI3~ SCI2~   0.139   352      0.375            0.37  0.888
+    ## 10 SCI3~ SCI2~   0.139   352      0.374            0.37  0.886
+    ## # ... with 19,783 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+
+``` r
+print(SR$THL)
+```
+
+    ## # A tibble: 19,810 x 8
+    ##    lhs   rhs   support count confidence lhs.rhsTake.sup~  lift
+    ##    <chr> <chr>   <dbl> <dbl>      <dbl>            <dbl> <dbl>
+    ##  1 HUM2~ SCI2~   0.148   376      0.391            0.379 0.926
+    ##  2 HUM2~ SCI2~   0.148   376      0.39             0.38  0.923
+    ##  3 HUM3~ SCI2~   0.148   376      0.39             0.38  0.923
+    ##  4 SCI2~ SCI2~   0.148   376      0.39             0.38  0.924
+    ##  5 SCI2~ SCI2~   0.148   376      0.392            0.378 0.928
+    ##  6 SCI2~ SCI2~   0.148   376      0.39             0.38  0.923
+    ##  7 SCI2~ SCI2~   0.148   376      0.39             0.38  0.924
+    ##  8 SCI3~ SCI2~   0.148   376      0.39             0.38  0.923
+    ##  9 SCI3~ SCI2~   0.148   376      0.39             0.38  0.923
+    ## 10 SCI3~ SCI2~   0.148   376      0.39             0.38  0.924
+    ## # ... with 19,800 more rows, and 1 more variable: lhs.rhsTake.count <dbl>
+
+``` r
+filter_rules <- function(rules){
+  
+  rules %>%
+    
+    filter(
+       count      >= 10,
+       lift       >= 1,
+       confidence >= 0.4
+      )
 }
 ```
 
@@ -1180,45 +1253,3 @@ SR <- lapply(
   FUN = filter_rules
   )
 ```
-
-``` r
-print(AR$THL)
-```
-
-    ## # A tibble: 40 x 14
-    ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome support
-    ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>         <dbl>
-    ##  1 HUM1~ HUM1007    not         HUM2~ HUM2055    low         0.00394
-    ##  2 HUM3~ HUM3045    not         HUM2~ HUM2055    low         0.00394
-    ##  3 HUM2~ HUM2014    not         HUM2~ HUM2055    low         0.00394
-    ##  4 HUM3~ HUM3042    not         HUM2~ HUM2055    low         0.00394
-    ##  5 HUM2~ HUM2054    not         HUM2~ HUM2055    low         0.00394
-    ##  6 SSC2~ SSC2046    not         SCI1~ SCI1004    low         0.00394
-    ##  7 SCI3~ SCI3046    not         SCI1~ SCI1004    low         0.00394
-    ##  8 SSC1~ SSC1007    not         SCI3~ SCI3051    low         0.00472
-    ##  9 SSC1~ SSC1009    not         SCI3~ SCI3051    low         0.00512
-    ## 10 SSC1~ SSC1027    not         SCI3~ SCI3051    low         0.00433
-    ## # ... with 30 more rows, and 7 more variables: confidence <dbl>,
-    ## #   lift <dbl>, count <dbl>, rate.low <dbl>, rhs.support <dbl>,
-    ## #   lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>
-
-``` r
-print(SR$THL)
-```
-
-    ## # A tibble: 32 x 15
-    ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome     n support
-    ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>       <int>   <dbl>
-    ##  1 HUM1~ HUM1007    not         HUM2~ HUM2055    low            10 0.00394
-    ##  2 HUM2~ HUM2005    not         HUM2~ HUM2055    low            10 0.00394
-    ##  3 HUM2~ HUM2014    not         HUM2~ HUM2055    low            10 0.00394
-    ##  4 HUM2~ HUM2051    not         HUM2~ HUM2055    low            10 0.00394
-    ##  5 HUM3~ HUM3045    not         SCI3~ SCI3051    low            11 0.00433
-    ##  6 SCI1~ SCI1009    not         SCI2~ SCI2031    low            14 0.00551
-    ##  7 SCI1~ SCI1010    not         SCI3~ SCI3051    low            12 0.00472
-    ##  8 SCI2~ SCI2017    not         SCI3~ SCI3048    low            14 0.00551
-    ##  9 SCI2~ SCI2038    not         SCI3~ SCI3051    low            13 0.00512
-    ## 10 SCI2~ SCI2039    not         SCI3~ SCI3051    low            10 0.00394
-    ## # ... with 22 more rows, and 7 more variables: rate.low <dbl>,
-    ## #   rhs.support <dbl>, lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>,
-    ## #   confidence <dbl>, lift <dbl>, count <dbl>
