@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-01-22
+2019-02-18
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -10,11 +10,15 @@ DARS
     -   [Cluster Level](#cluster-level)
     -   [Concentration Level](#concentration-level)
 -   [LDA](#lda)
-    -   [Ideal Number of Topics](#ideal-number-of-topics)
+    -   [Ideal Number of Topics (RUN ON UM COMPUTER)](#ideal-number-of-topics-run-on-um-computer)
     -   [Fitting Model](#fitting-model)
     -   [Visualization](#visualization)
         -   [Functions](#functions)
         -   [Plots](#plots)
+
+``` r
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/")
+```
 
 ``` r
 library(tidyverse)
@@ -32,7 +36,18 @@ Setup
 =====
 
 ``` r
-load("data_pillar_2.RDATA")
+load("output/data_pillar_2.RDATA")
+
+# Only keep course descriptions and overviews from most recent year
+d_description <- d_description %>%
+  filter(
+    `Academic Year` == "2018-2019"
+  )
+
+d_overview <- d_overview %>%
+  filter(
+    `Academic Year` == "2018-2019"
+  )
 ```
 
 TF-IDF
@@ -42,18 +57,23 @@ Functions for Generating Barplots and Word Clouds
 -------------------------------------------------
 
 ``` r
-compute_tf_idf <- function(data) data %>%
-                                   count(`Course ID`, word) %>%
-                                   bind_tf_idf(term = word, document = `Course ID`, n = n)
+compute_tf_idf <- function(data){
+  
+  data %>%
+    count(
+      `Course ID`,
+      word
+      ) %>%
+    bind_tf_idf(
+      term = word, 
+      document = `Course ID`,
+      n = n
+      )
+  
+}
 
-tf_idf_description <- compute_tf_idf(filter(d_description, `Academic Year` == "2018-2019"))
-```
-
-    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
-    ## This warning is displayed once per session.
-
-``` r
-tf_idf_overview    <- compute_tf_idf(filter(d_overview, `Academic Year` == "2018-2019"))
+tf_idf_description <- compute_tf_idf(d_description)
+tf_idf_overview    <- compute_tf_idf(d_overview)
 tf_idf_manual      <- compute_tf_idf(d_manual)
 
 rm(compute_tf_idf)
@@ -61,36 +81,75 @@ rm(compute_tf_idf)
 
 ``` r
 plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
-
+  
+  
+  #
   # Barplot
   g <- data %>%
-    ggplot(aes(reorder_within(word, tf_idf, facet), tf_idf)) +
-    geom_col(show.legend = F) +
-    labs(x = NULL, y = "tf-idf") +
+    ggplot(
+      aes(
+        x = reorder_within(word, tf_idf, facet), 
+        y = tf_idf
+        )
+      ) +
+    geom_col(
+      show.legend = FALSE
+      ) +
+    labs(
+      x = NULL,
+      y = "tf-idf"
+      ) +
     scale_x_reordered() +
-    facet_wrap(~ facet, scales = "free", ncol = n_col) +
+    facet_wrap(
+      facets = ~ facet, 
+      scales = "free",
+      ncol = n_col
+      ) +
     coord_flip()
   
-  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Plots/tf_idf", width = 16, height = 8)
-    
+  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Output/Plots/tf_idf", width = 16, height = 8)
+  
+  
+  #
   # Word Cloud
   g <- data %>%
-    group_by(facet) %>%
-      mutate(freq = tf_idf / sum(tf_idf)) %>% # normalization within clusters
-    ggplot(aes(size = freq^0.7, label = word, color = freq^0.7)) +
-    geom_text_wordcloud_area(area_corr_power = 1,
-                             eccentricity    = 1,
-                             rm_outside      = T) +
-    scale_radius(range = c(2, 10), limits = c(0, NA)) +
-    scale_color_gradient(low = "red", high = "blue") +
-    facet_wrap(~ facet, ncol = n_col) + 
+    group_by(
+      facet
+      ) %>%
+    mutate(
+      freq = tf_idf / sum(tf_idf)
+      ) %>% # normalization within facet
+    ggplot(
+      aes(
+        size = freq ^ 0.7, 
+        label = word, 
+        color = freq ^ 0.7
+        )
+      ) +
+    geom_text_wordcloud_area(
+      area_corr_power = 1,
+      eccentricity    = 1,
+      rm_outside      = T
+      ) +
+    scale_radius(
+      range = c(2, 10),
+      limits = c(0, NA)
+      ) +
+    scale_color_gradient(
+      low = "red", 
+      high = "blue"
+      ) +
+    facet_wrap(
+      facet = ~ facet,
+      ncol = n_col
+      ) + 
     theme(
       strip.text.x     = element_text(),
       panel.background = element_rect(fill = "white"),
-      plot.title       = element_text(hjust=0.5)
+      plot.title       = element_text(hjust = 0.5)
     )
   
-  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Plots/tf_idf", width = 16, height = 8)
+  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Output/Plots/tf_idf", width = 16, height = 8)
 
 }
 ```
@@ -99,28 +158,44 @@ Course Level
 ------------
 
 ``` r
-prepare_tf_idf_course <- function(data) data %>%
-                                          filter(`Course ID` %in% sample(unique(.$`Course ID`), size = 25, replace = F)) %>% # random selection of courses
-                                          rename(facet = `Course ID`) %>%
-                                          group_by(facet) %>%
-                                            filter(n >= 2) %>%
-                                            top_n(10, tf_idf) %>%
-                                          ungroup
+prepare_tf_idf_course <- function(data){
+  
+  data %>%
+    
+    # Selection 25 courses randomly
+    filter(
+      `Course ID` %in% sample(
+        x = unique(.$`Course ID`),
+        size = 25, 
+        replace = FALSE
+        )
+      ) %>%
+    
+    # Select top 10 words per course 
+    group_by(
+      `Course ID`
+      ) %>%
+    filter(
+      n >= 2
+      ) %>%
+    top_n(
+      n = 10,
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = `Course ID`
+      )
+
+  }
 
 set.seed(123)
 tf_idf_description %>%
   prepare_tf_idf_course %>%
   plot_tf_idf(id_plot = "Course_description")
-```
 
-    ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `call2()` instead
-    ## This warning is displayed once per session.
-
-    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
-    ## This warning is displayed once per session.
-
-``` r
 set.seed(123)
 tf_idf_overview %>%
   prepare_tf_idf_course %>%
@@ -142,34 +217,48 @@ Cluster Level
 -------------
 
 ``` r
-prepare_tf_idf_cluster <- function(data) data %>%
-                                           left_join(select(d_course, `Course ID`, Cluster), by = "Course ID") %>%
-                                           filter(!is.na(Cluster)) %>%
-                                           rename(facet = Cluster) %>%
-                                           group_by(facet, word) %>%
-                                             summarise(tf_idf = sum(tf_idf),
-                                                       n = sum(n)) %>%
-                                             filter(n >= 10) %>%
-                                             top_n(10, tf_idf) %>%
-                                           ungroup
+prepare_tf_idf_cluster <- function(data){
+  
+  data %>%
+    
+    # Include the variable Cluster
+    left_join(
+      select(d_course, `Course ID`, Cluster),
+      by = "Course ID"
+      ) %>%
+    filter(
+      !is.na(Cluster)
+      ) %>%
+    
+    # Select top 10 words per cluster
+    group_by(
+      Cluster, 
+      word
+      ) %>%
+    summarise(
+      tf_idf = sum(tf_idf),
+      n = sum(n)
+      ) %>%
+    filter(
+      n >= 10
+      ) %>%
+    top_n(
+      n = 10, 
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = Cluster
+      )
+  
+}
 
 tf_idf_description %>%
   prepare_tf_idf_cluster %>%
   plot_tf_idf(id_plot = "Cluster_description")
-```
 
-    ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `new_data_mask()` instead
-    ## This warning is displayed once per session.
-
-    ## Warning: `overscope_eval_next()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `eval_tidy()` with a data mask instead
-    ## This warning is displayed once per session.
-
-    ## Warning: `chr_along()` is soft-deprecated as of rlang 0.2.0.
-    ## This warning is displayed once per session.
-
-``` r
 tf_idf_overview %>%
   prepare_tf_idf_cluster %>%
   plot_tf_idf(id_plot = "Cluster_overview")
@@ -185,17 +274,49 @@ Concentration Level
 -------------------
 
 ``` r
-prepare_tf_idf_concentration <- function(data) data %>%
-                                                 left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
-                                                 filter(!is.na(Concentration)) %>%
-                                                 gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
-                                                 rename(facet = Concentration) %>%
-                                                 group_by(facet, word) %>%
-                                                   summarise(tf_idf = sum(tf_idf),
-                                                             n = sum(n)) %>%
-                                                   filter(n >= 10) %>%
-                                                   top_n(10, tf_idf) %>%
-                                                 ungroup
+prepare_tf_idf_concentration <- function(data){
+  
+  data %>%
+    
+    # Include the variable Concentration
+    left_join(
+      select(d_course, `Course ID`, Concentration, `Concentration (additional)`),
+      by = "Course ID"
+      ) %>%
+    filter(
+      !is.na(Concentration)
+      ) %>%
+    gather(
+      key = X,
+      value = Concentration,
+      Concentration, `Concentration (additional)`,
+      na.rm = TRUE
+      ) %>%
+    
+    # Select top 10 words per cluster
+    group_by(
+      Concentration, 
+      word
+      ) %>%
+    summarise(
+      tf_idf = sum(tf_idf),
+      n = sum(n)
+      ) %>%
+    filter(
+      n >= 10
+      ) %>%
+    top_n(
+      n = 10,
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = Concentration
+      )
+  
+} 
 
 tf_idf_description %>%
   prepare_tf_idf_concentration %>%
@@ -216,63 +337,163 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 LDA
 ===
 
-Ideal Number of Topics
-----------------------
-
-``` r
-result <- FindTopicsNumber(
-  
-  d_description_cast,
-  topics = seq(from = 20, to = 150, by = 5),
-  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
-  method = "Gibbs",
-  control = list(seed = 123),
-  mc.cores = 1L,
-  verbose = TRUE
-  
-)
-
-save(result,
-     file = "LDA_ntopics.RDATA")
-```
-
-``` r
-load("LDA_ntopics.RDATA")
-FindTopicsNumber_plot(result)
-```
-
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/LDA%20number%20topics%20plot-1.png)
-
-Fitting Model
--------------
-
 ``` r
 my_cast_tdm <- function(data, level) data %>%
   count(`Course ID`, word) %>%
   cast_dtm(`Course ID`, word, n)
 
 d_description_cast <- my_cast_tdm(d_description)
-```
-
-    ## Warning: The `printer` argument is soft-deprecated as of rlang 0.3.0.
-    ## This warning is displayed once per session.
-
-``` r
 d_overview_cast <- my_cast_tdm(d_overview)
 d_manual_cast <- my_cast_tdm(d_manual)
 
 rm(my_cast_tdm)
 ```
 
+Ideal Number of Topics (RUN ON UM COMPUTER)
+-------------------------------------------
+
 ``` r
-n_topics <- 120
+my_control <- list(
+  
+  nstart = 10,
+  seed   = 1 : 10,
+  best   = TRUE,
+  
+  burnin = 500,
+  iter   = 2000,
+  thin   = 100
+  
+)
+```
+
+``` r
+my_FindTopicsNumber <- function(data_cast, n_topics){
+  
+  FindTopicsNumber(
+  
+  dtm = data_cast,
+  topics = n_topics,
+  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+  method = "Gibbs",
+  control = my_control,
+  mc.cores = 1L
+  
+  )
+  
+  
+}
+```
+
+``` r
+start.time <- Sys.time()
+
+result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_description,
+     file = "Output/LDA_ntopics_description.RDATA")
+
+print(time.taken)
+```
+
+    ## Time difference of 6.793629 hours
+
+``` r
+start.time <- Sys.time()
+
+result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_overview ,
+     file = "Output/LDA_ntopics_overview.RDATA")
+
+print(time.taken)
+```
+
+    ## Time difference of 13.55601 hours
+
+``` r
+start.time <- Sys.time()
+
+result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 155, by = 10))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_manual,
+     file = "Output/LDA_ntopics_manual.RDATA")
+
+print(time.taken)
+```
+
+    ## Time difference of 2.139096 days
+
+from 20, to 40, by 5 topics takes 22min for overview 11min for description 5.5hrs for manuals
+
+``` r
+load("Output/LDA_ntopics_description.RDATA")
+
+load("Output/LDA_ntopics_overview.RDATA")
+
+load("Output/LDA_ntopics_manual.RDATA")
+
+result_description %>%
+  select(-Griffiths2004) %>%
+  FindTopicsNumber_plot
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/LDA%20number%20topics%20plot-1.png)
+
+``` r
+result_overview %>%
+  select(-Griffiths2004) %>%
+  FindTopicsNumber_plot
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/LDA%20number%20topics%20plot-2.png)
+
+``` r
+result_manual %>%
+  select(-Griffiths2004) %>%
+  FindTopicsNumber_plot
+```
+
+![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/LDA%20number%20topics%20plot-3.png)
+
+Fitting Model
+-------------
+
+``` r
+n_topics <- 5
 levels   <- c("description", "overview", "manual")
 list_nam <- character(0)
 
 for(level in levels){
   
   dataset   <- get(paste("d", level, "cast", sep = "_"))
-  LDA_model <- LDA(dataset, k = n_topics, control = list(seed = 123))
+  
+  LDA_model <- LDA(
+    x       = dataset,
+    k       = n_topics,
+    method  = "Gibbs",
+    control = list(
+      nstart  = 10,
+      seed    = c(1:10),
+      best    = TRUE,
+      
+      burnin  = 4000,
+      iter    = 5000,
+      thin    = 500,
+      
+      verbose = 1e3,
+      save    = 1e3,
+      keep    = 1e3)
+    )
+  
   nam <- paste("LDA", level, n_topics, sep = "_")
   
   assign(
@@ -283,7 +504,1570 @@ for(level in levels){
   list_nam <- c(list_nam, nam)
   
 }
+```
 
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 4500 iterations!
+    ## Saving the model at iteration 1000 ...
+    ## Saving the model at iteration 2000 ...
+    ## Saving the model at iteration 3000 ...
+    ## Saving the model at iteration 4000 ...
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 3552; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 4500 iterations!
+    ## Saving the model at iteration 1000 ...
+    ## Saving the model at iteration 2000 ...
+    ## Saving the model at iteration 3000 ...
+    ## Saving the model at iteration 4000 ...
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 5141; M = 172
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 4500 iterations!
+    ## Saving the model at iteration 1000 ...
+    ## Saving the model at iteration 2000 ...
+    ## Saving the model at iteration 3000 ...
+    ## Saving the model at iteration 4000 ...
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+    ## K = 5; V = 34631; M = 153
+    ## Sampling 500 iterations!
+    ## Gibbs sampling completed!
+
+``` r
 save(list = list_nam,
      file = "LDA.RDATA")
 ```
@@ -337,57 +2121,10 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 
 # Bet Distribution
 LDA_description_120 %>% prepare_data_LDA_beta
-```
 
-    ## Warning: `lang()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `call2()` instead
-    ## This warning is displayed once per session.
-
-    ## Warning: `new_overscope()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `new_data_mask()` instead
-    ## This warning is displayed once per session.
-
-    ## # A tibble: 1,723 x 3
-    ##    topic   term          beta
-    ##    <chr>   <chr>        <dbl>
-    ##  1 Topic 1 process     0.0504
-    ##  2 Topic 1 human       0.0504
-    ##  3 Topic 1 information 0.0420
-    ##  4 Topic 1 psychology  0.0336
-    ##  5 Topic 1 topic       0.0252
-    ##  6 Topic 1 study       0.0252
-    ##  7 Topic 1 century     0.0252
-    ##  8 Topic 1 machine     0.0252
-    ##  9 Topic 1 mind        0.0252
-    ## 10 Topic 1 cognitive   0.0168
-    ## # ... with 1,713 more rows
-
-``` r
 # Gamma Distribution
 LDA_description_120 %>% prepare_data_LDA_gamma(level = Cluster)
 ```
-
-    ## Warning: `overscope_eval_next()` is soft-deprecated as of rlang 0.2.0.
-    ## Please use `eval_tidy()` with a data mask instead
-    ## This warning is displayed once per session.
-
-    ## Warning: `chr_along()` is soft-deprecated as of rlang 0.2.0.
-    ## This warning is displayed once per session.
-
-    ## # A tibble: 173 x 3
-    ##    facet               topic     gamma
-    ##    <chr>               <chr>     <dbl>
-    ##  1 Biomedical Sciences Topic 118 2.00 
-    ##  2 Biomedical Sciences Topic 69  1.78 
-    ##  3 Biomedical Sciences Topic 39  1.64 
-    ##  4 Biomedical Sciences Topic 23  1.06 
-    ##  5 Biomedical Sciences Topic 44  0.999
-    ##  6 Biomedical Sciences Topic 120 0.999
-    ##  7 Biomedical Sciences Topic 86  0.999
-    ##  8 Biomedical Sciences Topic 109 0.998
-    ##  9 Biomedical Sciences Topic 43  0.998
-    ## 10 Biomedical Sciences Topic 26  0.998
-    ## # ... with 163 more rows
 
 ``` r
 visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
@@ -500,11 +2237,13 @@ visualize_LDA_all_level <- function(data, id_plot = "test"){
 ### Plots
 
 ``` r
-LDA_description_120 %>% visualize_LDA_all_level(id_plot = "description_k120")
+load("LDA.RDATA")
 
-LDA_overview_120 %>% visualize_LDA_all_level(id_plot = "overview_k120")
+LDA_description_5 %>% visualize_LDA_all_level(id_plot = "description_k5")
 
-LDA_manual_120 %>% visualize_LDA_all_level(id_plot = "manual_k120")
+LDA_overview_5 %>% visualize_LDA_all_level(id_plot = "overview_k5")
+
+LDA_manual_5 %>% visualize_LDA_all_level(id_plot = "manual_k5")
 ```
 
 ``` r
