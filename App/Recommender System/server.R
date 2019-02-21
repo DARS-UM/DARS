@@ -262,31 +262,34 @@ function(input, output) {
     # Set up
     
     # Topic model
-    get_beta <- function(results){
-      
-      tidytext::tidy(results, matrix = "beta") %>%
-        mutate(topic = paste("Topic", topic)) %>%
-        arrange(topic, desc(beta))
-      
-    }
+    # get_beta <- function(results){
+    #   
+    #   tidytext::tidy(results, matrix = "beta") %>%
+    #     mutate(topic = paste("Topic", topic)) %>%
+    #     arrange(topic, desc(beta))
+    #   
+    # }
+    # 
+    # get_gamma <- function(results){
+    #   
+    #   tidytext::tidy(results, matrix = "gamma") %>%
+    #     mutate(topic = paste("Topic", topic)) %>%
+    #     arrange(topic, desc(gamma))
+    #   
+    # }
+    # 
+    # beta_distribution <- lapply(
+    #   LDA_model,
+    #   get_beta
+    #   )
+    # 
+    # gamma_distribution <- lapply(
+    #   LDA_model,
+    #   get_gamma
+    #   )
     
-    get_gamma <- function(results){
-      
-      tidytext::tidy(results, matrix = "gamma") %>%
-        mutate(topic = paste("Topic", topic)) %>%
-        arrange(topic, desc(gamma))
-      
-    }
-    
-    beta_distribution <- lapply(
-      LDA_model,
-      get_beta
-      )
-    
-    gamma_distribution <- lapply(
-      LDA_model,
-      get_gamma
-      )
+    beta_distribution <- clean_models$beta_distribution 
+    gamma_distribution <- clean_models$gamma_distribution
     
     # Key words
     key_words_additional <- c(
