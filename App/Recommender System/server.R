@@ -1,6 +1,7 @@
 library(tidyverse)
 library(tidytext)
 library(stringr)
+library(hunspell)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
@@ -262,31 +263,34 @@ function(input, output) {
     # Set up
     
     # Topic model
-    get_beta <- function(results){
-      
-      tidytext::tidy(results, matrix = "beta") %>%
-        mutate(topic = paste("Topic", topic)) %>%
-        arrange(topic, desc(beta))
-      
-    }
+    # get_beta <- function(results){
+    #   
+    #   tidytext::tidy(results, matrix = "beta") %>%
+    #     mutate(topic = paste("Topic", topic)) %>%
+    #     arrange(topic, desc(beta))
+    #   
+    # }
+    # 
+    # get_gamma <- function(results){
+    #   
+    #   tidytext::tidy(results, matrix = "gamma") %>%
+    #     mutate(topic = paste("Topic", topic)) %>%
+    #     arrange(topic, desc(gamma))
+    #   
+    # }
+    # 
+    # beta_distribution <- lapply(
+    #   LDA_model,
+    #   get_beta
+    #   )
+    # 
+    # gamma_distribution <- lapply(
+    #   LDA_model,
+    #   get_gamma
+    #   )
     
-    get_gamma <- function(results){
-      
-      tidytext::tidy(results, matrix = "gamma") %>%
-        mutate(topic = paste("Topic", topic)) %>%
-        arrange(topic, desc(gamma))
-      
-    }
-    
-    beta_distribution <- lapply(
-      LDA_model,
-      get_beta
-      )
-    
-    gamma_distribution <- lapply(
-      LDA_model,
-      get_gamma
-      )
+    beta_distribution <- clean_models$beta_distribution 
+    gamma_distribution <- clean_models$gamma_distribution
     
     # Key words
     key_words_additional <- c(
@@ -311,6 +315,8 @@ function(input, output) {
     
     #
     # Course recommendation
+    student <- list()
+    
     student$topic_score <- beta_distribution$k35 %>%
       
       # Topic score
@@ -340,19 +346,21 @@ function(input, output) {
       
       # Recommendations
       top_n(
-        n  = 3,
+        n  = 20,
         wt = course_score
         ) %>%
       
       # Key words per recommendation
       left_join(
+        gamma_distribution$k35,
+        by = "document"
+      ) %>%
+      
+      left_join(
         beta_distribution$k35,
         by = "topic"
         ) %>%
-      left_join(
-        gamma_distribution$k35,
-        by = "topic"
-        ) %>%
+     
       filter(
         term %in% key_words
         ) %>%
@@ -372,6 +380,7 @@ function(input, output) {
         n  = 3,
         wt = word_contribution_to_document
         ) %>%
+      arrange(word_contribution_to_document) %>%
       summarize(
         key_words = paste(term, collapse = ", ")
         ) %>%
@@ -385,9 +394,9 @@ function(input, output) {
       
       transmute(
         recommendation = paste(
-          "Course Recommendation", 
-          document, `Course Title`,
-          "because ..."
+          "Course Recommendation", "<em>","<b>",
+          document, `Course Title`,"</b>","</em>",
+          "because you selected the key words:" ,"<b>", key_words,"</b>"
           )
         ) %>%
       
