@@ -394,9 +394,9 @@ function(input, output) {
       
       transmute(
         recommendation = paste(
-          "Course Recommendation", 
-          document, `Course Title`,
-          "because you selected the key words:" , key_words
+          "Course Recommendation", "<em>","<b>",
+          document, `Course Title`,"</b>","</em>",
+          "because you selected the key words:" ,"<b>", key_words,"</b>"
           )
         ) %>%
       
