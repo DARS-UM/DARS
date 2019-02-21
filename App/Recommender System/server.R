@@ -1,6 +1,7 @@
 library(tidyverse)
 library(tidytext)
 library(stringr)
+library(hunspell)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
@@ -314,6 +315,8 @@ function(input, output) {
     
     #
     # Course recommendation
+    student <- list()
+    
     student$topic_score <- beta_distribution$k35 %>%
       
       # Topic score
