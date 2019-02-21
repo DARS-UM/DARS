@@ -68,5 +68,38 @@ LDA_model$k35 <- LDA(
   method  = "Gibbs",
   control = my_control_individual
 )
+#Preparing for export
 
-save(LDA_model,file="Output/LDA_overview.RDATA")
+#Functions
+get_beta <- function(results){
+  
+  tidytext::tidy(results, matrix = "beta") %>%
+    mutate(topic = paste("Topic", topic)) %>%
+    arrange(topic, desc(beta))
+  
+}
+
+get_gamma <- function(results){
+  
+  tidytext::tidy(results, matrix = "gamma") %>%
+    mutate(topic = paste("Topic", topic)) %>%
+    arrange(topic, desc(gamma))
+  
+}
+#Applying functions
+clean_models <- list()
+
+clean_models$beta_distribution <- lapply(
+  LDA_model,
+  get_beta
+)
+
+clean_models$gamma_distribution <- lapply(
+  LDA_model,
+  get_gamma
+)
+  
+#saving
+save(clean_models,
+  #LDA_model,
+     file="Output/LDA_overview.RDATA")
