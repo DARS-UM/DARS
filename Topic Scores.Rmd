@@ -4,14 +4,30 @@ author: "DARS"
 date: "2/18/2019"
 output: pdf_document
 ---
-
-```{r setup, include=FALSE}
-load("Output/LDA.RDATA")
-load("Output/data_pillar_1.RDATA")
-load("Output/LDA_overview_5.RDATA")
+#Set up
+##Libraries
+```{r libraries}
+library(tidyverse)
 ```
 
-## function get gamma and beta
+##Raw Data
+```{r setup, include=FALSE}
+#
+##d_course and d_transcript
+load("Output/data_pillar_1.RDATA")
+
+#
+##LDA_models
+load("Output/LDA_overview.RDATA")
+
+#
+##Topic Models test for ideal number of topics
+load("Output/LDA_ntopics_description.RDATA")
+load("Output/LDA_ntopics_overview.RDATA")
+
+```
+
+## Getting Functions (gamma and beta) 
 ```{r getting functions}
 get_beta <- function(results){
   
@@ -30,34 +46,50 @@ get_gamma <- function(results){
 }
 
 ```
-##getting gamma and beta data 
+
+##Getting applied (gamma and beta) 
 ```{r getting beta and gamma}
-beta_descriptions <- LDA_overview_5 %>%
+# k=10, 20, 35
+beta_description <- lapply(
+  LDA_model,
   get_beta
+)
 
-gamma_descriptions <- LDA_overview_5 %>%
+gamma_descriptions <- lapply(
+  LDA_model,
   get_gamma
-```
+)
 
+```
+##Inspect topics
+```{r inspect topics}
+topics <- beta_description$k35 %>%
+  group_by(topic) %>%
+  top_n(10, beta)
+
+#
+##View
+View(topics)
+
+```
 ## simulating students and key words
 ```{r student simulation}
-set.seed(126)
-
-terms <- unique(beta_descriptions$term)
+terms <- unique(beta_description$k35$term)
 
 student <- list()
-student$kw <- c("international", "economic", "conflict", "develop", "policy") #sample(terms, 5)
+student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war", "philosophy") #sample(terms, 5)
+student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable") #sample(terms, 5)
 ```
 
 ##getting top courses per student
 ```{r topic score student}
-student$topic_score <- beta_descriptions%>%
-  filter(term %in% student$kw) %>%
-  group_by(topic)%>% #maybe we can do this with transcripts afterwards
-  summarize(B_score= sum(beta))%>%
-  ungroup()%>%
+student$topic_score <- beta_description$k35 %>%
+  filter(term %in% student$kw_policy)       %>%
+  group_by(topic)                           %>% #maybe we can do this with transcripts afterwards
+  summarize(B_score= sum(beta))             %>%
+  ungroup()                                 %>%
   mutate(Total_b      = sum(B_score),
-         B_proportion = B_score/Total_b) %>%
+         B_proportion = B_score/Total_b)    %>%
   arrange(desc(B_score))
 
 ```
@@ -65,37 +97,84 @@ student$topic_score <- beta_descriptions%>%
 ##Getting courses
 ```{r course_score}
 
-student$course_score <- gamma_descriptions     %>%
-  full_join(student$topic_score, by = "topic") %>%
-  mutate(X = gamma * B_proportion)             %>%
-  group_by(document)                           %>%
-  summarise(course_score = sum(X))             %>%
-  arrange(desc(course_score)) %>%
+student$course_score <- gamma_descriptions$k35     %>%
+  full_join(student$topic_score, by = "topic")     %>%
+  mutate(X = gamma * B_proportion)                 %>%
+  group_by(document)                               %>%
+  summarise(course_score = sum(X))                 %>%
+  arrange(desc(course_score))                      %>%
   left_join(
     select(d_course, `Course ID`, `Course Title`),
     by = c("document" = "Course ID")
     )
-
-student$course_score
 ```
-###Other comparison functions
-```{r other functions}
+
+###View
+```{r View course}
+View(student$topic_score)
+View(student$course_score)
+```
+
+##Explaining outcome
+###key words contribution to topic b_score
+```{r topic score student}
 #
-##Binary
+## standardizing function (within topic)
+standardize <- function (col) {
+  col/sum(col)
+}
 
+#
+##key word Contributions to Topic
+ kw_to_topics <- beta_description$k35                                 %>%
+  filter(term %in% student$kw_policy)                                 %>%
+  arrange(topic, desc(beta))                                          %>%
+  group_by(topic)                                                     %>%
+  mutate(beta_sum=sum(beta),
+         beta_rank=beta/beta_sum)                                     %>%
+  select(-beta_sum, -beta)
 ```
-### Comparing results
+
+###Topic contribution to course
+```{r course_score}
+#
+##Extracts recommended courses n = 5
+my_courses <- top_n(x = student$course_score, n = 5, wt =course_score) %>% 
+  pull(document)
+
+#
+## Topic contribution to course
+key_words <- gamma_descriptions$k35                             %>%
+  filter(document %in% my_courses)                 %>%
+  arrange(document, gamma)                         %>%
+  full_join(kw_to_topics, by = "topic" ) %>%
+  arrange(document, desc(gamma), desc(beta_rank) ) %>%
+  group_by(document #, 
+           #gamma
+           )                                       %>%
+  filter(row_number() %in% 1:3)                    %>%  #makes most sense with just 1 kw # group_by(document) %>% filter(row_number() %in% 1:9) 
+  group_by(document)                               %>%
+  summarise(key_words = list(Reduce(f= c,
+                               x = term)))
+```
+
+##Selectig keywords
 ```{r}
-bla %>%
-  mutate(no= row_number())
+top_words <- beta_description$k35 %>%
+  group_by(topic) %>%
+  top_n(3, beta) %>%
+  pull(term)%>%
+  unique
 
-b <- gamma_descriptions %>%
-  full_join(student$topic_score, by="topic") %>%
-  mutate(X = gamma*Beta_score) %>%
-  arrange(desc(X))%>%
-  mutate(no= row_number())
+kw_stopwords =c(
+  "student", "skill", "academic", "bate", "participant", "gain", "primarily", "main", "2016", "action", "level", "issue",
+  "concept", "close", "day", "edition", "primary", "project", "method", "apply", "busy", "address", "role", "post", "oxford",
+  "cuss", "lecture", "pbl",
+    #unsure:
+  "theory", "search", "perspective"
+                )
+kw <- setdiff(top_words, kw_stopwords)
 
-a %>% full_join(b, by="no") %>%
-  mutate(equal= case_when(document.x==document.y~T,
-                          T~F))
+save(kw, file="App/Recommender System/LDA_keyword_DELETE_.RDATA")
 ```
+
