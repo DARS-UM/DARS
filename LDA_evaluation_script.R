@@ -102,4 +102,4 @@ clean_models$gamma_distribution <- lapply(
 #saving
 save(clean_models,
   #LDA_model,
-     file="Output/LDA_overview.RDATA")
+     file="App/Recommender System/LDA_overview.RDATA")
