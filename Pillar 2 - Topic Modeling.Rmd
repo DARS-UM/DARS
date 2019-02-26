@@ -363,8 +363,8 @@ my_control <- list(
   seed   = 1 : 10,
   best   = TRUE,
   
-  burnin = 500,
-  iter   = 2000,
+  burnin = 100,
+  iter   = 5000,
   thin   = 100
   
 )
@@ -380,7 +380,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
   control = my_control,
-  mc.cores = 1L
+  mc.cores = 4L
   
   )
   
@@ -391,13 +391,13 @@ We run the test for descriptions, documenting the duration (starting_time - endi
 ```{r description topics, cache = TRUE}
 start.time <- Sys.time()
 
-result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
+result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 2))
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
 save(result_description,
-     file = "Output/LDA_ntopics_description.RDATA")
+     file = "Output/LDA_ntopics.RDATA")
 
 print(time.taken)
 ```
@@ -406,13 +406,13 @@ We run the test for overview, documeting its duration.
 ```{r overview topics, cache = TRUE}
 start.time <- Sys.time()
 
-result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
+result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 2))
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
-save(result_overview ,
-     file = "Output/LDA_ntopics_overview.RDATA")
+save(result_overview , result_description,
+     file = "Output/LDA_ntopics.RDATA")
 
 print(time.taken)
 ```
@@ -420,13 +420,13 @@ print(time.taken)
 ```{r manual topics, cache = TRUE}
 start.time <- Sys.time()
 
-result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 155, by = 10))
+result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 75, by = 5))
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
-save(result_manual,
-     file = "Output/LDA_ntopics_manual.RDATA")
+save(result_manual, result_overview , result_description,
+     file = "Output/LDA_ntopics.RDATA")
 
 print(time.taken)
 ```
@@ -440,11 +440,7 @@ from 20, to 40, by 5 topics takes
 
 ```{r LDA number topics plot}
 
-load("Output/LDA_ntopics_description.RDATA")
-
-load("Output/LDA_ntopics_overview.RDATA")
-
-load("Output/LDA_ntopics_manual.RDATA")
+load("Output/LDA_ntopics.RDATA")
 
 result_description %>%
   select(-Griffiths2004) %>%
@@ -464,7 +460,7 @@ result_manual %>%
 
 
 ```{r LDA fit, cache = TRUE}
-n_topics <- 5
+n_topics <- 35
 levels   <- c("description", "overview", "manual")
 list_nam <- character(0)
 
@@ -476,18 +472,7 @@ for(level in levels){
     x       = dataset,
     k       = n_topics,
     method  = "Gibbs",
-    control = list(
-      nstart  = 10,
-      seed    = c(1:10),
-      best    = TRUE,
-      
-      burnin  = 4000,
-      iter    = 5000,
-      thin    = 500,
-      
-      verbose = 1e3,
-      save    = 1e3,
-      keep    = 1e3)
+    control = my_control
     )
   
   nam <- paste("LDA", level, n_topics, sep = "_")
@@ -502,7 +487,10 @@ for(level in levels){
 }
 
 save(list = list_nam,
-     file = "LDA.RDATA")
+     file = "Output/topic_model.RDATA")
+
+save(list = list_nam,
+     file = "App/Recommender System/topic_model.RDATA")
 ```
 
 ## Visualization
