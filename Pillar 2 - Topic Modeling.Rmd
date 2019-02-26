@@ -339,7 +339,7 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 ```
 
 # LDA
-
+The function `my_cast_tdm` casts our dataframes into a tdm.
 ```{r my_cast_tdm}
 my_cast_tdm <- function(data, level) data %>%
   count(`Course ID`, word) %>%
@@ -353,7 +353,9 @@ rm(my_cast_tdm)
 ```
 
 ## Ideal Number of Topics (RUN ON UM COMPUTER)
+To decide the number of topics to discover, we run (four) three different tests.
 
+First we set the control for the test.
 ```{r controls}
 my_control <- list(
   
@@ -367,7 +369,7 @@ my_control <- list(
   
 )
 ```
-
+The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements 
 ```{r function my_FindTopicsNumber }
 my_FindTopicsNumber <- function(data_cast, n_topics){
   
@@ -385,7 +387,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
 }
 ```
-
+We run the test for descriptions, documenting the duration (starting_time - ending_time). We build 95 models (5 to 100 in increments of 1).
 ```{r description topics, cache = TRUE}
 start.time <- Sys.time()
 
@@ -400,7 +402,7 @@ save(result_description,
 print(time.taken)
 ```
 
-
+We run the test for overview, documeting its duration. 
 ```{r overview topics, cache = TRUE}
 start.time <- Sys.time()
 
