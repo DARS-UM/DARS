@@ -377,7 +377,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
   dtm = data_cast,
   topics = n_topics,
-  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+  metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
   control = my_control,
   mc.cores = 4L
@@ -417,6 +417,7 @@ save(result_overview , result_description,
 print(time.taken)
 ```
 
+We run the test for manuals, documenting its duration.
 ```{r manual topics, cache = TRUE}
 start.time <- Sys.time()
 
@@ -437,28 +438,25 @@ from 20, to 40, by 5 topics takes
 11min for description
 5.5hrs for manuals 
 
-
+We examine the result of the experiment by plotting them on a graph.
 ```{r LDA number topics plot}
 
 load("Output/LDA_ntopics.RDATA")
 
 result_description %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 result_overview %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 result_manual %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 ```
 
 ## Fitting Model
 
-
+From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics.
 ```{r LDA fit, cache = TRUE}
 n_topics <- 35
 levels   <- c("description", "overview", "manual")
