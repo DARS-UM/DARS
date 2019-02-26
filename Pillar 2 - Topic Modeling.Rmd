@@ -456,7 +456,7 @@ result_manual %>%
 
 ## Fitting Model
 
-From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics.
+From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the ``Recommender System` folder.
 ```{r LDA fit, cache = TRUE}
 n_topics <- 35
 levels   <- c("description", "overview", "manual")
