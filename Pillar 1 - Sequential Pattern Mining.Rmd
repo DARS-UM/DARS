@@ -893,23 +893,14 @@ AR$G <- transactions$G %>%
     lift       = confidence / rhs.support
     ) %>%
   
-  
-  # reduce number of rules
+  # Reduce number of rules
   filter(
-    lhs_course  != rhs_course, # exclude rules with same course on lhs and rhs
-    rhs_outcome == 6            
-    ) %>%
-  
-  # for each combination of courses (lhs and rhs), keep AR with highest lift (most informative AR)
-  group_by(
-    lhs_course, 
-    rhs_course
-    ) %>%
-  top_n(
-    1,
-    lift
-    ) %>%
-  ungroup
+    # exclude rules with same course on lhs and rhs
+    lhs_course != rhs_course,
+    # rhs is grade less than or equal to 6
+    rhs_outcome <= 6,
+    lhs_outcome <= 7
+    )
 ```
 
 ## Sequence Rules
@@ -1102,7 +1093,6 @@ SR$G <- sequences$G %>%
     lift       = confidence / rhs.support
     ) %>%
   
-  
   # Reduce number of rules
   filter(
     # exclude rules with same course on lhs and rhs
@@ -1116,7 +1106,7 @@ SR$G <- sequences$G %>%
 ## Editing rules
 The function edit_rules makes AR easier to read. It keeps only rules that appear more than 5 times, rounds numerical variables to 5 significant digits, and drops aiding columns which were only used for computation in previous stages but add no additional information.
 ```{r edit_rules}
-filter_rules <- function(rules){
+edit_rules_rulesApp <- function(rules){
   
   rules %>%
     
@@ -1124,24 +1114,44 @@ filter_rules <- function(rules){
       count = support * n_students
       ) %>%
     
-    filter(
-      count      >= 10,
-      lift       >= 1,
-      confidence >= 0.4
+    select(
+      lhs, rhs,
+      support, count,
+      confidence,
+      matches("rhsTake.support"),
+      lift,
+      matches("rhsTake.count")
+      ) %>%
+    
+     mutate_if(
+       is.numeric,
+       round,
+       digits = 3
+       ) %>%
+    
+    arrange(
+      desc(count)
       )
   
 }
 ```
 
 ```{r edit rules}
-AR <- lapply(
+AR_rulesAPP <- lapply(
   X   = AR,
-  FUN = filter_rules
+  FUN = edit_rules_rulesApp
   )
 
-SR <- lapply(
+SR_rulesAPP <- lapply(
   X   = SR,
-  FUN = filter_rules
+  FUN = edit_rules_rulesApp
+  )
+```
+
+```{r}
+save(
+  AR_rulesAPP, SR_rulesAPP,
+  file = "App/rules/rules.RDATA"
   )
 ```
 
@@ -1150,14 +1160,40 @@ print(AR$THL)
 print(SR$THL)
 ```
 
-```{r save rules, include = FALSE}
-save(
-  AR, SR,
-  file = "App/rules/rules.RDATA"
+```{r}
+edit_rules_RSAPP <- function(rules){
+  
+  rules %>%
+    
+    mutate(
+      count = support * n_students
+      ) %>%
+    
+    filter(
+       count      >= 10,
+       lift       >= 1,
+       confidence >= 0.4
+      )
+  
+}
+```
+
+```{r}
+AR_RSAPP <- lapply(
+  X   = AR,
+  FUN = edit_rules_RSAPP
   )
 
+SR_RSAPP <- lapply(
+  X   = SR,
+  FUN = edit_rules_RSAPP
+  )
+```
+
+
+```{r save rules, include = FALSE}
 save(
-  AR, SR,
+  AR_RSAPP, SR_RSAPP,
   file = "App/Recommender System/rules.RDATA"
   )
 ```

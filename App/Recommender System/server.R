@@ -71,7 +71,7 @@ function(input, output) {
     rules <- list()
     
     # rules not
-    rules$not <- SR$THL %>%
+    rules$not <- SR_RSAPP$THL %>%
       
       # select appropriate rules
       filter(
@@ -104,7 +104,7 @@ function(input, output) {
     
     
     # rules low
-    rules$low <- SR$HL %>%
+    rules$low <- SR_RSAPP$HL %>%
       
       filter(
         lhs_course %in% student$course_low,
@@ -135,7 +135,7 @@ function(input, output) {
     
     
     # rules fail
-    rules$fail <- SR$PF %>%
+    rules$fail <- SR_RSAPP$PF %>%
       
       filter(
         lhs_course %in% student$course_fail,
@@ -166,7 +166,7 @@ function(input, output) {
     
     
     # rules grade
-    rules$grade <- SR$G %>%
+    rules$grade <- SR_RSAPP$G %>%
       
       left_join(
         student$transcript,

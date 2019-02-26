@@ -2,7 +2,7 @@
 fluidPage(
   
   # App title
-  titlePanel("Association Rules and Sequence Rules"),
+  titlePanel("Rules"),
   
   # Sidebar layout
   sidebarLayout(
@@ -29,8 +29,8 @@ fluidPage(
           "take => take"                   = "taken",
           "fail => fail"                   = "PF",
           "Low grade (< 6.5) => low grade" = "HL",
-          "not taken or fail => fail"      = "TPF",
-          "not taken or fail => low"       = "THL",
+          "not taken => fail"              = "TPF",
+          "not taken => low"               = "THL",
           "less than => less than"         = "G"
         ),
         selected = "taken"
@@ -43,10 +43,10 @@ fluidPage(
       sliderInput(
         inputId = "count",
         label   = "Count",
-        min     = 5,
+        min     = 10,
         max     = 3000,
         step    = 1,
-        value   = c(5, 3000)
+        value   = c(10, 3000)
         ),
       
       # Input: Slider for the Cconfidence
@@ -56,7 +56,7 @@ fluidPage(
         min     = 0,
         max     = 1,
         step    = 0.01,
-        value   = c(0, 1)
+        value   = c(0.4, 1)
       ),
       
       # Input: Slider for the Confidence
@@ -66,7 +66,7 @@ fluidPage(
         min     = 0,
         max     = 100,
         step    = 0.01,
-        value   = c(0, 100)
+        value   = c(1, 100)
       ),
       
       # Horizontal line

@@ -26,7 +26,7 @@ course_all <- d_course %>%
   ) %>%
   # remove semester abroad, skills and projects
   filter(
-    ! str_detect(`Course ID`, patter = "SA|SKI|PRO")
+    ! str_detect(`Course ID`, pattern = "SA|SKI|PRO")
   ) %>%
   pull
 
