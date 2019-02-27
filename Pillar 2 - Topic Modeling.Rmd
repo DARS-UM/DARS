@@ -7,12 +7,12 @@ output:
     toc: TRUE
 ---
 
-```{r setup, include = T}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/")
 ```
 
 
-```{r library, message = F}
+```{r library, message = FALSE}
 library(tidyverse)
 library(tidytext)
 
