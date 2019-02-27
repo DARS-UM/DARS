@@ -23,7 +23,8 @@ function(input, output) {
           between(count     , input$count[1]     , input$count[2]     ),
           between(confidence, input$confidence[1], input$confidence[2]),
           between(lift      , input$lift[1]      , input$lift[2]      )
-        )
+        ) %>%
+        select(-lhs_course,-lhs_outcome, -rhs_course, -rhs_outcome)
       
     },
     
