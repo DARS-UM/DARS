@@ -7,12 +7,12 @@ output:
     toc: TRUE
 ---
 
-```{r setup, include = FALSE}
+```{r setup, include = T}
 knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/")
 ```
 
 
-```{r library, message = FALSE}
+```{r library, message = F}
 library(tidyverse)
 library(tidytext)
 
@@ -339,7 +339,7 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 ```
 
 # LDA
-The function `my_cast_tdm` casts our dataframes into a tdm.
+
 ```{r my_cast_tdm}
 my_cast_tdm <- function(data, level) data %>%
   count(`Course ID`, word) %>%
@@ -353,9 +353,7 @@ rm(my_cast_tdm)
 ```
 
 ## Ideal Number of Topics (RUN ON UM COMPUTER)
-To decide the number of topics to discover, we run (four) three different tests.
 
-First we set the control for the test.
 ```{r controls}
 my_control <- list(
   
@@ -363,13 +361,13 @@ my_control <- list(
   seed   = 1 : 10,
   best   = TRUE,
   
-  burnin = 100,
-  iter   = 5000,
+  burnin = 500,
+  iter   = 2000,
   thin   = 100
   
 )
 ```
-The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements 
+
 ```{r function my_FindTopicsNumber }
 my_FindTopicsNumber <- function(data_cast, n_topics){
   
@@ -377,57 +375,56 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
   dtm = data_cast,
   topics = n_topics,
-  metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"),
+  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
   control = my_control,
-  mc.cores = 4L
+  mc.cores = 1L
   
   )
   
   
 }
 ```
-We run the test for descriptions, documenting the duration (starting_time - ending_time). We build 95 models (5 to 100 in increments of 1).
+
 ```{r description topics, cache = TRUE}
 start.time <- Sys.time()
 
-result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 2))
+result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
 save(result_description,
-     file = "Output/LDA_ntopics.RDATA")
+     file = "Output/LDA_ntopics_description.RDATA")
 
 print(time.taken)
 ```
 
-We run the test for overview, documeting its duration. 
+
 ```{r overview topics, cache = TRUE}
 start.time <- Sys.time()
 
-result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 2))
+result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 1))
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
-save(result_overview , result_description,
-     file = "Output/LDA_ntopics.RDATA")
+save(result_overview ,
+     file = "Output/LDA_ntopics_overview.RDATA")
 
 print(time.taken)
 ```
 
-We run the test for manuals, documenting its duration.
 ```{r manual topics, cache = TRUE}
 start.time <- Sys.time()
 
-result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 75, by = 5))
+result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 155, by = 10))
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
-save(result_manual, result_overview , result_description,
-     file = "Output/LDA_ntopics.RDATA")
+save(result_manual,
+     file = "Output/LDA_ntopics_manual.RDATA")
 
 print(time.taken)
 ```
@@ -438,27 +435,34 @@ from 20, to 40, by 5 topics takes
 11min for description
 5.5hrs for manuals 
 
-We examine the result of the experiment by plotting them on a graph.
+
 ```{r LDA number topics plot}
 
-load("Output/LDA_ntopics.RDATA")
+load("Output/LDA_ntopics_description.RDATA")
+
+load("Output/LDA_ntopics_overview.RDATA")
+
+load("Output/LDA_ntopics_manual.RDATA")
 
 result_description %>%
+  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 result_overview %>%
+  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 result_manual %>%
+  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 ```
 
 ## Fitting Model
 
-From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the ``Recommender System` folder.
+
 ```{r LDA fit, cache = TRUE}
-n_topics <- 35
+n_topics <- 5
 levels   <- c("description", "overview", "manual")
 list_nam <- character(0)
 
@@ -470,7 +474,18 @@ for(level in levels){
     x       = dataset,
     k       = n_topics,
     method  = "Gibbs",
-    control = my_control
+    control = list(
+      nstart  = 10,
+      seed    = c(1:10),
+      best    = TRUE,
+      
+      burnin  = 4000,
+      iter    = 5000,
+      thin    = 500,
+      
+      verbose = 1e3,
+      save    = 1e3,
+      keep    = 1e3)
     )
   
   nam <- paste("LDA", level, n_topics, sep = "_")
@@ -485,10 +500,7 @@ for(level in levels){
 }
 
 save(list = list_nam,
-     file = "Output/topic_model.RDATA")
-
-save(list = list_nam,
-     file = "App/Recommender System/topic_model.RDATA")
+     file = "LDA.RDATA")
 ```
 
 ## Visualization

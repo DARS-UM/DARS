@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-02-21
+2019-02-27
 
 -   [Setup](#setup)
 -   [Data Exploration](#data-exploration)
@@ -76,30 +76,6 @@ join_d_transcript <- function(data){
     
 }
 ```
-
-We create a function, which, when given the code of a course, returns its title.
-
-``` r
-find_course <- function(code){ 
-  
-  dataset <- d_transcript %>%
-    filter(`Course ID`== code)
-  
-  title <- dataset$`Course Title`[1]
-  
-  return(title)
-  
-}
-
-# Example
-find_course("HUM1005")
-```
-
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
-
-    ## Warning: Unknown or uninitialised column: 'Course Title'.
-
-    ## NULL
 
 Data Exploration
 ================
@@ -249,6 +225,8 @@ d_transactions$taken_PF_HL <- d_course %>%
     item_HL = paste(item, HL, sep = "_")
     )
 ```
+
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
 For convenience:
 
@@ -465,6 +443,7 @@ make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
     filter(
       !is.na(eventID) # exclude courses that were never taken.
       ) %>% 
+    
     group_by(
       sequenceID,
       eventID
@@ -1154,11 +1133,11 @@ edit_rules_rulesApp <- function(rules){
     
     select(
       lhs, rhs,
-      support, count,
-      confidence,
+      matches("rhsTake.count"), count,
       matches("rhsTake.support"),
-      lift,
-      matches("rhsTake.count")
+      confidence,
+      support, 
+      lift
       ) %>%
     
      mutate_if(
@@ -1194,46 +1173,42 @@ save(
 ```
 
 ``` r
-print(AR$THL)
+print(AR_rulesAPP$THL)
 ```
 
-    ## # A tibble: 19,793 x 14
-    ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome support
-    ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>         <dbl>
-    ##  1 SSC1~ SSC1006    not         UGR3~ UGR3003    low         3.94e-4
-    ##  2 SCI1~ SCI1016    not         UGR3~ UGR3003    low         3.94e-4
-    ##  3 SCI2~ SCI2012    not         UGR3~ UGR3003    low         3.94e-4
-    ##  4 SSC1~ SSC1007    not         UGR3~ UGR3003    low         3.94e-4
-    ##  5 SSC2~ SSC2046    not         UGR3~ UGR3003    low         3.94e-4
-    ##  6 SSC1~ SSC1025    not         UGR3~ UGR3003    low         3.94e-4
-    ##  7 SSC2~ SSC2037    not         UGR3~ UGR3003    low         3.94e-4
-    ##  8 SSC3~ SSC3032    not         UGR3~ UGR3003    low         3.94e-4
-    ##  9 HUM2~ HUM2003    not         UGR3~ UGR3003    low         3.94e-4
-    ## 10 SSC1~ SSC1009    not         UGR3~ UGR3003    low         3.94e-4
-    ## # ... with 19,783 more rows, and 7 more variables: confidence <dbl>,
-    ## #   lift <dbl>, count <dbl>, rate.low <dbl>, rhs.support <dbl>,
-    ## #   lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>
+    ## # A tibble: 19,793 x 8
+    ##    lhs   rhs   lhs.rhsTake.cou~ count lhs.rhsTake.sup~ confidence support
+    ##    <chr> <chr>            <dbl> <dbl>            <dbl>      <dbl>   <dbl>
+    ##  1 SCI3~ SCI2~              939   353            0.37       0.376   0.139
+    ##  2 SCI3~ SCI2~              942   353            0.371      0.375   0.139
+    ##  3 HUM2~ SCI2~              937   353            0.369      0.377   0.139
+    ##  4 SSC3~ SCI2~              942   353            0.371      0.375   0.139
+    ##  5 SCI2~ SCI2~              937   352            0.369      0.376   0.139
+    ##  6 SCI2~ SCI2~              940   352            0.37       0.374   0.139
+    ##  7 SCI2~ SCI2~              939   352            0.37       0.375   0.139
+    ##  8 SCI3~ SCI2~              940   352            0.37       0.374   0.139
+    ##  9 SCI3~ SCI2~              939   352            0.37       0.375   0.139
+    ## 10 SCI3~ SCI2~              941   352            0.37       0.374   0.139
+    ## # ... with 19,783 more rows, and 1 more variable: lift <dbl>
 
 ``` r
-print(SR$THL)
+print(SR_rulesAPP$THL)
 ```
 
-    ## # A tibble: 19,810 x 14
-    ##    lhs   lhs_course lhs_outcome rhs   rhs_course rhs_outcome     n support
-    ##    <chr> <chr>      <chr>       <chr> <chr>      <chr>       <int>   <dbl>
-    ##  1 HUM1~ HUM1003    not         HUM1~ HUM1007    low            74 0.0291 
-    ##  2 HUM1~ HUM1003    not         HUM1~ HUM1010    low             8 0.00315
-    ##  3 HUM1~ HUM1003    not         HUM1~ HUM1011    low            48 0.0189 
-    ##  4 HUM1~ HUM1003    not         HUM1~ HUM1012    low            16 0.00630
-    ##  5 HUM1~ HUM1003    not         HUM1~ HUM1013    low            58 0.0228 
-    ##  6 HUM1~ HUM1003    not         HUM1~ HUM1014    low            16 0.00630
-    ##  7 HUM1~ HUM1003    not         HUM2~ HUM2003    low            87 0.0343 
-    ##  8 HUM1~ HUM1003    not         HUM2~ HUM2005    low            40 0.0157 
-    ##  9 HUM1~ HUM1003    not         HUM2~ HUM2007    low            15 0.00591
-    ## 10 HUM1~ HUM1003    not         HUM2~ HUM2008    low            18 0.00709
-    ## # ... with 19,800 more rows, and 6 more variables: rate.low <dbl>,
-    ## #   rhs.support <dbl>, lhs.rhsTake.support <dbl>, lhs.rhsTake.count <dbl>,
-    ## #   confidence <dbl>, lift <dbl>
+    ## # A tibble: 19,810 x 8
+    ##    lhs   rhs   lhs.rhsTake.cou~ count lhs.rhsTake.sup~ confidence support
+    ##    <chr> <chr>            <dbl> <dbl>            <dbl>      <dbl>   <dbl>
+    ##  1 HUM2~ SCI2~              962   376            0.379      0.391   0.148
+    ##  2 HUM2~ SCI2~              965   376            0.38       0.39    0.148
+    ##  3 HUM3~ SCI2~              965   376            0.38       0.39    0.148
+    ##  4 SCI2~ SCI2~              964   376            0.38       0.39    0.148
+    ##  5 SCI2~ SCI2~              960   376            0.378      0.392   0.148
+    ##  6 SCI2~ SCI2~              965   376            0.38       0.39    0.148
+    ##  7 SCI2~ SCI2~              964   376            0.38       0.39    0.148
+    ##  8 SCI3~ SCI2~              965   376            0.38       0.39    0.148
+    ##  9 SCI3~ SCI2~              965   376            0.38       0.39    0.148
+    ## 10 SCI3~ SCI2~              964   376            0.38       0.39    0.148
+    ## # ... with 19,800 more rows, and 1 more variable: lift <dbl>
 
 ``` r
 edit_rules_RSAPP <- function(rules){
