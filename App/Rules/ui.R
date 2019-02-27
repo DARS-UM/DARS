@@ -15,10 +15,10 @@ fluidPage(
         inputId = "rules",
         label   = "Type of rules",
         choices = c(
-          "Association rules" = "AR",
-          "Sequence rules"    = "SR"
+          "Association rules" = "AR_rulesAPP",
+          "Sequence rules"    = "SR_rulesAPP"
         ),
-        selected = "AR"
+        selected = "AR_rulesAPP"
       ),
       
       # Input: button for the type of rules
