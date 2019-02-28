@@ -5,8 +5,7 @@ library(hunspell)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
-#load("LDA_overview.RDATA")
-load("topic_model.RDATA")
+load("topic_model.RDATA") #NOT SAME AS FILE IN OUTPUT #contains distribution, kw, course_all, course_following_semester.
 
 
 
