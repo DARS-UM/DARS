@@ -9,8 +9,10 @@ library(shiny)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
-load("LDA_overview.RDATA")
-load("LDA_keyword_DELETE_.RDATA") #TO DELETE, THIS SHOULD BE INCLUDED IN 
+load("LDA_overview.RDATA")        #Replace with LDA final model (below) 
+#load("topic_model.RDATA")
+
+load("LDA_keyword_DELETE_.RDATA") #TO DELETE, THIS SHOULD BE INCLUDED IN LDA model 
 
 # set seed
 set.seed(1)
