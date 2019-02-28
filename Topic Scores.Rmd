@@ -23,6 +23,7 @@ load("Output/topic_model.RDATA")
 
 rm(lists, d_AoD, d_assessment, d_ILO)
 ```
+
 ##Models in list:
 ```{r models in list}
 LDA_models <- list()
@@ -136,5 +137,5 @@ course_following_semester <- sample(
 ### Saving files for APP
 ```{r keywords}
 save(distribution, kw, course_all, course_following_semester,
-     file = "App/Recommender System/topic_model.RDATA")
+     file = "App/Recommender System/data_topic_models.RDATA")
 ```
