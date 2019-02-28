@@ -18,12 +18,8 @@ load("Output/data_pillar_1.RDATA")
 
 #
 ##LDA_models
-load("Output/LDA_overview.RDATA")
-
-#
-##Topic Models test for ideal number of topics
-load("Output/LDA_ntopics_description.RDATA")
-load("Output/LDA_ntopics_overview.RDATA")
+#load("Output/LDA_overview.RDATA") #replace with underneath
+load("Output/topic_model.RDATA")
 
 ```
 
@@ -176,4 +172,13 @@ kw_stopwords =c(
 kw <- setdiff(top_words, kw_stopwords)
 
 save(kw, file="App/Recommender System/LDA_keyword_DELETE_.RDATA")
+```
+### Saving files for APP
+```{r keywords}
+load("Output/topic_model.RDATA")
+
+save(list_nam, kw,
+     file = "App/Recommender System/topic_model.RDATA")
+
+rm(list_nam)
 ```
