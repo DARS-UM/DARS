@@ -9,10 +9,7 @@ library(shiny)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
-#load("LDA_overview.RDATA")        #Replace with LDA final model (below) 
-load("topic_model.RDATA")
-
-#load("LDA_keyword_DELETE_.RDATA") #TO DELETE, THIS SHOULD BE INCLUDED IN LDA model above
+load("topic_model.RDATA") #contains distribution, kw, course_all, course_following_semester.
 
 
 #
