@@ -7,12 +7,12 @@ output:
     toc: TRUE
 ---
 
-```{r setup, include = T}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/")
 ```
 
 
-```{r library, message = F}
+```{r library, message = FALSE}
 library(tidyverse)
 library(tidytext)
 
@@ -46,6 +46,9 @@ scale_y_reordered <- function(..., sep = "___") {
 ```
 
 # Setup
+We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
+`d_AoD`, `d_assessment`, `d_course`, `d_description`, `d_manual`, `d_overview`, `d_transcript`, and a list `lists`.
+For `d_description` and `d_overview`, we keep only the most recent year.
 ```{r import data}
 load("output/data_pillar_2.RDATA")
 
@@ -63,7 +66,7 @@ d_overview <- d_overview %>%
 
 # TF-IDF
 ## Functions for Generating Barplots and Word Clouds
-
+The function `compute_tf_idf` computes the inverse term document frequency, we apply `compute_tf_idf` on descriptions, overviews and manuals. 
 ```{r compute_tf_idf, cache = TRUE}
 compute_tf_idf <- function(data){
   
@@ -87,6 +90,7 @@ tf_idf_manual      <- compute_tf_idf(d_manual)
 rm(compute_tf_idf)
 ```
 
+The function `plot_tf_idf` plots a bar-graph of the most important words for each level of granularity and  their corresponding word clouds. 
 ```{r plot_tf_idf}
 plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
   
@@ -163,6 +167,8 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
 ```
 
 ## Course Level
+The function `prepare_tf_idf_course` selects 25 random courses, the top ten words with highest tf_idf, and finally renames a facet to 'Course ID').
+We apply the function to `id_plot` and pipe it to produce graphs.
 ```{r tf-idf course, cache = TRUE}
 prepare_tf_idf_course <- function(data){
   
@@ -333,7 +339,7 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 ```
 
 # LDA
-
+The function `my_cast_tdm` casts our dataframes into a tdm.
 ```{r my_cast_tdm}
 my_cast_tdm <- function(data, level) data %>%
   count(`Course ID`, word) %>%
@@ -347,7 +353,9 @@ rm(my_cast_tdm)
 ```
 
 ## Ideal Number of Topics (RUN ON UM COMPUTER)
+To decide the number of topics to discover, we run (four) three different tests.
 
+First we set the control for the test.
 ```{r controls}
 my_control <- list(
   
@@ -361,7 +369,7 @@ my_control <- list(
   
 )
 ```
-
+The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements 
 ```{r function my_FindTopicsNumber }
 my_FindTopicsNumber <- function(data_cast, n_topics){
   
@@ -369,7 +377,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
   dtm = data_cast,
   topics = n_topics,
-  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+  metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
   control = my_control,
   mc.cores = 4L
@@ -379,7 +387,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
 }
 ```
-
+We run the test for descriptions, documenting the duration (starting_time - ending_time). We build 95 models (5 to 100 in increments of 1).
 ```{r description topics, cache = TRUE}
 start.time <- Sys.time()
 
@@ -394,7 +402,7 @@ save(result_description,
 print(time.taken)
 ```
 
-
+We run the test for overview, documeting its duration. 
 ```{r overview topics, cache = TRUE}
 start.time <- Sys.time()
 
@@ -409,6 +417,7 @@ save(result_overview , result_description,
 print(time.taken)
 ```
 
+We run the test for manuals, documenting its duration.
 ```{r manual topics, cache = TRUE}
 start.time <- Sys.time()
 
@@ -429,28 +438,25 @@ from 20, to 40, by 5 topics takes
 11min for description
 5.5hrs for manuals 
 
-
+We examine the result of the experiment by plotting them on a graph.
 ```{r LDA number topics plot}
 
 load("Output/LDA_ntopics.RDATA")
 
 result_description %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 result_overview %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 result_manual %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 
 ```
 
 ## Fitting Model
 
-
+From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the ``Recommender System` folder.
 ```{r LDA fit, cache = TRUE}
 n_topics <- c(35, 35, 40)
 levels   <- c("description", "overview", "manual")
