@@ -47,7 +47,7 @@ get_gamma <- function(results){
 ```{r getting beta and gamma}
 # k=10, 20, 35
 beta_description <- lapply(
-  LDA_model,
+  clean_models,
   get_beta
 )
 
@@ -59,7 +59,7 @@ gamma_descriptions <- lapply(
 ```
 ##Inspect topics
 ```{r inspect topics}
-topics <- beta_description$k35 %>%
+topics <- clean_models$beta_distribution$k10 %>%
   group_by(topic) %>%
   top_n(10, beta)
 
@@ -73,27 +73,28 @@ View(topics)
 terms <- unique(beta_description$k35$term)
 
 student <- list()
-student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war", "philosophy") #sample(terms, 5)
-student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable") #sample(terms, 5)
+student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war", "philosophy")
+student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable")
 ```
 
 ##getting top courses per student
 ```{r topic score student}
-student$topic_score <- beta_description$k35 %>%
-  filter(term %in% student$kw_policy)       %>%
+student$topic_score <- clean_models$beta_distribution$k35 %>%
+  filter(term %in% student$kw_climate)       %>%
   group_by(topic)                           %>% #maybe we can do this with transcripts afterwards
   summarize(B_score= sum(beta))             %>%
   ungroup()                                 %>%
   mutate(Total_b      = sum(B_score),
          B_proportion = B_score/Total_b)    %>%
-  arrange(desc(B_score))
+  arrange(desc(B_score)) %>%
+  print
 
 ```
 
 ##Getting courses
 ```{r course_score}
 
-student$course_score <- gamma_descriptions$k35     %>%
+student$course_score <- clean_models$gamma_distribution$k35     %>%
   full_join(student$topic_score, by = "topic")     %>%
   mutate(X = gamma * B_proportion)                 %>%
   group_by(document)                               %>%
@@ -102,7 +103,8 @@ student$course_score <- gamma_descriptions$k35     %>%
   left_join(
     select(d_course, `Course ID`, `Course Title`),
     by = c("document" = "Course ID")
-    )
+    ) %>%
+  print
 ```
 
 ###View
