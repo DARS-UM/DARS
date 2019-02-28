@@ -13,174 +13,128 @@ library(tidyverse)
 ##Raw Data
 ```{r setup, include=FALSE}
 #
-##d_course and d_transcript
+##Import d_course and d_transcript
+load("Output/data_general.RDATA")
 load("Output/data_pillar_1.RDATA")
 
 #
-##LDA_models
-#load("Output/LDA_overview.RDATA") #replace with underneath
+##Import LDA_models
 load("Output/topic_model.RDATA")
 
+rm(lists, d_AoD, d_assessment, d_ILO)
+```
+##Models in list:
+```{r models in list}
+LDA_models <- list()
+LDA_models$description <- LDA_description_35
+LDA_models$overview <- LDA_overview_35
+LDA_models$manual <- LDA_manual_40
+
+rm(LDA_description_35, LDA_overview_35, LDA_manual_40)
 ```
 
 ## Getting Functions (gamma and beta) 
 ```{r getting functions}
 get_beta <- function(results){
   
-  tidy(results, matrix = "beta") %>%
-    mutate(topic = paste("Topic", topic)) %>%
-      arrange(topic, desc(beta))
+  tidy(results, matrix = "beta")           %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(beta) )
   
 }
 
 get_gamma <- function(results){
   
-  tidy(results, matrix = "gamma") %>%
-    mutate(topic = paste("Topic", topic)) %>%
-      arrange(topic, desc(gamma))
-  
+  tidy(results, matrix = "gamma")          %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(gamma) )
 }
 
 ```
 
 ##Getting applied (gamma and beta) 
 ```{r getting beta and gamma}
-# k=10, 20, 35
-beta_description <- lapply(
-  clean_models,
+distribution <- list()
+
+distribution$beta <- lapply(
+  LDA_models,
   get_beta
 )
 
-gamma_descriptions <- lapply(
-  LDA_model,
+distribution$gamma <- lapply(
+  LDA_models,
   get_gamma
 )
 
 ```
+
 ##Inspect topics
 ```{r inspect topics}
-topics <- clean_models$beta_distribution$k10 %>%
-  group_by(topic) %>%
-  top_n(10, beta)
+inspect_topics <- function(d_beta = distribution$beta){
+  d_beta %>%
+    group_by(topic) %>%
+    top_n(10, beta)
+  
+}
+
+topics <- lapply(
+  distribution$beta,
+  inspect_topics
+)
 
 #
 ##View
-View(topics)
+#View(topics$manual)
 
-```
-## simulating students and key words
-```{r student simulation}
-terms <- unique(beta_description$k35$term)
-
-student <- list()
-student$kw_policy <- c("international", "economic", "conflict", "develop", "policy", "war", "philosophy")
-student$kw_climate <- c("climate", "sustainability", "change", "development", "develop","sustain", "sustainable")
-```
-
-##getting top courses per student
-```{r topic score student}
-student$topic_score <- clean_models$beta_distribution$k35 %>%
-  filter(term %in% student$kw_climate)       %>%
-  group_by(topic)                           %>% #maybe we can do this with transcripts afterwards
-  summarize(B_score= sum(beta))             %>%
-  ungroup()                                 %>%
-  mutate(Total_b      = sum(B_score),
-         B_proportion = B_score/Total_b)    %>%
-  arrange(desc(B_score)) %>%
-  print
-
-```
-
-##Getting courses
-```{r course_score}
-
-student$course_score <- clean_models$gamma_distribution$k35     %>%
-  full_join(student$topic_score, by = "topic")     %>%
-  mutate(X = gamma * B_proportion)                 %>%
-  group_by(document)                               %>%
-  summarise(course_score = sum(X))                 %>%
-  arrange(desc(course_score))                      %>%
-  left_join(
-    select(d_course, `Course ID`, `Course Title`),
-    by = c("document" = "Course ID")
-    ) %>%
-  print
-```
-
-###View
-```{r View course}
-View(student$topic_score)
-View(student$course_score)
-```
-
-##Explaining outcome
-###key words contribution to topic b_score
-```{r topic score student}
-#
-## standardizing function (within topic)
-standardize <- function (col) {
-  col/sum(col)
-}
-
-#
-##key word Contributions to Topic
- kw_to_topics <- beta_description$k35                                 %>%
-  filter(term %in% student$kw_policy)                                 %>%
-  arrange(topic, desc(beta))                                          %>%
-  group_by(topic)                                                     %>%
-  mutate(beta_sum=sum(beta),
-         beta_rank=beta/beta_sum)                                     %>%
-  select(-beta_sum, -beta)
-```
-
-###Topic contribution to course
-```{r course_score}
-#
-##Extracts recommended courses n = 5
-my_courses <- top_n(x = student$course_score, n = 5, wt =course_score) %>% 
-  pull(document)
-
-#
-## Topic contribution to course
-key_words <- gamma_descriptions$k35                             %>%
-  filter(document %in% my_courses)                 %>%
-  arrange(document, gamma)                         %>%
-  full_join(kw_to_topics, by = "topic" ) %>%
-  arrange(document, desc(gamma), desc(beta_rank) ) %>%
-  group_by(document #, 
-           #gamma
-           )                                       %>%
-  filter(row_number() %in% 1:3)                    %>%  #makes most sense with just 1 kw # group_by(document) %>% filter(row_number() %in% 1:9) 
-  group_by(document)                               %>%
-  summarise(key_words = list(Reduce(f= c,
-                               x = term)))
 ```
 
 ##Selectig keywords
 ```{r}
-top_words <- beta_description$k35 %>%
-  group_by(topic) %>%
-  top_n(3, beta) %>%
-  pull(term)%>%
-  unique
+get_top_words <- function(d_beta, n = 3){
+  d_beta %>%
+    group_by(topic) %>%
+    top_n(n, beta) %>%
+    pull(term)%>%
+    unique
+}
 
-kw_stopwords =c(
-  "student", "skill", "academic", "bate", "participant", "gain", "primarily", "main", "2016", "action", "level", "issue",
-  "concept", "close", "day", "edition", "primary", "project", "method", "apply", "busy", "address", "role", "post", "oxford",
-  "cuss", "lecture", "pbl",
-    #unsure:
-  "theory", "search", "perspective"
-                )
-kw <- setdiff(top_words, kw_stopwords)
-
-save(kw, file="App/Recommender System/LDA_keyword_DELETE_.RDATA")
+kw <- lapply(
+  distribution$beta,
+  get_top_words
+)
 ```
+###Convenience vectors
+```{r}
+# set seed
+set.seed(1)
+
+#
+## All courses
+course_all <- d_course %>%
+  inner_join(
+    d_transcript,
+    by = "Course ID"
+  ) %>%
+  distinct(
+    `Course ID`
+  ) %>%
+  # remove semester abroad, skills and projects
+  filter(
+    ! str_detect(`Course ID`, pattern = "SA|SKI|PRO")
+  ) %>%
+  pull
+
+#
+##courses following_semester
+course_following_semester <- sample(
+  x       = course_all,
+  size    = 60,
+  replace = FALSE
+  ) %>% sort
+```
+
 ### Saving files for APP
 ```{r keywords}
-load("Output/topic_model.RDATA")
-
-save(list_nam, kw,
+save(distribution, kw, course_all, course_following_semester,
      file = "App/Recommender System/topic_model.RDATA")
-
-rm(list_nam)
 ```
