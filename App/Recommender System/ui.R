@@ -9,7 +9,7 @@ library(shiny)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
-load("topic_model.RDATA") #contains distribution, kw, course_all, course_following_semester.
+load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
 
 
 #
