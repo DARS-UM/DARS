@@ -13,7 +13,7 @@ function(input, output) {
   #
   ##Set up
   
-  #Return student function
+  # Helper function: Return student
   student_trans <- function(d_student){
  
     # Student profile
@@ -239,8 +239,9 @@ function(input, output) {
         wt = confidence
         )
     
-    
-    if(nrow(rules) == 0){
+    if(nrow(student$transcript)==0){
+      "ERROR: id not found- we need new students ID's before running this"
+    }else if(nrow(rules) == 0){
       
       "No red flag"
       
@@ -263,6 +264,8 @@ function(input, output) {
     
   })
   
+  #
+  ##Course Recommendation
   output$course_recommendation <- renderUI({
     
     
