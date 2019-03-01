@@ -8,11 +8,12 @@ output:
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/")
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/",
+                      eval = FALSE)
 ```
 
 
-```{r library, message = FALSE}
+```{r library, message = FALSE, eval = TRUE}
 library(tidyverse)
 library(tidytext)
 
@@ -49,19 +50,11 @@ scale_y_reordered <- function(..., sep = "___") {
 We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
 `d_AoD`, `d_assessment`, `d_course`, `d_description`, `d_manual`, `d_overview`, `d_transcript`, and a list `lists`.
 For `d_description` and `d_overview`, we keep only the most recent year.
-```{r import data}
+```{r import data, eval = TRUE}
 load("output/data_pillar_2.RDATA")
 
 # Only keep course descriptions and overviews from most recent year
-d_description <- d_description %>%
-  filter(
-    `Academic Year` == "2018-2019"
-  )
-
-d_overview <- d_overview %>%
-  filter(
-    `Academic Year` == "2018-2019"
-  )
+d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
 
 # TF-IDF
@@ -340,7 +333,7 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 
 # LDA
 The function `my_cast_tdm` casts our dataframes into a tdm.
-```{r my_cast_tdm}
+```{r my_cast_tdmxxxxx}
 my_cast_tdm <- function(data, level) data %>%
   count(`Course ID`, word) %>%
   cast_dtm(`Course ID`, word, n)
@@ -356,14 +349,14 @@ rm(my_cast_tdm)
 To decide the number of topics to discover, we run (four) three different tests.
 
 First we set the control for the test.
-```{r controls}
+```{r controls, eval = TRUE}
 my_control <- list(
   
   nstart = 10,
   seed   = 1 : 10,
   best   = TRUE,
   
-  burnin = 100,
+  burnin = 1000,
   iter   = 5000,
   thin   = 100
   
@@ -457,7 +450,58 @@ result_manual %>%
 ## Fitting Model
 
 From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the ``Recommender System` folder.
-```{r LDA fit, cache = TRUE}
+
+#NEW
+# LDA
+The function `my_cast_tdm` casts our dataframes into a tdm.
+```{r my_cast_tdm, eval = TRUE}
+my_cast_tdm <- function(data) data %>%
+  count(`Course ID`, word) %>%
+  cast_dtm(`Course ID`, word, n)
+
+d_cast <- d_text %>% map(my_cast_tdm)
+
+rm(my_cast_tdm)
+```
+
+```{r my_LDA, eval= TRUE}
+
+#my_LDA
+my_LDA <- function(n_topics, corpus){
+
+  LDA_model <- LDA(
+    x       = corpus,
+    k       = n_topics,
+    method  = "Gibbs",
+    control = my_control
+    )
+}
+
+```
+
+```{r LDA fit, cache = TRUE, eval = TRUE}
+topic_model <- tibble(
+  
+  n_topic = seq(from = 2, to = 80, by = 2)
+  
+  ) %>%
+  
+  mutate(
+    TM_overview = n_topic %>% map( .f = my_LDA, corpus = d_cast$overview),
+    TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
+  )
+```
+
+```{r saving models, eval= TRUE}
+save(topic_model,
+     file = "Output/topic_model.RDATA")
+
+save(topic_model,
+     file = "App/Recommender System/topic_model.RDATA")
+```
+
+
+```{r LDA fitxxxxxxx, cache = TRUE}
 n_topics <- c(35, 35, 40)
 levels   <- c("description", "overview", "manual")
 list_nam <- character(0)
