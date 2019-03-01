@@ -462,7 +462,7 @@ result_manual %>%
 
 ## Fitting Model
 
-
+##OLD Version:
 ```{r LDA fit, cache = TRUE}
 n_topics <- 5
 levels   <- c("description", "overview", "manual")
@@ -504,7 +504,7 @@ for(level in levels){
 save(list = list_nam,
      file = "LDA.RDATA")
 ```
-
+#end of old version
 ## Visualization
 ### Functions
 ```{r LDA prepare, eval = F}
