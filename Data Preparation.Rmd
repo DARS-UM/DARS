@@ -564,33 +564,44 @@ rm(sw_own, remove_sw)
 ```
 
 ## Student Data
+
+* Is `Academic Work ID` a unique ID number?
+
+* questions...
+
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 ```{r}
+#
+# Set up
+UCM_course <- d_text$overview$`Course ID` %>%
+  unique %>% 
+  paste(collapse = "|")
+
+
+# helper function
+is_offered_at_UCM <- function(x) x %>% str_detect(UCM_course)
+
+
 d_transcript <- d_transcript %>%
   
-  # for simplicity, only keep courses of UCM program
+  # for simplicity, we only keep *UCM courses* taken in the framework of the *BA Liberal Arts and Sciences (UCM)* (7501)
   filter(
-    `Program (Abbreviation)` == "7501",
-    !str_detect(`Module (Abbrev.)`, "EXT")
-    ) %>%
+    `Module (Abbrev.)` %>% is_offered_at_UCM,
+    `Program (Abbreviation)` == "7501"
+  ) %>%
   
-  # folowing guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type`          == "7055"
+  # The dataset has multiple rows for each student - course following guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type` == "7055"
   filter(
     `Appraisal (Description)` == "Grade supervisor",
     `Appraisal Type`          == "7055" # removes ~ 15 observations
   ) %>%
   
   # Remove variables with only one value
-  select_if(
-    function(x) n_distinct(x) > 1
-    ) %>%
-  
-  # Remove variables with more than 99% NA
-  select_if(
-    function(x) mean(is.na(x)) < 0.99
-    ) %>%
+  discard(
+    function(x) n_distinct(x) == 1
+  ) %>%
   
   # Select: Student ID, course ID, when course taken and grade 
   select(
@@ -599,35 +610,15 @@ d_transcript <- d_transcript %>%
     Year_numerical =`Academic Year`,
     Period         = `Academic Session`,
     Grade          = `Grade symbol`
-    ) %>%
+  ) %>%
   
   # Clean grade variable
   mutate(
     
-    Grade = case_when(
-      is.na(Grade)  ~ "0",
-      Grade == "NG" ~ "0",
-      TRUE          ~ str_replace(
-        Grade,
-        pattern     = ",",
-        replacement = "."
-      )
-    ) %>% 
+    Grade = if_else(is.na(Grade) | Grade == "NG", "0", Grade) %>% str_replace(",", ".") %>% 
       as.numeric
     
   ) %>%
-
-  # if student took resit (recorder in same year and period), only keep failing grade
-  # group_by(
-  #   `Student ID`,
-  #   `Course ID`,
-  #   Year,
-  #   Period
-  #   ) %>%
-  # summarize(
-  #   Grade = min(Grade)
-  #   ) %>%
-  # ungroup %>%
   
   # Clean Time variables
   mutate(
@@ -642,23 +633,38 @@ d_transcript <- d_transcript %>%
       between(Period, 400, 499) ~ "4",
       between(Period, 500, 599) ~ "5",
       between(Period, 600, 660) ~ "6"
-      ),
+    ),
     
-    time = paste(
-      Year_numerical, substr(Period, 1, 1),
-      sep = ""
-      ),
+    time = str_c(Year_numerical, substr(Period, 1, 1), sep = ""),
     
-    `Academic Year`= paste(
-      Year_numerical, Year_numerical + 1,
-      sep = "-")
+    `Academic Year`= str_c(Year_numerical, Year_numerical + 1, sep = "-")
     
-    )
+  ) %>%
+  
+  select(
+    - Year_numerical,
+    - Period
+    ) %>%
+  
+  add_count(
+    `Student ID`, `Course ID`, time,
+    sort = TRUE
+    ) %>%
+  print
+
+  # if student took resit (recorder in same year and period !!!NOT TRUE!!!), only keep failing grade 
+  # group_by(
+  #   `Student ID`,
+  #   `Course ID`,
+  #   Year,
+  #   Period
+  #   ) %>%
+  # summarize(
+  #   Grade = min(Grade)
+  #   ) %>%
+  # ungroup
 ```
 
-```{r}
-print(d_transcript)
-```
 
 # Save Data
 ```{r}
