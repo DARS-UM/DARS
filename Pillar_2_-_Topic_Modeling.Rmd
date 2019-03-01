@@ -51,8 +51,6 @@ scale_y_reordered <- function(..., sep = "___") {
 
 # Setup
 We load the environment `output/data_pillar_2.RDATA`. It contains the list `d_text`, and the datasets `d_course` and `d_transcript`.
-`d_AoD`, `d_assessment`, `d_course`, `d_description`, `d_manual`, `d_overview`, `d_transcript`, and a list `lists`.
-For `d_description` and `d_overview`, we keep only the most recent year.
 ```{r import data}
 load("output/data_pillar_2.RDATA")
 
@@ -68,12 +66,6 @@ d_overview <- d_overview %>%
   )
 ```
 
-To prepare the output of pillar two, we will need d_course. Thus we load the environment `output/data_pillar_1.RDATA`. It contains the datasets d_course and d_transcript.
-```{r}
-#
-##Import d_course and d_transcript
-load("Output/data_pillar_1.RDATA")
-```
 # TF-IDF
 ## Functions for Generating Barplots and Word Clouds
 The function `compute_tf_idf` computes the inverse term document frequency, we apply `compute_tf_idf` on descriptions, overviews and manuals. 
