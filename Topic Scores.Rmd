@@ -14,14 +14,12 @@ library(tidyverse)
 ```{r setup, include=FALSE}
 #
 ##Import d_course and d_transcript
-load("Output/data_general.RDATA")
 load("Output/data_pillar_1.RDATA")
 
 #
 ##Import LDA_models
 load("Output/topic_model.RDATA")
 
-rm(lists, d_AoD, d_assessment, d_ILO)
 ```
 
 ##Models in list:
