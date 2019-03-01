@@ -10,11 +10,12 @@ load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_f
 
 
 function(input, output) {
-  #modification here
+  #
+  ##Set up
+  
+  #Return student function
   student_trans <- function(d_student){
-    #
-    # Set up
-    
+ 
     # Student profile
     student <- list()
     
@@ -62,69 +63,17 @@ function(input, output) {
     return(student)
   }
   
+  #Reactive student function 
   current_student <- reactive({
    student_trans(input$student)
   })
   
-  
-  #end of modfication
-  
+  #
+  ##Red Flags
   output$red_flags <- renderUI({
-    
-    
-    # #
-    # # Set up
-    # 
-    # # Student profile
-    # student <- list()
-    #  
-    # # Student transcript
-    # student$transcript <- d_transcript %>%
-    #   
-    #   filter(
-    #     `Student ID` == input$student
-    #     ) %>%
-    #   
-    #   select(
-    #     course = `Course ID`,
-    #     grade  = Grade
-    #     ) %>%
-    #   
-    #   mutate(
-    #     fail       = grade < 5.5,
-    #     low        = grade < 6.5,
-    #     grade_ceil = ceiling(grade)
-    #     )
-    # 
-    # # Courses with low score
-    # student$course_low <- student$transcript %>%
-    #   filter(
-    #     low
-    #     ) %>%
-    #   pull(
-    #     course
-    #     )
-    # 
-    # # Courses with fail score
-    # student$course_fail <- student$transcript %>%
-    #   filter(
-    #     fail
-    #     ) %>%
-    #   pull(
-    #     course
-    #     )
-    # 
-    # # Course not taken
-    # student$course_not_taken <- setdiff(
-    #   x = d_course$`Course ID`, # list of all courses offered
-    #   y = student$transcript$course
-    #   )
-    # 
-    # 
-    
-    #
-    # Red Flags
+    #student
     student <- current_student()
+    
     # rules
     rules <- list()
     
