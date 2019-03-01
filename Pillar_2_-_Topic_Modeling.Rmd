@@ -7,6 +7,10 @@ output:
     toc: TRUE
 ---
 
+COMMENTS: 
+Q. Jerry -> For preprocessing (selecting vocabulary), how do we assign words that appear in only one document to a topic? Does it make sense to remove them?
+
+
 ```{r setup, include = T}
 knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/")
 ```
@@ -46,9 +50,7 @@ scale_y_reordered <- function(..., sep = "___") {
 ```
 
 # Setup
-We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
-`d_AoD`, `d_assessment`, `d_course`, `d_description`, `d_manual`, `d_overview`, `d_transcript`, and a list `lists`.
-For `d_description` and `d_overview`, we keep only the most recent year.
+We load the environment `output/data_pillar_2.RDATA`. It contains the list `d_text`, and the datasets `d_course` and `d_transcript`.
 ```{r import data}
 load("output/data_pillar_2.RDATA")
 

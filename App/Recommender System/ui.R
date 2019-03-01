@@ -9,33 +9,7 @@ library(shiny)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
-load("LDA_overview.RDATA")
-load("LDA_keyword_DELETE_.RDATA") #TO DELETE, THIS SHOULD BE INCLUDED IN 
-
-# set seed
-set.seed(1)
-
-# for convenience
-course_all <- d_course %>%
-  inner_join(
-    d_transcript,
-    by = "Course ID"
-  ) %>%
-  distinct(
-    `Course ID`
-  ) %>%
-  # remove semester abroad, skills and projects
-  filter(
-    ! str_detect(`Course ID`, pattern = "SA|SKI|PRO")
-  ) %>%
-  pull
-
-course_following_semester <- sample(
-  x       = course_all,
-  size    = 60,
-  replace = FALSE
-  ) %>% sort
-
+load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
 
 
 #
@@ -103,7 +77,7 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = sort(kw),
+          choices  = sort(kw$manual),
           selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),

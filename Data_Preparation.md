@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-02-27
+2019-03-01
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -26,11 +26,46 @@ DARS
 
 ``` r
 library(tidyverse)
+```
+
+    ## Warning: package 'tidyverse' was built under R version 3.4.2
+
+    ## Warning: package 'ggplot2' was built under R version 3.4.4
+
+    ## Warning: package 'tibble' was built under R version 3.4.4
+
+    ## Warning: package 'tidyr' was built under R version 3.4.4
+
+    ## Warning: package 'readr' was built under R version 3.4.4
+
+    ## Warning: package 'purrr' was built under R version 3.4.4
+
+    ## Warning: package 'dplyr' was built under R version 3.4.4
+
+    ## Warning: package 'stringr' was built under R version 3.4.4
+
+    ## Warning: package 'forcats' was built under R version 3.4.3
+
+``` r
 library(tidytext)
+```
+
+    ## Warning: package 'tidytext' was built under R version 3.4.4
+
+``` r
 library(gsheet) # import spreadsheets from google drive
 library(tm)
+```
+
+    ## Warning: package 'tm' was built under R version 3.4.4
+
+    ## Warning: package 'NLP' was built under R version 3.4.4
+
+``` r
 library(hunspell) # Stemmer
 ```
+
+    ## Warning: package 'hunspell' was built under R version 3.4.4
 
 Import Data
 ===========
@@ -288,6 +323,8 @@ map_assessment_AoD <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u
   ) %>%
   print
 ```
+
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
     ## # A tibble: 39 x 2
     ##    Assessment        AoD                     
@@ -1082,7 +1119,7 @@ save(d_course, lists, d_AoD, d_assessment, d_ILO,
      file = "Output/data_general.RDATA")
 save(d_transcript,
      file = "Output/data_pillar_1.RDATA")
-save(d_text,
+save(d_text, d_course, d_transcript,
      file = "Output/data_pillar_2.RDATA")
 ```
 

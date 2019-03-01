@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-02-21
+2019-02-27
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -464,22 +464,22 @@ Fitting Model
 -------------
 
 ``` r
-n_topics <- 35
+n_topics <- c(35, 35, 40)
 levels   <- c("description", "overview", "manual")
 list_nam <- character(0)
 
-for(level in levels){
+for(i in seq_along(n_topics)){
   
-  dataset   <- get(paste("d", level, "cast", sep = "_"))
+  dataset   <- get(paste("d", levels[i], "cast", sep = "_"))
   
   LDA_model <- LDA(
     x       = dataset,
-    k       = n_topics,
+    k       = n_topics[i],
     method  = "Gibbs",
     control = my_control
     )
   
-  nam <- paste("LDA", level, n_topics, sep = "_")
+  nam <- paste("LDA", levels[i], n_topics[i], sep = "_")
   
   assign(
     x     = nam,
