@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-02-27
+2019-03-01
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -12,49 +12,92 @@ DARS
 -   [LDA](#lda)
     -   [Ideal Number of Topics (RUN ON UM COMPUTER)](#ideal-number-of-topics-run-on-um-computer)
     -   [Fitting Model](#fitting-model)
+-   [NEW](#new)
+-   [LDA](#lda-1)
     -   [Visualization](#visualization)
         -   [Functions](#functions)
         -   [Plots](#plots)
 
 ``` r
-knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/")
+library(tidyverse)
 ```
 
-``` r
-library(tidyverse)
-library(tidytext)
+    ## Warning: package 'tidyverse' was built under R version 3.4.2
 
+    ## Warning: package 'ggplot2' was built under R version 3.4.4
+
+    ## Warning: package 'tibble' was built under R version 3.4.4
+
+    ## Warning: package 'tidyr' was built under R version 3.4.4
+
+    ## Warning: package 'readr' was built under R version 3.4.4
+
+    ## Warning: package 'purrr' was built under R version 3.4.4
+
+    ## Warning: package 'dplyr' was built under R version 3.4.4
+
+    ## Warning: package 'stringr' was built under R version 3.4.4
+
+    ## Warning: package 'forcats' was built under R version 3.4.3
+
+``` r
+library(tidytext)
+```
+
+    ## Warning: package 'tidytext' was built under R version 3.4.4
+
+``` r
 library(ggwordcloud) # Word Clouds
+```
+
+    ## Warning: package 'ggwordcloud' was built under R version 3.4.4
+
+``` r
 library(topicmodels)
+```
+
+    ## Warning: package 'topicmodels' was built under R version 3.4.4
+
+``` r
 library(lemon)
+```
+
+    ## Warning: package 'lemon' was built under R version 3.4.4
+
+``` r
 library(ggthemes)
+```
+
+    ## Warning: package 'ggthemes' was built under R version 3.4.4
+
+``` r
 library(rlang)
 library(ldatuning) # ideal number of topics in LDA
 ```
 
+    ## Warning: package 'ldatuning' was built under R version 3.4.1
+
 Setup
 =====
+
+We load the environment `output/data_pillar_2.RDATA`. It contains the data sets: `d_AoD`, `d_assessment`, `d_course`, `d_description`, `d_manual`, `d_overview`, `d_transcript`, and a list `lists`. For `d_description` and `d_overview`, we keep only the most recent year.
 
 ``` r
 load("output/data_pillar_2.RDATA")
 
 # Only keep course descriptions and overviews from most recent year
-d_description <- d_description %>%
-  filter(
-    `Academic Year` == "2018-2019"
-  )
-
-d_overview <- d_overview %>%
-  filter(
-    `Academic Year` == "2018-2019"
-  )
+d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
+
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
 TF-IDF
 ======
 
 Functions for Generating Barplots and Word Clouds
 -------------------------------------------------
+
+The function `compute_tf_idf` computes the inverse term document frequency, we apply `compute_tf_idf` on descriptions, overviews and manuals.
 
 ``` r
 compute_tf_idf <- function(data){
@@ -78,6 +121,8 @@ tf_idf_manual      <- compute_tf_idf(d_manual)
 
 rm(compute_tf_idf)
 ```
+
+The function `plot_tf_idf` plots a bar-graph of the most important words for each level of granularity and their corresponding word clouds.
 
 ``` r
 plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
@@ -157,6 +202,8 @@ plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
 Course Level
 ------------
 
+The function `prepare_tf_idf_course` selects 25 random courses, the top ten words with highest tf\_idf, and finally renames a facet to 'Course ID'). We apply the function to `id_plot` and pipe it to produce graphs.
+
 ``` r
 prepare_tf_idf_course <- function(data){
   
@@ -205,11 +252,7 @@ set.seed(123)
 tf_idf_manual %>%
   prepare_tf_idf_course %>%
   plot_tf_idf(id_plot = "Course_manual")
-```
 
-    ## One word could not fit on page. It has been removed.
-
-``` r
 rm(prepare_tf_idf_course)
 ```
 
@@ -337,6 +380,8 @@ rm(prepare_tf_idf_concentration, plot_tf_idf,
 LDA
 ===
 
+The function `my_cast_tdm` casts our dataframes into a tdm.
+
 ``` r
 my_cast_tdm <- function(data, level) data %>%
   count(`Course ID`, word) %>%
@@ -352,19 +397,25 @@ rm(my_cast_tdm)
 Ideal Number of Topics (RUN ON UM COMPUTER)
 -------------------------------------------
 
+To decide the number of topics to discover, we run (four) three different tests.
+
+First we set the control for the test.
+
 ``` r
 my_control <- list(
   
-  nstart = 10,
-  seed   = 1 : 10,
+  nstart = 2,
+  seed   = 1 : 2,
   best   = TRUE,
   
-  burnin = 100,
-  iter   = 5000,
-  thin   = 100
+  burnin = 10,
+  iter   = 50,
+  thin   = 5
   
 )
 ```
+
+The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements
 
 ``` r
 my_FindTopicsNumber <- function(data_cast, n_topics){
@@ -373,7 +424,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
   dtm = data_cast,
   topics = n_topics,
-  metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
+  metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
   control = my_control,
   mc.cores = 4L
@@ -383,6 +434,8 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
 }
 ```
+
+We run the test for descriptions, documenting the duration (starting\_time - ending\_time). We build 95 models (5 to 100 in increments of 1).
 
 ``` r
 start.time <- Sys.time()
@@ -398,7 +451,7 @@ save(result_description,
 print(time.taken)
 ```
 
-    ## Time difference of 3.050568 hours
+We run the test for overview, documeting its duration.
 
 ``` r
 start.time <- Sys.time()
@@ -414,7 +467,7 @@ save(result_overview , result_description,
 print(time.taken)
 ```
 
-    ## Time difference of 6.106553 hours
+We run the test for manuals, documenting its duration.
 
 ``` r
 start.time <- Sys.time()
@@ -430,38 +483,79 @@ save(result_manual, result_overview , result_description,
 print(time.taken)
 ```
 
-    ## Time difference of 22.44461 hours
-
 from 20, to 40, by 5 topics takes 22min for overview 11min for description 5.5hrs for manuals
+
+We examine the result of the experiment by plotting them on a graph.
 
 ``` r
 load("Output/LDA_ntopics.RDATA")
 
 result_description %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
-```
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/LDA%20number%20topics%20plot-1.png)
-
-``` r
 result_overview %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
-```
 
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/LDA%20number%20topics%20plot-2.png)
-
-``` r
 result_manual %>%
-  select(-Griffiths2004) %>%
   FindTopicsNumber_plot
 ```
-
-![](Pillar_2_-_Topic_Modeling_files/figure-markdown_github/LDA%20number%20topics%20plot-3.png)
 
 Fitting Model
 -------------
+
+From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the \``Recommender System` folder.
+
+NEW
+===
+
+LDA
+===
+
+The function `my_cast_tdm` casts our dataframes into a tdm.
+
+``` r
+my_cast_tdm <- function(data) data %>%
+  count(`Course ID`, word) %>%
+  cast_dtm(`Course ID`, word, n)
+
+d_cast <- d_text %>% map(my_cast_tdm)
+
+rm(my_cast_tdm)
+```
+
+``` r
+#my_LDA
+my_LDA <- function(n_topics, corpus){
+
+  LDA_model <- LDA(
+    x       = corpus,
+    k       = n_topics,
+    method  = "Gibbs",
+    control = my_control
+    )
+}
+```
+
+``` r
+topic_model <- tibble(
+  
+  n_topic = seq(from = 2, to = 3, by = 1)
+  
+  ) %>%
+  
+  mutate(
+    TM_overview = n_topic %>% map( .f = my_LDA, corpus = d_cast$overview),
+    TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
+  )
+```
+
+``` r
+save(topic_model,
+     file = "Output/topic_model.RDATA")
+
+save(topic_model,
+     file = "App/Recommender System/topic_model.RDATA")
+```
 
 ``` r
 n_topics <- c(35, 35, 40)
