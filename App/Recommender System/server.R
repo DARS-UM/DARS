@@ -9,9 +9,22 @@ load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_f
 
 
 
-function(input, output) {
+function(input, output, session) {
   #
   ##Set up
+  
+  #Helper: resettabe input
+  output$resetable_input <- renderUI({
+    times <- input$reset_input
+    div(id=letters[(times %% length(letters)) + 1],
+        checkboxGroupInput(
+          inputId  = "course_chosen",
+          label    = "Tentative Courses for following period",
+          choices  = course_all,
+          #selected = course_all,
+          inline   = TRUE
+        ))
+  })
   
   # Helper function: Return student
   student_trans <- function(d_student){

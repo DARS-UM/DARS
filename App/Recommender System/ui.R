@@ -37,14 +37,18 @@ navbarPage(
           value   = "6087587"
           ),
         
+        uiOutput('resetable_input'),
+        tags$hr(),
+        actionButton("reset_input", "Reset inputs")#,
+        
         # Input: button for the courses students wants to take following semester
-        checkboxGroupInput(
-          inputId  = "course_chosen",
-          label    = "Tentative Courses for following period",
-          choices  = course_all,
-          selected = course_all,
-          inline   = TRUE
-          )
+        # checkboxGroupInput(
+        #   inputId  = "course_chosen",
+        #   label    = "Tentative Courses for following period",
+        #   choices  = course_all,
+        #   selected = course_all,
+        #   inline   = TRUE
+        #   )
         
         ),
       

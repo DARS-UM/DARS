@@ -120,7 +120,7 @@ To expand our topic modeling of course content, we analyse the material in the c
 
 ```{r import corpus_manuals, cache = TRUE}
 extract_code <- function(string) string %>% str_sub(start = 1, end = 7) # helper functions
-
+ 
 d_text$manuals <- "./Input/Manuals 2017-18" %>%
   read_in_pdfs %>%
   
@@ -668,7 +668,7 @@ d_transcript <- d_transcript %>%
 
 # Save Data
 ```{r}
-save(d_course, lists, d_AoD, d_assessment, d_ILO,
+save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO,
      file = "Output/data_general.RDATA")
 save(d_transcript,
      file = "Output/data_pillar_1.RDATA")
