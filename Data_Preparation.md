@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-03-01
+2019-03-11
 
 -   [Import Data](#import-data)
     -   [Setup](#setup)
@@ -21,51 +21,14 @@ DARS
         -   [Removing Stopwords](#removing-stopwords)
     -   [Student Data](#student-data-1)
 -   [Save Data](#save-data)
--   [Extra](#extra)
-    -   [Extracting Descriptions](#extracting-descriptions)
 
 ``` r
 library(tidyverse)
-```
-
-    ## Warning: package 'tidyverse' was built under R version 3.4.2
-
-    ## Warning: package 'ggplot2' was built under R version 3.4.4
-
-    ## Warning: package 'tibble' was built under R version 3.4.4
-
-    ## Warning: package 'tidyr' was built under R version 3.4.4
-
-    ## Warning: package 'readr' was built under R version 3.4.4
-
-    ## Warning: package 'purrr' was built under R version 3.4.4
-
-    ## Warning: package 'dplyr' was built under R version 3.4.4
-
-    ## Warning: package 'stringr' was built under R version 3.4.4
-
-    ## Warning: package 'forcats' was built under R version 3.4.3
-
-``` r
 library(tidytext)
-```
-
-    ## Warning: package 'tidytext' was built under R version 3.4.4
-
-``` r
 library(gsheet) # import spreadsheets from google drive
 library(tm)
-```
-
-    ## Warning: package 'tm' was built under R version 3.4.4
-
-    ## Warning: package 'NLP' was built under R version 3.4.4
-
-``` r
 library(hunspell) # Stemmer
 ```
-
-    ## Warning: package 'hunspell' was built under R version 3.4.4
 
 Import Data
 ===========
@@ -149,8 +112,6 @@ d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oL
     ) %>%
   print
 ```
-
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
     ## # A tibble: 482 x 2
     ##    `Course ID` Assessment
@@ -244,7 +205,7 @@ To expand our topic modeling of course content, we analyse the material in the c
 
 ``` r
 extract_code <- function(string) string %>% str_sub(start = 1, end = 7) # helper functions
- 
+
 d_text$manuals <- "./Input/Manuals 2017-18" %>%
   read_in_pdfs %>%
   
@@ -262,17 +223,21 @@ d_text$manuals <- "./Input/Manuals 2017-18" %>%
     ## # A tibble: 153 x 3
     ##    `Course ID` year     text                                               
     ##    <chr>       <chr>    <chr>                                              
-    ##  1 COR1002     2017-20~ "P h i l o s o p hy o f S c i e n c e\n           ~
-    ##  2 COR1003     2017-20~ "General information\nIntroduction\nNew things are~
+    ##  1 COR1002     2017-20~ "P h i l o s o p hy o f S c i e n c e\r\n         ~
+    ##  2 COR1003     2017-20~ "General information\r\nIntroduction\r\nNew things~
     ##  3 COR1004     2017-20~ "University College Maastricht. 2017-18, Period 2\~
-    ##  4 COR1005     2017-20~ "Theory Construction\nand\nModelling Techniques\nC~
-    ##  5 HUM1003     2017-20~ "  Cultural Studies I\nDoing Cultural Studies\n Un~
+    ##  4 COR1005     2017-20~ "Theory Construction\r\nand\r\nModelling Technique~
+    ##  5 HUM1003     2017-20~ "  Cultural Studies I\r\nDoing Cultural Studies\r\~
     ##  6 HUM1007     2017-20~ "AN INTRODUCTORY COURSE TO PHILOSOPHY             ~
-    ##  7 HUM1010     2017-20~ "                 HU1010\nCOMMON FOUNDATIONS OF LA~
-    ##  8 HUM1011     2017-20~ "Introduction to Art\nRepresentations, Performance~
-    ##  9 HUM1012     2017-20~ "Pop Songs and Poetry: Theory and Analysis\n      ~
-    ## 10 HUM1013     2017-20~ "               The Idea of Europe:\nThe Intellect~
+    ##  7 HUM1010     2017-20~ "                 HU1010\r\nCOMMON FOUNDATIONS OF ~
+    ##  8 HUM1011     2017-20~ "Introduction to Art\r\nRepresentations, Performan~
+    ##  9 HUM1012     2017-20~ "Pop Songs and Poetry: Theory and Analysis\r\n    ~
+    ## 10 HUM1013     2017-20~ "               The Idea of Europe:\r\nThe Intelle~
     ## # ... with 143 more rows
+
+``` r
+rm(read_in_pdfs)
+```
 
 Student Data
 ------------
@@ -366,8 +331,6 @@ map_assessment_AoD <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u
     ) %>%
   print
 ```
-
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
     ## # A tibble: 39 x 2
     ##    Assessment        AoD                     
@@ -655,6 +618,9 @@ In the loop, we first determine the content of the current and following page. I
 ``` r
 #
 # Set up
+
+collapse_or <- function(string) string %>% str_c(collapse = "|")
+
 years <- paste0(2014:2018, "-", 2015:2019)
 
 headers <- c(
@@ -667,7 +633,7 @@ headers <- c(
   "^Undergraduate Research", "UCM Undergraduate\r\n ? ?Research",
   "Appendix"
   ) %>%
-  paste(collapse = "|")
+  collapse_or
 
 overview_start <- c(
   "COR",
@@ -675,7 +641,7 @@ overview_start <- c(
   "SKI", "PRO",
   "UGR", "CAP"
   ) %>% 
-  paste(collapse = "|")
+  collapse_or
 
 
 #
@@ -698,10 +664,10 @@ paste_if_two_page_overview <- function(page, page_following){
 
 #
 # main function
-extract_overview <- function(page){
+extract_overview <- function(catalogue){
   
   # create tibble to facilitate manipulation
-  page %>% 
+  catalogue %>% 
     tibble(page = .) %>%
     
   # identify start and end of overview section of catalogue
@@ -730,7 +696,8 @@ extract_overview <- function(page){
     transmute(
       text        = list(page, lead(page)) %>% pmap_chr(paste_if_two_page_overview),
       `Course ID` = text %>% extract_code
-      )
+      ) %>%
+    filter(!is.na(text))
     
 }
 
@@ -740,7 +707,7 @@ d_text$overview <- d_text$catalogues %>%
   # extract the individual course overviews for each catalogue
   map(extract_overview) %>%
   
-  # add the year to each observation to keep track of the evolution of the catalogue oevr time
+  # add the year to each observation to keep track of the evolution of the catalogue over time
   map2(
     .y = years,
     .f = function(x, year) x %>% mutate(year = year)
@@ -751,20 +718,20 @@ d_text$overview <- d_text$catalogues %>%
   print
 ```
 
-    ## # A tibble: 884 x 3
+    ## # A tibble: 831 x 3
     ##    text                                                 `Course ID` year   
     ##    <chr>                                                <chr>       <chr>  
-    ##  1 "COR1002 - Philosophy of Science\nCourse coordinato~ COR1002     2014-2~
-    ##  2 "COR1003 - Contemporary World History\nCourse coord~ COR1003     2014-2~
-    ##  3 "COR1004 - Political Philosophy\nCourse coordinator~ COR1004     2014-2~
-    ##  4 "COR1005 - Modeling Nature\nCourse coordinator\nDr.~ COR1005     2014-2~
-    ##  5 <NA>                                                 <NA>        2014-2~
-    ##  6 "HUM1003 - Cultural Studies I: Doing Cultural Studi~ HUM1003     2014-2~
-    ##  7 "HUM1007 - Introduction to Philosophy\nCourse coord~ HUM1007     2014-2~
-    ##  8 "HUM1010 - Common Foundations of Law in Europe\nCou~ HUM1010     2014-2~
-    ##  9 "HUM1011 - Introduction to Art; Representations, Pe~ HUM1011     2014-2~
-    ## 10 "HUM1012 - Pop Songs and Poetry: Theory and Analysi~ HUM1012     2014-2~
-    ## # ... with 874 more rows
+    ##  1 "COR1002 - Philosophy of Science\r\nCourse coordina~ COR1002     2014-2~
+    ##  2 "COR1003 - Contemporary World History\r\nCourse coo~ COR1003     2014-2~
+    ##  3 "COR1004 - Political Philosophy\r\nCourse coordinat~ COR1004     2014-2~
+    ##  4 "COR1005 - Modeling Nature\r\nCourse coordinator\r\~ COR1005     2014-2~
+    ##  5 "HUM1003 - Cultural Studies I: Doing Cultural Studi~ HUM1003     2014-2~
+    ##  6 "HUM1007 - Introduction to Philosophy\r\nCourse coo~ HUM1007     2014-2~
+    ##  7 "HUM1010 - Common Foundations of Law in Europe\r\nC~ HUM1010     2014-2~
+    ##  8 "HUM1011 - Introduction to Art; Representations, Pe~ HUM1011     2014-2~
+    ##  9 "HUM1012 - Pop Songs and Poetry: Theory and Analysi~ HUM1012     2014-2~
+    ## 10 "HUM1013 - The Idea of Europe: The Intellectual His~ HUM1013     2014-2~
+    ## # ... with 821 more rows
 
 ``` r
 d_text <- d_text[c("overview", "manuals")]
@@ -775,6 +742,59 @@ rm(
   paste_if_two_page_overview, extract_overview,
   years
   )
+```
+
+##### Extracting Descriptions
+
+Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
+
+``` r
+#
+# Setup
+symbol_to_line <- c("\r\n", "\n") %>% collapse_or
+start_descrip  <- c("^Description", "^Course Description") %>% collapse_or
+end_descrip    <- c(
+  "^Recommended Literature", "^ ?Required Litera", "^ ?Literature$", "Literature \\(all",
+  "^Instructional format$"
+  ) %>% collapse_or
+
+#
+# helper functions
+split              <- function(string) string %>% str_split(pattern = "\r\n|\n") %>% .[[1]]
+
+is_start_descrip   <- function(x) x %>% str_detect(pattern = start_descrip           )
+is_end_descrip     <- function(x) x %>% str_detect(pattern = end_descrip             )
+
+#
+# main function
+extract_description <- function(overview){
+  
+  overview %>%
+  split %>%
+  tibble(line = .) %>%
+  
+  mutate(
+    is_start_descrip = line %>% is_start_descrip,
+    is_end_descrip   = line %>% is_end_descrip # several ends (matching literature and instructional format) is ok because we choose the first (cumany)
+  ) %>%
+  
+  # filter the description section
+  mutate(
+    is_after_start_descrip = cumany( is_start_descrip),
+    is_before_end_descrip  = cumall(!is_end_descrip  ),
+    is_descrip             = is_after_start_descrip & is_before_end_descrip
+  ) %>%
+  filter(is_descrip, !is_start_descrip, !is_end_descrip) %>%
+  
+  summarise(description = str_c(line, collapse = " ")) %>%
+  pull
+  
+}
+
+d_text$description <- d_text$overview %>%
+  mutate(
+    text = text %>% map_chr(possibly(extract_description, "ERROR"))
+    )
 ```
 
 #### Extracting Text: Course Manuals
@@ -803,7 +823,7 @@ d_text <- d_text %>% map(tidy_text) %>% print
 ```
 
     ## $overview
-    ## # A tibble: 340,651 x 3
+    ## # A tibble: 340,588 x 3
     ##    `Course ID` year      word       
     ##    <chr>       <chr>     <chr>      
     ##  1 COR1002     2014-2015 cor1002    
@@ -816,7 +836,7 @@ d_text <- d_text %>% map(tidy_text) %>% print
     ##  8 COR1002     2014-2015 dr         
     ##  9 COR1002     2014-2015 l          
     ## 10 COR1002     2014-2015 boon       
-    ## # ... with 340,641 more rows
+    ## # ... with 340,578 more rows
     ## 
     ## $manuals
     ## # A tibble: 1,114,195 x 3
@@ -924,7 +944,7 @@ d_text <- d_text %>% map(stem_with_dictionary) %>% print
 ```
 
     ## $overview
-    ## # A tibble: 340,651 x 4
+    ## # A tibble: 340,588 x 4
     ##    `Course ID` year      word_original word       
     ##    <chr>       <chr>     <chr>         <chr>      
     ##  1 COR1002     2014-2015 cor1002       cor1002    
@@ -937,7 +957,7 @@ d_text <- d_text %>% map(stem_with_dictionary) %>% print
     ##  8 COR1002     2014-2015 dr            dr         
     ##  9 COR1002     2014-2015 l             l          
     ## 10 COR1002     2014-2015 boon          boon       
-    ## # ... with 340,641 more rows
+    ## # ... with 340,578 more rows
     ## 
     ## $manuals
     ## # A tibble: 1,114,195 x 4
@@ -981,6 +1001,9 @@ remove_sw <- function(data){
     anti_join(
       sw_own,
       by = "word"
+      ) %>%
+    filter(
+      nchar(word) > 2
       )
   
 }
@@ -989,7 +1012,7 @@ d_text <- d_text %>% map(remove_sw) %>% print
 ```
 
     ## $overview
-    ## # A tibble: 172,218 x 4
+    ## # A tibble: 170,055 x 4
     ##    `Course ID` year      word_original word       
     ##    <chr>       <chr>     <chr>         <chr>      
     ##  1 COR1002     2014-2015 cor1002       cor1002    
@@ -997,28 +1020,28 @@ d_text <- d_text %>% map(remove_sw) %>% print
     ##  3 COR1002     2014-2015 science       science    
     ##  4 COR1002     2014-2015 coordinator   coordinator
     ##  5 COR1002     2014-2015 prof          prof       
-    ##  6 COR1002     2014-2015 dr            dr         
-    ##  7 COR1002     2014-2015 boon          boon       
-    ##  8 COR1002     2014-2015 faculty       faculty    
-    ##  9 COR1002     2014-2015 humanities    humanity   
-    ## 10 COR1002     2014-2015 sciences      science    
-    ## # ... with 172,208 more rows
+    ##  6 COR1002     2014-2015 boon          boon       
+    ##  7 COR1002     2014-2015 faculty       faculty    
+    ##  8 COR1002     2014-2015 humanities    humanity   
+    ##  9 COR1002     2014-2015 sciences      science    
+    ## 10 COR1002     2014-2015 university    university 
+    ## # ... with 170,045 more rows
     ## 
     ## $manuals
-    ## # A tibble: 518,739 x 4
-    ##    `Course ID` year      word_original word      
-    ##    <chr>       <chr>     <chr>         <chr>     
-    ##  1 COR1002     2017-2018 hy            hy        
-    ##  2 COR1002     2017-2018 fall          fall      
-    ##  3 COR1002     2017-2018 2017          2017      
-    ##  4 COR1002     2017-2018 cor           cor       
-    ##  5 COR1002     2017-2018 1002          1002      
-    ##  6 COR1002     2017-2018 cor           cor       
-    ##  7 COR1002     2017-2018 1002          1002      
-    ##  8 COR1002     2017-2018 philosophy    philosophy
-    ##  9 COR1002     2017-2018 science       science   
-    ## 10 COR1002     2017-2018 contents      content   
-    ## # ... with 518,729 more rows
+    ## # A tibble: 507,981 x 4
+    ##    `Course ID` year      word_original word       
+    ##    <chr>       <chr>     <chr>         <chr>      
+    ##  1 COR1002     2017-2018 fall          fall       
+    ##  2 COR1002     2017-2018 2017          2017       
+    ##  3 COR1002     2017-2018 cor           cor        
+    ##  4 COR1002     2017-2018 1002          1002       
+    ##  5 COR1002     2017-2018 cor           cor        
+    ##  6 COR1002     2017-2018 1002          1002       
+    ##  7 COR1002     2017-2018 philosophy    philosophy 
+    ##  8 COR1002     2017-2018 science       science    
+    ##  9 COR1002     2017-2018 contents      content    
+    ## 10 COR1002     2017-2018 information   information
+    ## # ... with 507,971 more rows
 
 ``` r
 rm(sw_own, remove_sw)
@@ -1027,34 +1050,49 @@ rm(sw_own, remove_sw)
 Student Data
 ------------
 
+-   Is `Academic Work ID` a unique ID number?
+
+-   questions...
+
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 
 ``` r
+#
+# Set up
+UCM_course <- d_text$overview$`Course ID` %>%
+  unique %>% 
+  paste(collapse = "|")
+
+
+# helper function
+is_offered_at_UCM <- function(x) x %>% str_detect(UCM_course)
+```
+
+``` r
 d_transcript <- d_transcript %>%
   
-  # for simplicity, only keep courses of UCM program
+  # for simplicity, we only keep *UCM courses* taken in the framework of the *BA Liberal Arts and Sciences (UCM)* (7501)
   filter(
-    `Program (Abbreviation)` == "7501",
-    !str_detect(`Module (Abbrev.)`, "EXT")
-    ) %>%
+    `Module (Abbrev.)` %>% is_offered_at_UCM,
+    `Program (Abbreviation)` == "7501"
+  ) %>%
   
-  # folowing guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type`          == "7055"
+  # The dataset has multiple rows for each student - course. Following guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type` == "7055"
   filter(
     `Appraisal (Description)` == "Grade supervisor",
     `Appraisal Type`          == "7055" # removes ~ 15 observations
-  ) %>%
+  )
+```
+
+``` r
+d_transcript <- d_transcript %>%
   
   # Remove variables with only one value
-  select_if(
-    function(x) n_distinct(x) > 1
-    ) %>%
-  
-  # Remove variables with more than 99% NA
-  select_if(
-    function(x) mean(is.na(x)) < 0.99
-    ) %>%
+  discard(
+    function(x) n_distinct(x) == 1
+  ) %>%
   
   # Select: Student ID, course ID, when course taken and grade 
   select(
@@ -1063,35 +1101,20 @@ d_transcript <- d_transcript %>%
     Year_numerical =`Academic Year`,
     Period         = `Academic Session`,
     Grade          = `Grade symbol`
-    ) %>%
+  )
+```
+
+``` r
+d_transcript <- d_transcript %>%
   
   # Clean grade variable
   mutate(
     
-    Grade = case_when(
-      is.na(Grade)  ~ "0",
-      Grade == "NG" ~ "0",
-      TRUE          ~ str_replace(
-        Grade,
-        pattern     = ",",
-        replacement = "."
-      )
-    ) %>% 
+    Grade = if_else(is.na(Grade) | Grade == "NG", "0", Grade) %>% 
+      str_replace(",", ".") %>% 
       as.numeric
     
   ) %>%
-
-  # if student took resit (recorder in same year and period), only keep failing grade
-  # group_by(
-  #   `Student ID`,
-  #   `Course ID`,
-  #   Year,
-  #   Period
-  #   ) %>%
-  # summarize(
-  #   Grade = min(Grade)
-  #   ) %>%
-  # ungroup %>%
   
   # Clean Time variables
   mutate(
@@ -1106,38 +1129,45 @@ d_transcript <- d_transcript %>%
       between(Period, 400, 499) ~ "4",
       between(Period, 500, 599) ~ "5",
       between(Period, 600, 660) ~ "6"
-      ),
+    ),
     
-    time = paste(
-      Year_numerical, substr(Period, 1, 1),
-      sep = ""
-      ),
+    time = str_c(Year_numerical, substr(Period, 1, 1), sep = ""),
     
-    `Academic Year`= paste(
-      Year_numerical, Year_numerical + 1,
-      sep = "-")
+    `Academic Year`= str_c(Year_numerical, Year_numerical + 1, sep = "-")
     
+  ) %>%
+  
+  select(
+    - Year_numerical,
+    - Period
     )
 ```
 
 ``` r
-print(d_transcript)
+d_transcript %>%
+  
+  # highlight issue: there are several rows with unique student ID - course ID - time combination.
+  add_count(
+    `Student ID`, `Course ID`, time,
+    sort = TRUE
+    ) %>%
+  print
 ```
 
-    ## # A tibble: 80,182 x 7
-    ##    `Student ID` `Course ID` Year_numerical Period Grade time 
-    ##    <chr>        <chr>                <dbl> <chr>  <dbl> <chr>
-    ##  1 6051398      COR1005               2012 1        5.7 20121
-    ##  2 6051398      SSC1009               2012 1        7.8 20121
-    ##  3 6051398      SKI1008               2012 1        7.9 20121
-    ##  4 6051398      SCI1016               2012 2        5.8 20122
-    ##  5 6051398      SKI1009               2012 2        7.5 20122
-    ##  6 6051398      HUM1013               2012 2        5.9 20122
-    ##  7 6051398      PRO1010               2012 3        8.2 20123
-    ##  8 6051398      SKI1004               2012 4        4.6 20124
-    ##  9 6051398      SKI1004               2012 4        5.6 20124
-    ## 10 6051398      SCI2012               2012 4        5.5 20124
-    ## # ... with 80,172 more rows, and 1 more variable: `Academic Year` <chr>
+    ## # A tibble: 64,817 x 6
+    ##    `Student ID` `Course ID` Grade time  `Academic Year`     n
+    ##    <chr>        <chr>       <dbl> <chr> <chr>           <int>
+    ##  1 0268755      SKI1005       4   20071 2007-2008           8
+    ##  2 0268755      SKI1005       3   20071 2007-2008           8
+    ##  3 0268755      SKI1005       4.1 20071 2007-2008           8
+    ##  4 0268755      SKI1005       3.9 20071 2007-2008           8
+    ##  5 0268755      SKI1005       3.7 20071 2007-2008           8
+    ##  6 0268755      SKI1005       4.7 20071 2007-2008           8
+    ##  7 0268755      SKI1005       4.1 20071 2007-2008           8
+    ##  8 0268755      SKI1005       6.5 20071 2007-2008           8
+    ##  9 0315524      COR1003       4.8 20081 2008-2009           7
+    ## 10 0315524      COR1003       5   20081 2008-2009           7
+    ## # ... with 64,807 more rows
 
 Save Data
 =========
@@ -1149,47 +1179,4 @@ save(d_transcript,
      file = "Output/data_pillar_1.RDATA")
 save(d_text, d_course, d_transcript,
      file = "Output/data_pillar_2.RDATA")
-```
-
-Extra
-=====
-
-Extracting Descriptions
------------------------
-
-Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
-
-``` r
-# Setup
-symbol_to_line <- c("\r\n", "\n") %>%
-  paste(collapse = "|")
-start_descrip <- c("^Description", "^Course Description") %>%
-  paste(collapse = "|")
-end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
-                   "^Required Litera", "^ Literature$", "Literature \\(all") %>%
-  paste(collapse = "|")
-
-# Loop
-for(course in 1 : nrow(d_description)){
-  
-  overview <- d_description$Overview[course]
-  
-  overview_by_line <- strsplit(x = toString(overview), split = symbol_to_line)[[1]]
-  line_start    <- grep(pattern = start_descrip, x = overview_by_line) + 1
-  line_end      <- grep(pattern = end_descrip  , x = overview_by_line) - 1
-  # for overviews w/o Literature section, find section Instructional Format.
-  if(is_empty(line_end)){
-    line_end <- grep(pattern = "^Instructional format$", x = overview_by_line) - 1
-    print(paste("line_end irregular for", d_description$`Course ID`[course],
-                "in catalogue", d_description$`Calendar Year`[course]))
-    } # close if-statement
-  
-  description <- paste(overview_by_line[line_start : line_end], collapse = " ")
-  
-  d_description$Description[course] <- description
-  
-}
-rm(symbol_to_line, start_descrip, end_descrip,
-   course, overview, overview_by_line, line_start, line_end, description)
-print(d_description)
 ```
