@@ -20,62 +20,15 @@ DARS
 
 ``` r
 library(tidyverse)
-```
-
-    ## Warning: package 'tidyverse' was built under R version 3.4.2
-
-    ## Warning: package 'ggplot2' was built under R version 3.4.4
-
-    ## Warning: package 'tibble' was built under R version 3.4.4
-
-    ## Warning: package 'tidyr' was built under R version 3.4.4
-
-    ## Warning: package 'readr' was built under R version 3.4.4
-
-    ## Warning: package 'purrr' was built under R version 3.4.4
-
-    ## Warning: package 'dplyr' was built under R version 3.4.4
-
-    ## Warning: package 'stringr' was built under R version 3.4.4
-
-    ## Warning: package 'forcats' was built under R version 3.4.3
-
-``` r
 library(tidytext)
-```
 
-    ## Warning: package 'tidytext' was built under R version 3.4.4
-
-``` r
 library(ggwordcloud) # Word Clouds
-```
-
-    ## Warning: package 'ggwordcloud' was built under R version 3.4.4
-
-``` r
 library(topicmodels)
-```
-
-    ## Warning: package 'topicmodels' was built under R version 3.4.4
-
-``` r
 library(lemon)
-```
-
-    ## Warning: package 'lemon' was built under R version 3.4.4
-
-``` r
 library(ggthemes)
-```
-
-    ## Warning: package 'ggthemes' was built under R version 3.4.4
-
-``` r
 library(rlang)
 library(ldatuning) # ideal number of topics in LDA
 ```
-
-    ## Warning: package 'ldatuning' was built under R version 3.4.1
 
 Setup
 =====
@@ -88,8 +41,6 @@ load("output/data_pillar_2.RDATA")
 # Only keep course descriptions and overviews from most recent year
 d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
-
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
 TF-IDF
 ======
@@ -404,13 +355,13 @@ First we set the control for the test.
 ``` r
 my_control <- list(
   
-  nstart = 2,
-  seed   = 1 : 2,
+  nstart = 10,
+  seed   = 1 : 10,
   best   = TRUE,
   
-  burnin = 10,
-  iter   = 50,
-  thin   = 5
+  burnin = 1000,
+  iter   = 5000,
+  thin   = 100
   
 )
 ```
@@ -539,7 +490,7 @@ my_LDA <- function(n_topics, corpus){
 ``` r
 topic_model <- tibble(
   
-  n_topic = seq(from = 2, to = 3, by = 1)
+  n_topic = seq(from = 2, to = 80, by = 2)
   
   ) %>%
   

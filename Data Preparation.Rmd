@@ -120,7 +120,7 @@ To expand our topic modeling of course content, we analyse the material in the c
 
 ```{r import corpus_manuals, cache = TRUE}
 extract_code <- function(string) string %>% str_sub(start = 1, end = 7) # helper functions
- 
+
 d_text$manuals <- "./Input/Manuals 2017-18" %>%
   read_in_pdfs %>%
   
@@ -451,6 +451,60 @@ rm(
   )
 ```
 
+
+##### Extracting Descriptions
+
+Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
+
+```{r extracting description, eval = FALSE}
+
+# Setup
+symbol_to_line <- c("\r\n", "\n") %>% paste(collapse = "|")
+start_descrip  <- c("^Description", "^Course Description") %>% paste(collapse = "|")
+end_descrip    <- c("^Recommended Literature", "^ ?Required Litera", "^ ?Literature$", "Literature \\(all") %>%  paste(collapse = "|")
+
+# helper functions
+split              <- function(string) string %>% str_split(pattern = "\r\n|\n")
+
+is_start_descrip   <- function(x) x %>% str_detect(pattern = start_descrip           )
+is_end_descrip     <- function(x) x %>% str_detect(pattern = end_descrip             )
+is_end_descrip_bis <- function(x) x %>% str_detect(pattern = "^Instructional format$")
+
+# main function
+extract_description <- function(page){
+  
+  page %>%
+    split %>%
+    tibble(line = .) %>%
+    
+    mutate(
+      is_start_descrip = line %>% is_start_descrip,
+      is_end_descrip   = line %>% is_end_descrip
+    ) %>%
+    
+    mutate(
+      is_end_descrip = if_else(any(is_end_descrip), is_end_descrip, line %>% is_end_descrip_bis)
+    ) %>%
+    
+    # filter the description section
+    mutate(
+      is_after_start_descrip = cumany( is_start_descrip),
+      is_before_end_descrip  = cumall(!is_end_descrip  ),
+      is_descrip             = is_after_start_descrip & is_before_end_descrip
+      ) %>%
+    filter(is_descrip, !is_start_descrip, !is_end_descrip) %>%
+    
+    summarise(description = str_c(line, collapse = " ")) %>%
+    pull
+  
+}
+
+d_text$overview %>%
+  mutate(
+    description = overview %>% map(extract_description)
+  )
+```
+
 #### Extracting Text: Course Manuals
 (For this section we use:`corpus_manuals`-contains the pdfs of the course manuals for the year 2017-2018 (most recently, available))
 
@@ -564,33 +618,44 @@ rm(sw_own, remove_sw)
 ```
 
 ## Student Data
+
+* Is `Academic Work ID` a unique ID number?
+
+* questions...
+
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
 ```{r}
+#
+# Set up
+UCM_course <- d_text$overview$`Course ID` %>%
+  unique %>% 
+  paste(collapse = "|")
+
+
+# helper function
+is_offered_at_UCM <- function(x) x %>% str_detect(UCM_course)
+
+
 d_transcript <- d_transcript %>%
   
-  # for simplicity, only keep courses of UCM program
+  # for simplicity, we only keep *UCM courses* taken in the framework of the *BA Liberal Arts and Sciences (UCM)* (7501)
   filter(
-    `Program (Abbreviation)` == "7501",
-    !str_detect(`Module (Abbrev.)`, "EXT")
-    ) %>%
+    `Module (Abbrev.)` %>% is_offered_at_UCM,
+    `Program (Abbreviation)` == "7501"
+  ) %>%
   
-  # folowing guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type`          == "7055"
+  # The dataset has multiple rows for each student - course following guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type` == "7055"
   filter(
     `Appraisal (Description)` == "Grade supervisor",
     `Appraisal Type`          == "7055" # removes ~ 15 observations
   ) %>%
   
   # Remove variables with only one value
-  select_if(
-    function(x) n_distinct(x) > 1
-    ) %>%
-  
-  # Remove variables with more than 99% NA
-  select_if(
-    function(x) mean(is.na(x)) < 0.99
-    ) %>%
+  discard(
+    function(x) n_distinct(x) == 1
+  ) %>%
   
   # Select: Student ID, course ID, when course taken and grade 
   select(
@@ -599,35 +664,15 @@ d_transcript <- d_transcript %>%
     Year_numerical =`Academic Year`,
     Period         = `Academic Session`,
     Grade          = `Grade symbol`
-    ) %>%
+  ) %>%
   
   # Clean grade variable
   mutate(
     
-    Grade = case_when(
-      is.na(Grade)  ~ "0",
-      Grade == "NG" ~ "0",
-      TRUE          ~ str_replace(
-        Grade,
-        pattern     = ",",
-        replacement = "."
-      )
-    ) %>% 
+    Grade = if_else(is.na(Grade) | Grade == "NG", "0", Grade) %>% str_replace(",", ".") %>% 
       as.numeric
     
   ) %>%
-
-  # if student took resit (recorder in same year and period), only keep failing grade
-  # group_by(
-  #   `Student ID`,
-  #   `Course ID`,
-  #   Year,
-  #   Period
-  #   ) %>%
-  # summarize(
-  #   Grade = min(Grade)
-  #   ) %>%
-  # ungroup %>%
   
   # Clean Time variables
   mutate(
@@ -642,73 +687,45 @@ d_transcript <- d_transcript %>%
       between(Period, 400, 499) ~ "4",
       between(Period, 500, 599) ~ "5",
       between(Period, 600, 660) ~ "6"
-      ),
+    ),
     
-    time = paste(
-      Year_numerical, substr(Period, 1, 1),
-      sep = ""
-      ),
+    time = str_c(Year_numerical, substr(Period, 1, 1), sep = ""),
     
-    `Academic Year`= paste(
-      Year_numerical, Year_numerical + 1,
-      sep = "-")
+    `Academic Year`= str_c(Year_numerical, Year_numerical + 1, sep = "-")
     
-    )
+  ) %>%
+  
+  select(
+    - Year_numerical,
+    - Period
+    ) %>%
+  
+  add_count(
+    `Student ID`, `Course ID`, time,
+    sort = TRUE
+    ) %>%
+  print
+
+  # if student took resit (recorder in same year and period !!!NOT TRUE!!!), only keep failing grade 
+  # group_by(
+  #   `Student ID`,
+  #   `Course ID`,
+  #   Year,
+  #   Period
+  #   ) %>%
+  # summarize(
+  #   Grade = min(Grade)
+  #   ) %>%
+  # ungroup
 ```
 
-```{r}
-print(d_transcript)
-```
 
 # Save Data
 ```{r}
-save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO,
+save(d_course, lists, d_AoD, d_assessment, d_ILO,
      file = "Output/data_general.RDATA")
 save(d_transcript,
      file = "Output/data_pillar_1.RDATA")
 save(d_text, d_course, d_transcript,
      file = "Output/data_pillar_2.RDATA")
-```
-
-
-# Extra
-
-## Extracting Descriptions
-
-Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
-
-```{r extracting description, eval = FALSE}
-
-# Setup
-symbol_to_line <- c("\r\n", "\n") %>%
-  paste(collapse = "|")
-start_descrip <- c("^Description", "^Course Description") %>%
-  paste(collapse = "|")
-end_descrip   <- c("^Literature$", "^Recommended Literature", "^ Required Litera",
-                   "^Required Litera", "^ Literature$", "Literature \\(all") %>%
-  paste(collapse = "|")
-
-# Loop
-for(course in 1 : nrow(d_description)){
-  
-  overview <- d_description$Overview[course]
-  
-  overview_by_line <- strsplit(x = toString(overview), split = symbol_to_line)[[1]]
-  line_start    <- grep(pattern = start_descrip, x = overview_by_line) + 1
-  line_end      <- grep(pattern = end_descrip  , x = overview_by_line) - 1
-  # for overviews w/o Literature section, find section Instructional Format.
-  if(is_empty(line_end)){
-    line_end <- grep(pattern = "^Instructional format$", x = overview_by_line) - 1
-    print(paste("line_end irregular for", d_description$`Course ID`[course],
-                "in catalogue", d_description$`Calendar Year`[course]))
-    } # close if-statement
-  
-  description <- paste(overview_by_line[line_start : line_end], collapse = " ")
-  
-  d_description$Description[course] <- description
-  
-}
-rm(symbol_to_line, start_descrip, end_descrip,
-   course, overview, overview_by_line, line_start, line_end, description)
-print(d_description)
 ```
