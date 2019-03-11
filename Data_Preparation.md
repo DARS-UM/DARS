@@ -1002,9 +1002,17 @@ remove_sw <- function(data){
       sw_own,
       by = "word"
       ) %>%
+    
+    # remove words of 1 or 2 letters
     filter(
       nchar(word) > 2
-      )
+      ) %>%
+    
+    # Remove words occuring once or twice in corpus (usually names, website links or typos)
+    add_count(word) %>%
+    filter(n > 2) %>%
+    select(-n)
+
   
 }
 
@@ -1012,7 +1020,7 @@ d_text <- d_text %>% map(remove_sw) %>% print
 ```
 
     ## $overview
-    ## # A tibble: 170,055 x 4
+    ## # A tibble: 168,283 x 4
     ##    `Course ID` year      word_original word       
     ##    <chr>       <chr>     <chr>         <chr>      
     ##  1 COR1002     2014-2015 cor1002       cor1002    
@@ -1025,10 +1033,10 @@ d_text <- d_text %>% map(remove_sw) %>% print
     ##  8 COR1002     2014-2015 humanities    humanity   
     ##  9 COR1002     2014-2015 sciences      science    
     ## 10 COR1002     2014-2015 university    university 
-    ## # ... with 170,045 more rows
+    ## # ... with 168,273 more rows
     ## 
     ## $manuals
-    ## # A tibble: 507,981 x 4
+    ## # A tibble: 482,526 x 4
     ##    `Course ID` year      word_original word       
     ##    <chr>       <chr>     <chr>         <chr>      
     ##  1 COR1002     2017-2018 fall          fall       
@@ -1041,7 +1049,7 @@ d_text <- d_text %>% map(remove_sw) %>% print
     ##  8 COR1002     2017-2018 science       science    
     ##  9 COR1002     2017-2018 contents      content    
     ## 10 COR1002     2017-2018 information   information
-    ## # ... with 507,971 more rows
+    ## # ... with 482,516 more rows
 
 ``` r
 rm(sw_own, remove_sw)

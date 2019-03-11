@@ -616,9 +616,17 @@ remove_sw <- function(data){
       sw_own,
       by = "word"
       ) %>%
+    
+    # remove words of 1 or 2 letters
     filter(
       nchar(word) > 2
-      )
+      ) %>%
+    
+    # Remove words occuring once or twice in corpus (usually names, website links or typos)
+    add_count(word) %>%
+    filter(n > 2) %>%
+    select(-n)
+
   
 }
 
