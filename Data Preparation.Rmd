@@ -615,6 +615,9 @@ remove_sw <- function(data){
     anti_join(
       sw_own,
       by = "word"
+      ) %>%
+    filter(
+      nchar(word) > 2
       )
   
 }

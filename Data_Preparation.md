@@ -1001,6 +1001,9 @@ remove_sw <- function(data){
     anti_join(
       sw_own,
       by = "word"
+      ) %>%
+    filter(
+      nchar(word) > 2
       )
   
 }
@@ -1009,7 +1012,7 @@ d_text <- d_text %>% map(remove_sw) %>% print
 ```
 
     ## $overview
-    ## # A tibble: 172,157 x 4
+    ## # A tibble: 170,055 x 4
     ##    `Course ID` year      word_original word       
     ##    <chr>       <chr>     <chr>         <chr>      
     ##  1 COR1002     2014-2015 cor1002       cor1002    
@@ -1017,28 +1020,28 @@ d_text <- d_text %>% map(remove_sw) %>% print
     ##  3 COR1002     2014-2015 science       science    
     ##  4 COR1002     2014-2015 coordinator   coordinator
     ##  5 COR1002     2014-2015 prof          prof       
-    ##  6 COR1002     2014-2015 dr            dr         
-    ##  7 COR1002     2014-2015 boon          boon       
-    ##  8 COR1002     2014-2015 faculty       faculty    
-    ##  9 COR1002     2014-2015 humanities    humanity   
-    ## 10 COR1002     2014-2015 sciences      science    
-    ## # ... with 172,147 more rows
+    ##  6 COR1002     2014-2015 boon          boon       
+    ##  7 COR1002     2014-2015 faculty       faculty    
+    ##  8 COR1002     2014-2015 humanities    humanity   
+    ##  9 COR1002     2014-2015 sciences      science    
+    ## 10 COR1002     2014-2015 university    university 
+    ## # ... with 170,045 more rows
     ## 
     ## $manuals
-    ## # A tibble: 518,739 x 4
-    ##    `Course ID` year      word_original word      
-    ##    <chr>       <chr>     <chr>         <chr>     
-    ##  1 COR1002     2017-2018 hy            hy        
-    ##  2 COR1002     2017-2018 fall          fall      
-    ##  3 COR1002     2017-2018 2017          2017      
-    ##  4 COR1002     2017-2018 cor           cor       
-    ##  5 COR1002     2017-2018 1002          1002      
-    ##  6 COR1002     2017-2018 cor           cor       
-    ##  7 COR1002     2017-2018 1002          1002      
-    ##  8 COR1002     2017-2018 philosophy    philosophy
-    ##  9 COR1002     2017-2018 science       science   
-    ## 10 COR1002     2017-2018 contents      content   
-    ## # ... with 518,729 more rows
+    ## # A tibble: 507,981 x 4
+    ##    `Course ID` year      word_original word       
+    ##    <chr>       <chr>     <chr>         <chr>      
+    ##  1 COR1002     2017-2018 fall          fall       
+    ##  2 COR1002     2017-2018 2017          2017       
+    ##  3 COR1002     2017-2018 cor           cor        
+    ##  4 COR1002     2017-2018 1002          1002       
+    ##  5 COR1002     2017-2018 cor           cor        
+    ##  6 COR1002     2017-2018 1002          1002       
+    ##  7 COR1002     2017-2018 philosophy    philosophy 
+    ##  8 COR1002     2017-2018 science       science    
+    ##  9 COR1002     2017-2018 contents      content    
+    ## 10 COR1002     2017-2018 information   information
+    ## # ... with 507,971 more rows
 
 ``` r
 rm(sw_own, remove_sw)
