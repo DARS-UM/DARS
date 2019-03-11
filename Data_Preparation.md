@@ -1106,7 +1106,7 @@ d_transcript <- d_transcript %>%
   select(
     `Student ID`   = `Student Number`,
     `Course ID`    = `Module (Abbrev.)`,
-    Year_numerical =`Academic Year`,
+    Year_numerical = `Academic Year`,
     Period         = `Academic Session`,
     Grade          = `Grade symbol`
   )
@@ -1143,12 +1143,7 @@ d_transcript <- d_transcript %>%
     
     `Academic Year`= str_c(Year_numerical, Year_numerical + 1, sep = "-")
     
-  ) %>%
-  
-  select(
-    - Year_numerical,
-    - Period
-    )
+  )
 ```
 
 ``` r
@@ -1162,20 +1157,21 @@ d_transcript %>%
   print
 ```
 
-    ## # A tibble: 64,817 x 6
-    ##    `Student ID` `Course ID` Grade time  `Academic Year`     n
-    ##    <chr>        <chr>       <dbl> <chr> <chr>           <int>
-    ##  1 0268755      SKI1005       4   20071 2007-2008           8
-    ##  2 0268755      SKI1005       3   20071 2007-2008           8
-    ##  3 0268755      SKI1005       4.1 20071 2007-2008           8
-    ##  4 0268755      SKI1005       3.9 20071 2007-2008           8
-    ##  5 0268755      SKI1005       3.7 20071 2007-2008           8
-    ##  6 0268755      SKI1005       4.7 20071 2007-2008           8
-    ##  7 0268755      SKI1005       4.1 20071 2007-2008           8
-    ##  8 0268755      SKI1005       6.5 20071 2007-2008           8
-    ##  9 0315524      COR1003       4.8 20081 2008-2009           7
-    ## 10 0315524      COR1003       5   20081 2008-2009           7
-    ## # ... with 64,807 more rows
+    ## # A tibble: 64,817 x 8
+    ##    `Student ID` `Course ID` Year_numerical Period Grade time 
+    ##    <chr>        <chr>                <dbl> <chr>  <dbl> <chr>
+    ##  1 0268755      SKI1005               2007 1 to 6   4   20071
+    ##  2 0268755      SKI1005               2007 1 to 6   3   20071
+    ##  3 0268755      SKI1005               2007 1 to 6   4.1 20071
+    ##  4 0268755      SKI1005               2007 1 to 6   3.9 20071
+    ##  5 0268755      SKI1005               2007 1 to 6   3.7 20071
+    ##  6 0268755      SKI1005               2007 1 to 6   4.7 20071
+    ##  7 0268755      SKI1005               2007 1 to 6   4.1 20071
+    ##  8 0268755      SKI1005               2007 1 to 6   6.5 20071
+    ##  9 0315524      COR1003               2008 1 to 6   4.8 20081
+    ## 10 0315524      COR1003               2008 1 to 6   5   20081
+    ## # ... with 64,807 more rows, and 2 more variables: `Academic Year` <chr>,
+    ## #   n <int>
 
 Save Data
 =========

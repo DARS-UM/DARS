@@ -685,7 +685,7 @@ d_transcript <- d_transcript %>%
   select(
     `Student ID`   = `Student Number`,
     `Course ID`    = `Module (Abbrev.)`,
-    Year_numerical =`Academic Year`,
+    Year_numerical = `Academic Year`,
     Period         = `Academic Session`,
     Grade          = `Grade symbol`
   )
@@ -723,12 +723,7 @@ d_transcript <- d_transcript %>%
     
     `Academic Year`= str_c(Year_numerical, Year_numerical + 1, sep = "-")
     
-  ) %>%
-  
-  select(
-    - Year_numerical,
-    - Period
-    )
+  )
 ```
 
 ```{r}
