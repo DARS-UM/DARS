@@ -133,6 +133,8 @@ d_text$manuals <- "./Input/Manuals 2017-18" %>%
     text        = manuals %>% map(content) %>% map_chr(str_c, collapse = " ")
     ) %>%
   print
+
+rm(read_in_pdfs)
 ```
 
 ## Student Data
@@ -346,6 +348,9 @@ In the loop, we first determine the content of the current and following page. I
 ```{r extracting overview, cache = TRUE}
 #
 # Set up
+
+collapse_or <- function(string) string %>% str_c(collapse = "|")
+
 years <- paste0(2014:2018, "-", 2015:2019)
 
 headers <- c(
@@ -358,7 +363,7 @@ headers <- c(
   "^Undergraduate Research", "UCM Undergraduate\r\n ? ?Research",
   "Appendix"
   ) %>%
-  paste(collapse = "|")
+  collapse_or
 
 overview_start <- c(
   "COR",
@@ -366,7 +371,7 @@ overview_start <- c(
   "SKI", "PRO",
   "UGR", "CAP"
   ) %>% 
-  paste(collapse = "|")
+  collapse_or
 
 
 #
@@ -389,10 +394,10 @@ paste_if_two_page_overview <- function(page, page_following){
 
 #
 # main function
-extract_overview <- function(page){
+extract_overview <- function(catalogue){
   
   # create tibble to facilitate manipulation
-  page %>% 
+  catalogue %>% 
     tibble(page = .) %>%
     
   # identify start and end of overview section of catalogue
@@ -421,7 +426,8 @@ extract_overview <- function(page){
     transmute(
       text        = list(page, lead(page)) %>% pmap_chr(paste_if_two_page_overview),
       `Course ID` = text %>% extract_code
-      )
+      ) %>%
+    filter(!is.na(text))
     
 }
 
@@ -431,7 +437,7 @@ d_text$overview <- d_text$catalogues %>%
   # extract the individual course overviews for each catalogue
   map(extract_overview) %>%
   
-  # add the year to each observation to keep track of the evolution of the catalogue oevr time
+  # add the year to each observation to keep track of the evolution of the catalogue over time
   map2(
     .y = years,
     .f = function(x, year) x %>% mutate(year = year)
@@ -458,51 +464,52 @@ Since the overviews contain a lot of information that does not interest us, we e
 
 ```{r extracting description, eval = FALSE}
 
+#
 # Setup
-symbol_to_line <- c("\r\n", "\n") %>% paste(collapse = "|")
-start_descrip  <- c("^Description", "^Course Description") %>% paste(collapse = "|")
-end_descrip    <- c("^Recommended Literature", "^ ?Required Litera", "^ ?Literature$", "Literature \\(all") %>%  paste(collapse = "|")
+symbol_to_line <- c("\r\n", "\n") %>% collapse_or
+start_descrip  <- c("^Description", "^Course Description") %>% collapse_or
+end_descrip    <- c(
+  "^Recommended Literature", "^ ?Required Litera", "^ ?Literature$", "Literature \\(all",
+  "^Instructional format$"
+  ) %>% collapse_or
 
+#
 # helper functions
-split              <- function(string) string %>% str_split(pattern = "\r\n|\n")
+split              <- function(string) string %>% str_split(pattern = "\r\n|\n") %>% .[[1]]
 
 is_start_descrip   <- function(x) x %>% str_detect(pattern = start_descrip           )
 is_end_descrip     <- function(x) x %>% str_detect(pattern = end_descrip             )
-is_end_descrip_bis <- function(x) x %>% str_detect(pattern = "^Instructional format$")
 
+#
 # main function
-extract_description <- function(page){
+extract_description <- function(overview){
   
-  page %>%
-    split %>%
-    tibble(line = .) %>%
-    
-    mutate(
-      is_start_descrip = line %>% is_start_descrip,
-      is_end_descrip   = line %>% is_end_descrip
-    ) %>%
-    
-    mutate(
-      is_end_descrip = if_else(any(is_end_descrip), is_end_descrip, line %>% is_end_descrip_bis)
-    ) %>%
-    
-    # filter the description section
-    mutate(
-      is_after_start_descrip = cumany( is_start_descrip),
-      is_before_end_descrip  = cumall(!is_end_descrip  ),
-      is_descrip             = is_after_start_descrip & is_before_end_descrip
-      ) %>%
-    filter(is_descrip, !is_start_descrip, !is_end_descrip) %>%
-    
-    summarise(description = str_c(line, collapse = " ")) %>%
-    pull
+  overview %>%
+  split %>%
+  tibble(line = .) %>%
+  
+  mutate(
+    is_start_descrip = line %>% is_start_descrip,
+    is_end_descrip   = line %>% is_end_descrip # several ends (matching literature and instructional format) is ok because we choose the first (cumany)
+  ) %>%
+  
+  # filter the description section
+  mutate(
+    is_after_start_descrip = cumany( is_start_descrip),
+    is_before_end_descrip  = cumall(!is_end_descrip  ),
+    is_descrip             = is_after_start_descrip & is_before_end_descrip
+  ) %>%
+  filter(is_descrip, !is_start_descrip, !is_end_descrip) %>%
+  
+  summarise(description = str_c(line, collapse = " ")) %>%
+  pull
   
 }
 
-d_text$overview %>%
+d_text$description <- d_text$overview %>%
   mutate(
-    description = overview %>% map(extract_description)
-  )
+    text = text %>% map_chr(possibly(extract_description, "ERROR"))
+    )
 ```
 
 #### Extracting Text: Course Manuals
@@ -722,7 +729,7 @@ d_transcript <- d_transcript %>%
 
 # Save Data
 ```{r}
-save(d_course, lists, d_AoD, d_assessment, d_ILO,
+save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO,
      file = "Output/data_general.RDATA")
 save(d_transcript,
      file = "Output/data_pillar_1.RDATA")
