@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-03-01
+2019-03-11
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -498,6 +498,42 @@ topic_model <- tibble(
     TM_overview = n_topic %>% map( .f = my_LDA, corpus = d_cast$overview),
     TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
   )
+```
+
+``` r
+get_beta <- function(results){
+  
+  tidy(results, matrix = "beta")           %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(beta) )
+  
+}
+
+get_gamma <- function(results){
+  
+  tidy(results, matrix = "gamma")          %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(gamma) )
+}
+```
+
+``` r
+topic_model_gb <- topic_model %>%
+  transmute(
+    n_topic    = n_topic,
+    g_overview = TM_overview %>% map( .f = get_gamma),
+    g_manual   = TM_manual   %>% map( .f = get_gamma),
+    b_overview = TM_overview %>% map( .f = get_beta),
+    b_manual   = TM_manual   %>% map( .f = get_beta)
+      )
+```
+
+``` r
+save(topic_model_gb,
+     file = "Output/topic_model_gb.RDATA")
+
+save(topic_model_gb,
+     file = "App/Recommender System/topic_model_gb.RDATA")
 ```
 
 ``` r
