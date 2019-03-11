@@ -1068,8 +1068,9 @@ UCM_course <- d_text$overview$`Course ID` %>%
 
 # helper function
 is_offered_at_UCM <- function(x) x %>% str_detect(UCM_course)
+```
 
-
+``` r
 d_transcript <- d_transcript %>%
   
   # for simplicity, we only keep *UCM courses* taken in the framework of the *BA Liberal Arts and Sciences (UCM)* (7501)
@@ -1078,11 +1079,15 @@ d_transcript <- d_transcript %>%
     `Program (Abbreviation)` == "7501"
   ) %>%
   
-  # The dataset has multiple rows for each student - course following guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type` == "7055"
+  # The dataset has multiple rows for each student - course. Following guidelines of Richard Vos, we only consider: `Appraisal (Description)` == "Grade supervisor" and `Appraisal Type` == "7055"
   filter(
     `Appraisal (Description)` == "Grade supervisor",
     `Appraisal Type`          == "7055" # removes ~ 15 observations
-  ) %>%
+  )
+```
+
+``` r
+d_transcript <- d_transcript %>%
   
   # Remove variables with only one value
   discard(
@@ -1096,12 +1101,17 @@ d_transcript <- d_transcript %>%
     Year_numerical =`Academic Year`,
     Period         = `Academic Session`,
     Grade          = `Grade symbol`
-  ) %>%
+  )
+```
+
+``` r
+d_transcript <- d_transcript %>%
   
   # Clean grade variable
   mutate(
     
-    Grade = if_else(is.na(Grade) | Grade == "NG", "0", Grade) %>% str_replace(",", ".") %>% 
+    Grade = if_else(is.na(Grade) | Grade == "NG", "0", Grade) %>% 
+      str_replace(",", ".") %>% 
       as.numeric
     
   ) %>%
@@ -1130,8 +1140,13 @@ d_transcript <- d_transcript %>%
   select(
     - Year_numerical,
     - Period
-    ) %>%
+    )
+```
+
+``` r
+d_transcript %>%
   
+  # highlight issue: there are several rows with unique student ID - course ID - time combination.
   add_count(
     `Student ID`, `Course ID`, time,
     sort = TRUE
@@ -1153,20 +1168,6 @@ d_transcript <- d_transcript %>%
     ##  9 0315524      COR1003       4.8 20081 2008-2009           7
     ## 10 0315524      COR1003       5   20081 2008-2009           7
     ## # ... with 64,807 more rows
-
-``` r
-  # if student took resit (recorder in same year and period !!!NOT TRUE!!!), only keep failing grade 
-  # group_by(
-  #   `Student ID`,
-  #   `Course ID`,
-  #   Year,
-  #   Period
-  #   ) %>%
-  # summarize(
-  #   Grade = min(Grade)
-  #   ) %>%
-  # ungroup
-```
 
 Save Data
 =========
