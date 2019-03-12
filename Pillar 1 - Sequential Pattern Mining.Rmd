@@ -16,14 +16,12 @@ library(tidyverse)
 library(arulesSequences)
 ```
 
-# Load data
+# Set up
 We load the environment `data_pillar1` which we saved at the end of the data preparation. It contains the data sets `d_course` and `d_transcript`.
 ```{r loading data}
 load("Output/data_general.RDATA")
 load("Output/data_pillar_1.RDATA")
 ```
-
-# Set up
 
 ```{r constants}
 # Some old courses are present
