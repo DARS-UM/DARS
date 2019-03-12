@@ -1,7 +1,7 @@
 Pillar 2 - Topic Modeling
 ================
 DARS
-2019-03-11
+2019-03-12
 
 -   [Setup](#setup)
 -   [TF-IDF](#tf-idf)
@@ -14,21 +14,76 @@ DARS
     -   [Fitting Model](#fitting-model)
 -   [NEW](#new)
 -   [LDA](#lda-1)
+-   [Saving DELETE LATER](#saving-delete-later)
+-   [Saving DELETE LATER](#saving-delete-later-1)
+    -   [Distributions of best models](#distributions-of-best-models)
+    -   [Inspect topics](#inspect-topics)
+    -   [Selectig keywords](#selectig-keywords)
+    -   [Convenience vectors for APP](#convenience-vectors-for-app)
+    -   [Saving files for APP](#saving-files-for-app)
+        -   [Previous code DELETE LATER](#previous-code-delete-later)
     -   [Visualization](#visualization)
         -   [Functions](#functions)
         -   [Plots](#plots)
 
 ``` r
 library(tidyverse)
-library(tidytext)
+```
 
+    ## Warning: package 'tidyverse' was built under R version 3.4.2
+
+    ## Warning: package 'ggplot2' was built under R version 3.4.4
+
+    ## Warning: package 'tibble' was built under R version 3.4.4
+
+    ## Warning: package 'tidyr' was built under R version 3.4.4
+
+    ## Warning: package 'readr' was built under R version 3.4.4
+
+    ## Warning: package 'purrr' was built under R version 3.4.4
+
+    ## Warning: package 'dplyr' was built under R version 3.4.4
+
+    ## Warning: package 'stringr' was built under R version 3.4.4
+
+    ## Warning: package 'forcats' was built under R version 3.4.3
+
+``` r
+library(tidytext)
+```
+
+    ## Warning: package 'tidytext' was built under R version 3.4.4
+
+``` r
 library(ggwordcloud) # Word Clouds
+```
+
+    ## Warning: package 'ggwordcloud' was built under R version 3.4.4
+
+``` r
 library(topicmodels)
+```
+
+    ## Warning: package 'topicmodels' was built under R version 3.4.4
+
+``` r
 library(lemon)
+```
+
+    ## Warning: package 'lemon' was built under R version 3.4.4
+
+``` r
 library(ggthemes)
+```
+
+    ## Warning: package 'ggthemes' was built under R version 3.4.4
+
+``` r
 library(rlang)
 library(ldatuning) # ideal number of topics in LDA
 ```
+
+    ## Warning: package 'ldatuning' was built under R version 3.4.1
 
 Setup
 =====
@@ -41,6 +96,8 @@ load("output/data_pillar_2.RDATA")
 # Only keep course descriptions and overviews from most recent year
 d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
+
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
 TF-IDF
 ======
@@ -528,6 +585,9 @@ topic_model_gb <- topic_model %>%
       )
 ```
 
+Saving DELETE LATER
+===================
+
 ``` r
 save(topic_model_gb,
      file = "Output/topic_model_gb.RDATA")
@@ -536,6 +596,9 @@ save(topic_model_gb,
      file = "App/Recommender System/topic_model_gb.RDATA")
 ```
 
+Saving DELETE LATER
+===================
+
 ``` r
 save(topic_model,
      file = "Output/topic_model.RDATA")
@@ -543,6 +606,110 @@ save(topic_model,
 save(topic_model,
      file = "App/Recommender System/topic_model.RDATA")
 ```
+
+Distributions of best models
+----------------------------
+
+``` r
+#select number of topics
+n_topics_overview <- 36
+n_topics_manual   <- 40 
+
+#Crop models
+TM_overview <- topic_model_gb %>%
+  filter(n_topic== n_topics_overview) 
+
+TM_manual   <- topic_model_gb %>%
+  filter(n_topic== n_topics_manual)
+
+#Distributions
+distribution <- list()
+
+distribution$beta$overview  <- TM_overview %>% pull(b_overview)
+distribution$beta$manual    <- TM_manual   %>% pull(b_manual)
+
+distribution$gamma$overview <- TM_overview %>% pull(g_overview)
+distribution$gamma$manual   <- TM_manual   %>% pull(g_manual)
+```
+
+Inspect topics
+--------------
+
+THE TOPICS ARE SUPPER STRANGE!
+
+``` r
+inspect_topics <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(10, beta)
+  
+}
+
+topics <-  lapply(
+  distribution$beta,
+  inspect_topics
+)
+```
+
+Selectig keywords
+-----------------
+
+``` r
+get_top_words <- function(d_beta, n = 3){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(n, beta) %>%
+    pull(term)%>%
+    unique
+}
+
+kw <- lapply(
+  distribution$beta,
+  get_top_words
+)
+```
+
+Convenience vectors for APP
+---------------------------
+
+``` r
+# set seed
+set.seed(1)
+
+#
+## All courses
+course_all <- d_course %>%
+  inner_join(
+    d_transcript,
+    by = "Course ID"
+  ) %>%
+  distinct(
+    `Course ID`
+  ) %>%
+  # remove semester abroad, skills and projects
+  filter(
+    ! str_detect(`Course ID`, pattern = "SA|SKI|PRO")
+  ) %>%
+  pull
+
+#
+##courses following_semester
+course_following_semester <- sample(
+  x       = course_all,
+  size    = 60,
+  replace = FALSE
+  ) %>% sort
+```
+
+Saving files for APP
+--------------------
+
+``` r
+save(distribution, kw, course_all, course_following_semester,
+     file = "App/Recommender System/data_topic_models.RDATA")
+```
+
+### Previous code DELETE LATER
 
 ``` r
 n_topics <- c(35, 35, 40)
