@@ -102,7 +102,7 @@ statistics$concentration <- d_transcript %>%
   provide_statistics(Concentration, df = ., join = FALSE)
 
 # Year level
-statistics$year <- provide_statistics(Year_numerical)
+statistics$year <- provide_statistics(`Academic Year`)
 
 # Level level
 statistics$level <- provide_statistics(Level) # TODO: filter for student who completed their studies
@@ -149,11 +149,6 @@ d_transactions$taken_PF_HL <- d_course %>%
     item_PF = if_else(Grade >= pass_grade, paste_(item, "pass"), paste_(item, "fail")),
     item_PF = if_else(Grade >= high_grade, paste_(item, "high"), paste_(item, "low" ))
     )
-```
-
-For convenience:
-```{r for convenience II}
-
 ```
 
 ### Take / not take, pass / fail / not take
