@@ -1138,7 +1138,7 @@ d_transcript <- d_transcript %>%
     period_numerical = substr(Period, 1, 1),
     
     # Combine year and period to have be able to order the course in time using a single variable
-    time = str_c(Year_numerical, period_numerical)
+    time = str_c(Year_numerical, period_numerical) %>% as.numeric
     
     )
 ```
@@ -1168,7 +1168,7 @@ d_transcript %>%
     ##  9 0315524      COR1003               2008 1 to 6   4.8 2008-2009      
     ## 10 0315524      COR1003               2008 1 to 6   5   2008-2009      
     ## # ... with 64,807 more rows, and 3 more variables: period_numerical <chr>,
-    ## #   time <chr>, n <int>
+    ## #   time <dbl>, n <int>
 
 ``` r
 #TODO: list issues here

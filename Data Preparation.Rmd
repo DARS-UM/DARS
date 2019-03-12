@@ -732,7 +732,7 @@ d_transcript <- d_transcript %>%
     period_numerical = substr(Period, 1, 1),
     
     # Combine year and period to have be able to order the course in time using a single variable
-    time = str_c(Year_numerical, period_numerical)
+    time = str_c(Year_numerical, period_numerical) %>% as.numeric
     
     )
 ```
