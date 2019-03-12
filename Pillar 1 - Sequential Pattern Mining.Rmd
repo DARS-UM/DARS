@@ -23,18 +23,22 @@ load("Output/data_general.RDATA")
 load("Output/data_pillar_1.RDATA")
 ```
 
+# Set up
+
+```{r helper function}
+# helper function
+join_d_course     <- function(df) df %>% left_join(d_course    , by = c("Course ID"))
+join_d_transcript <- function(df) df %>% left_join(d_transcript, by = c("Course ID"))
+
+paste_ <- function(...) paste(..., sep = "_")
+```
+
 # Descriptive statistics
 We compute summary statistics (minimum, maximum, mean, median, standard deviation, failure rate, number of failure and count) at different levels (student, course, cluster, concentration, year and course level). We save the results in the environment `Transcript Statistics`.
 
 ```{r statistics set up}
 pass_grade <- 5.5
 high_grade <- 6.5
-```
-
-```{r join_d_df}
-# helper function
-join_d_course     <- function(df) df %>% left_join(d_course    , by = c("Course ID"))
-join_d_transcript <- function(df) df %>% left_join(d_transcript, by = c("Course ID"))
 ```
 
 ```{r provide_statistics}
@@ -118,46 +122,27 @@ d_transactions <- list()
 
 d_transactions$taken_PF_HL <- d_course %>%
   
-  # Exclude 
+  # Exclude courses taken by majority of students (uninformative)
   filter(
-    Type != "Mandatory",  # (i) mandatory courses e.g. COR, CAP, etc
-    ! Letters %in% c(
-      "SKI", "PRO",       # (ii) skills & projects (taken by majority of students)
-      "SAS", "SAH", "SAC" # (iii) courses of semester abroad (uninformative)
-      )
+    Type != "Mandatory",
+    ! Letters %in% c("SKI", "PRO", "SAS", "SAH", "SAC")
     ) %>%
   
   # Join with transcripts
-  select(
-    - Period
-    ) %>%
+  select(- Period) %>% # remove Period to avoid duplicates
   join_d_transcript %>%
   
-  # Identifying sequenceID
+  # sequenceID and event ID
   rename(
-    sequenceID = `Student ID`
-    ) %>%
-  
-  # Identifying evenID
-  mutate(
-    Period  = substr(Period, 1, 1),
-    eventID = as.numeric(paste(Year_numerical, Period, sep = ""))
+    sequenceID = `Student ID`,
+    eventID = time
     ) %>%
 
-  # Identifying itemID
+  # itemID
   mutate(
-    PF = case_when(
-      Grade <  pass_grade ~ "fail",
-      Grade >= pass_grade ~ "pass"
-      ),
-    HL = case_when(
-      Grade <  high_grade ~ "low",
-      Grade >= high_grade ~ "high"
-      ),
-    
     item    = `Course ID`,
-    item_PF = paste(item, PF, sep = "_"),
-    item_HL = paste(item, HL, sep = "_")
+    item_PF = if_else(Grade >= pass_grade, paste_(item, "pass"), paste_(item, "fail")),
+    item_PF = if_else(Grade >= high_grade, paste_(item, "high"), paste_(item, "low" ))
     )
 ```
 
