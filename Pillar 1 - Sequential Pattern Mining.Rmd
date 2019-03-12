@@ -25,10 +25,17 @@ load("Output/data_pillar_1.RDATA")
 
 # Set up
 
+```{r constants}
+# Some old courses are present
+course_all  <- unique(d_transcript$`Course ID` )
+student_all <- unique(d_transcript$`Student ID`)
+n_students  <- length(student_all)
+```
+
 ```{r helper function}
 # helper function
-join_d_course     <- function(df) df %>% left_join(d_course    , by = c("Course ID"))
-join_d_transcript <- function(df) df %>% left_join(d_transcript, by = c("Course ID"))
+join_d_course     <- function(df) df %>% left_join(d_course    , by = c("Course ID")) # left_join to keep all courses present in d_transcript
+join_d_transcript <- function(df) df %>% right_join(d_transcript, by = c("Course ID")) # right_joint to keep all courses present in d_transcript
 
 paste_ <- function(...) paste(..., sep = "_")
 ```
@@ -148,9 +155,7 @@ d_transactions$taken_PF_HL <- d_course %>%
 
 For convenience:
 ```{r for convenience II}
-course_all  <- unique(d_transactions$taken_PF_HL$item      )
-student_all <- unique(d_transactions$taken_PF_HL$sequenceID)
-n_students  <- length(student_all)
+
 ```
 
 ### Take / not take, pass / fail / not take
