@@ -153,38 +153,15 @@ d_transactions$taken_PF_HL <- d_course %>%
 
 ### Take / not take, pass / fail / not take
 ```{r d_transactions T_PF_HL}
-d_transactions$T_PF_HL <- expand.grid(
+d_transactions$T_PF_HL <- d_transactions$taken_PF_HL %>%
   
-  # Expand along students (sequenceID) and courses (itemID)
-  sequenceID       = student_all,
-  item             = course_all,
-  stringsAsFactors = FALSE
-  ) %>%
+  # Expand along students (sequenceID) and courses (itemID) to make missing combinations of student - course explicit
+  complete(sequenceID, item) %>% 
   
-  # Join with d_transactions
-  left_join(
-    d_transactions$taken_PF_HL, 
-    by = c("sequenceID", "item")
-    ) %>%
-  
-  # Create item
+  # create a new type of item: "not taken"
   mutate(
-    
-    TPF = case_when(
-      is.na(Grade)        ~ "not",
-      Grade <  pass_grade ~ "fail",
-      Grade >= pass_grade ~ "pass"
-      ),
-    THL = case_when(
-      is.na(Grade)        ~ "not",
-      Grade <  high_grade ~ "low",
-      Grade >= high_grade ~ "high"
-      ),
-
-    item_TPF = paste(item, TPF, sep = "_"),
-    
-    item_THL = paste(item, THL, sep = "_")
-    
+    item_TPF = if_else(is.na(item_PF), paste_(item, "not"), item_PF),
+    item_THL = if_else(is.na(item_HL), paste_(item, "not"), item_HL)
     )
 ```
 
