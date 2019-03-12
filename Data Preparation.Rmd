@@ -9,6 +9,13 @@ editor_options:
   chunk_output_type: console
 ---
 
+TODO:
+
+* when student takes a course multiple times:
+    * keep lowest grade
+    * keep highest grade 
+    * or keep both (much more complex)
+
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(cache.path = "Cache/Data Preparation/")
 
@@ -732,7 +739,9 @@ d_transcript <- d_transcript %>%
     period_numerical = substr(Period, 1, 1),
     
     # Combine year and period to have be able to order the course in time using a single variable
-    time = str_c(Year_numerical, period_numerical) %>% as.numeric
+    time = str_c(Year_numerical, period_numerical) %>% as.numeric,
+    
+    grade_ceil = ceiling(Grade)
     
     )
 ```
