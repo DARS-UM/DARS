@@ -27,6 +27,7 @@ First, we import the spreadsheet with information pertraining the Aims of the De
 Then we create a list with this same columns, but instead of having binary vectors for the plots, we keep vectors of only the names of relevant assessments and AoDs for the plots (`Assessment_plot`adnd `AoD_plot` respectively). We also any imported emtpy cells.
 ```{r list_AoD_assessment}
 list_AoD_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1239912347') %>%
+  
   map(na.omit)
 
 # selection of most important types of assessment an AoD to keep plots clear
@@ -43,10 +44,8 @@ d_course <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirG
 
 ```{r d_assessment}
 d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1102665750') %>%
-  mutate_if(
-    .predicate = is.numeric,
-    .funs      = as.logical
-    ) %>%
+  
+  mutate_if(is.numeric, as.logical) %>%
   
   # Transform data into tidy format to facilitate manipulation
   gather(
@@ -54,24 +53,24 @@ d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oL
     value = assessment_covered,
     Paper : Participation
     ) %>%
-  filter(
-    assessment_covered
-    ) %>%
-  select(
-    - c(assessment_covered, `Comment on Assessment`)
-    ) %>%
+  
+  filter(assessment_covered) %>%
+  
+  select(- c(assessment_covered, `Comment on Assessment`)) %>%
+  
   print
+```
+
+```{r d_ILO}
+d_ILO <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=1896457050')
 ```
 
 ```{r d_AoD_from_ILO}
 d_AoD_from_ILO <- d_ILO %>%
-  rename(
-    ILO = Objectives
-    ) %>%
-  mutate_if(
-    .predicate = is.numeric,
-    .funs      = as.logical
-    ) %>%
+  
+  rename(ILO = Objectives) %>%
+  
+  mutate_if(is.numeric, as.logical) %>%
   
   # Transform data into tidy format to facilitate manipulation
   gather(
@@ -79,18 +78,18 @@ d_AoD_from_ILO <- d_ILO %>%
     value = AoD_covered,
     `Matrix Complete` : `Intercultural Skills`
     ) %>%
-  filter(
-    AoD_covered
-    ) %>%
-  select(
-    - c(AoD_covered, Comments, Comments_for_Jeroen)
-    ) %>%
+  
+  filter(AoD_covered) %>%
+  
+  select(- c(AoD_covered, Comments, Comments_for_Jeroen)) %>%
+  
   print
 ```
 
 ## Textual Data
 In order to conduct a preliminary topic modeling of course content, we first analyze their description in the course catalogues. The corpus `corpus_catalogues` contains the pdfs of the `5` most recent course catalogues.
-```{r catalogues, cache = TRUE}
+
+```{r read_in_pdfs}
 # helper function
 read_in_pdfs <- function(file){
   
@@ -101,10 +100,13 @@ read_in_pdfs <- function(file){
     
     # turn corpus into a list to facilitate manipulation
     as.list %>%
+    
     unname
   
 }
+```
 
+```{r catalogues, cache = TRUE}
 d_text <- list()
 
 d_text$catalogues <- "./Input/Catalogues" %>%
@@ -114,11 +116,14 @@ d_text$catalogues <- "./Input/Catalogues" %>%
 
 To expand our topic modeling of course content, we analyse the material in the course manuals. The `corpus_manuals` contains the pdfs of the course manuals for the year 2017-2018 (most recently, available).
 
-```{r manuals, cache = TRUE}
+```{r extract_code}
 # helper functions
 extract_code <- function(string) string %>% str_sub(start = 1, end = 7)
+```
 
+```{r manuals, cache = TRUE}
 d_text$manuals <- "./Input/Manuals 2017-18" %>%
+  
   read_in_pdfs %>%
   
   # turn list into a tibble to facilitate manipulation
@@ -129,6 +134,7 @@ d_text$manuals <- "./Input/Manuals 2017-18" %>%
     year        = "2017-2018",
     text        = manuals %>% map(content) %>% map_chr(str_c, collapse = " ")
     ) %>%
+  
   print
 
 rm(read_in_pdfs)
@@ -137,7 +143,8 @@ rm(read_in_pdfs)
 ## Student Data
 The tibble `d_transcript` contains the transcript information of students as was provided. It has 40 columns, and rows correspond to a type of grade (e.g. final grade, attendance) per student per course per time they took it.
 
-```{r d_transcript, cache = TRUE}
+```{r read_csv_own_parsing}
+# set up
 col_parsing <- cols(
   `Student Number`                      = "c",
   `Program (Abbreviation)`              = "c",
@@ -148,8 +155,11 @@ col_parsing <- cols(
   `End Date`                            = "c"
   )
 
-read_csv_own_parsing <- function(file) file %>% read_csv( col_types = col_parsing) # helper function
+# helper function
+read_csv_own_parsing <- function(file) file %>% read_csv(col_types = col_parsing)
+```
 
+```{r d_transcript, cache = TRUE}
 d_transcript <- paste0("Input/Raw Grades/grades", 1:2, ".csv") %>%
   map(read_csv_own_parsing) %>%
   bind_rows
@@ -179,10 +189,8 @@ In order to determine which AoD each course covers with its assessments, we need
 
 ```{r map_assessment_AoD}
 map_assessment_AoD <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oLNirGmZ9yZ7m2ccPa3XFemnxkj5AVRXo/edit#gid=719531216') %>%
-  mutate_if(
-    .predicate = is.numeric,
-    .f         = as.logical
-    ) %>%
+  
+  mutate_if(is.numeric, as.logical) %>%
   
   # Transform data into tidy format to facilitate manipulation
   gather(
@@ -190,15 +198,13 @@ map_assessment_AoD <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u
     value = AoD_covered,
     `Matrix Complete` : `Intercultural Skills`
     ) %>%
-  filter(
-    AoD_covered
-    ) %>%
-  select(
-    - AoD_covered
-    ) %>%
-  arrange(
-    Assessment
-    ) %>%
+  
+  filter(AoD_covered) %>%
+  
+  select(- AoD_covered) %>%
+  
+  arrange(Assessment) %>%
+  
   print
 ```
 
@@ -206,10 +212,9 @@ Now that we have the matrix `map_assessment_AoD`, we want to find out which AoDs
 In the loop, we first extract a row of `d_assessment` and save it as `observation`. Then, we determine the corresponding assessment which we save as `assessment`. Then, we use the matrix `map_assessment_AoD` to determine which AoD `assessment` covers and use `cbind` and `rbind` to add the information to the tibble `d_AoD_assessment`.
 ```{r d_AoD_assessment}
 d_AoD_from_assessment <- d_assessment %>%
-  left_join(
-    map_assessment_AoD,
-    by = "Assessment"
-    ) %>%
+  
+  left_join(map_assessment_AoD, by = "Assessment") %>%
+  
   print
 
 rm(map_assessment_AoD)
@@ -222,10 +227,11 @@ d_AoD <- rbind(
   d_AoD_from_ILO        %>% select(`Course ID`, AoD),
   d_AoD_from_assessment %>% select(`Course ID`, AoD)
   ) %>%
+  
   distinct %>%
-  arrange(
-    `Course ID`
-    ) %>%
+  
+  arrange(`Course ID`) %>%
+  
   print
 
 rm(d_AoD_from_assessment, d_AoD_from_ILO)
@@ -241,36 +247,32 @@ Now that we have a clear overview of the distribution of AoDs (`d_AoD`) and asse
 Then we use a `full_join` to add these variables to the tibble `d_course`.
 ```{r d_course detail}
 # helper function
-count_and_paste <- function(data, var, colnam1, colnam2){
+count_and_paste <- function(df, var, colnam1, colnam2){
   
-  data %>%
-    group_by(
-      `Course ID`
-      ) %>%
+  df %>%
+    
+    group_by(`Course ID`) %>%
+    
     summarize(
       !!ensym(colnam1) := n_distinct(!!enquo(var)),
       !!ensym(colnam2) := str_c(!!enquo(var), collapse = ", ")
-    )
+      )
   
 }
 
 # helper function
-join_by_course_ID <- function(data1, data2){
-  
-  data1 %>%
-    left_join(
-      y = data2,
-      by = "Course ID"
-    )
-  
-}
+join_by_course_ID <- function(df1, df2) left_join(df1, df2, by = "Course ID")
 ```
 
 ```{r join d_course_detail}
 d_course <- d_course %>%
+  
   join_by_course_ID( d_AoD %>% count_and_paste(AoD, n_AoD, `AoD Covered`) %>% print) %>%
+  
   join_by_course_ID( d_assessment %>% count_and_paste(Assessment, n_assessment, `Assessments Covered`) ) %>%
+  
   join_by_course_ID( d_ILO %>% count_and_paste(Objectives, n_ILO, `ILO Covered`        ) ) %>%
+  
   select(
     `Course ID`, `Course Title`, Cluster,
     n_ILO,
@@ -278,6 +280,7 @@ d_course <- d_course %>%
     n_AoD, `AoD Covered`,
     everything()
     ) %>%
+  
   print
 
 rm(count_and_paste, join_by_course_ID)
@@ -286,9 +289,9 @@ rm(count_and_paste, join_by_course_ID)
 The undegraduate research courses (*UGR-*) are only present at the `3000` level (advanced level). Yet, these course are also offered at the `2000` level (intermediate level). We use an `rbind` to duplicate the rows of the course `UGR3000` and mutate their `Code` to `UGR2000`.
 ```{r create UGR2000}
 UGR_2000 <- d_course %>%
-  filter(
-    `Course ID` %in% c("UGR3001", "UGR3002", "UGR3003", "UGR3005")
-    ) %>%
+  
+  filter( `Course ID` %in% c("UGR3001", "UGR3002", "UGR3003", "UGR3005")) %>%
+  
   mutate(
     `Course ID` = case_when(
       `Course ID` == "UGR3001" ~ "UGR2001",
@@ -297,11 +300,12 @@ UGR_2000 <- d_course %>%
       `Course ID` == "UGR3005" ~ "UGR2005"
       )
     ) %>%
+  
   print
 
-d_course <- d_course %>%
-  rbind(UGR_2000)
+d_course <- d_course %>% rbind(UGR_2000)
 
+# print UGR course
 print(d_course %>% filter(str_detect(`Course ID`, "UGR") ) )
 
 rm(UGR_2000)
@@ -310,6 +314,7 @@ rm(UGR_2000)
 Finally, we add a series of informative variable at the course level.
 ```{r d_course additional info}
 d_course <- d_course %>%
+  
   separate(
     col     = `Course ID`,
     into    = c("Letters", "Number"),
@@ -317,14 +322,17 @@ d_course <- d_course %>%
     remove  = FALSE,
     convert = TRUE
     ) %>%
+  
   mutate(
     Level   = case_when(
       between(Number, 1000, 1999) ~ "Introductory",
       between(Number, 2000, 2999) ~ "Intermediate",
       between(Number, 3000, 3999) ~ "Advanced"    )
     ) %>%
+  
   select(`Course ID`, Letters, Number, Level, everything()
     ) %>%
+  
   print
 ```
 
@@ -470,7 +478,7 @@ is_start_descrip   <- function(string) string %>% str_detect(pattern = start_des
 is_end_descrip     <- function(string) string %>% str_detect(pattern = end_descrip   )
 ```
 
-```{r extract_description, eval = FALSE}
+```{r extract_description}
 extract_description <- function(overview){
   
   overview %>%
@@ -479,7 +487,7 @@ extract_description <- function(overview){
     
     mutate(
       is_start_descrip = line %>% is_start_descrip,
-      is_end_descrip   = line %>% is_end_descrip # Having several ends (e.g. "literature" and "instructional format") is ok because we only use the first (cumany)
+      is_end_descrip   = line %>% is_end_descrip # Having multiple ends (e.g. "literature" and "instructional format") is ok because we only use the first (cumany)
       ) %>%
   
     # filter the description section
@@ -488,9 +496,11 @@ extract_description <- function(overview){
       is_before_end_descrip  = cumall(!is_end_descrip  ),
       is_descrip             = is_after_start_descrip & is_before_end_descrip
       ) %>%
+    
     filter(is_descrip, !is_start_descrip, !is_end_descrip) %>%
     
     summarise(description = str_c(line, collapse = " ")) %>%
+    
     pull
   
 }
@@ -689,7 +699,7 @@ clean_grade <- function(grade){
 }
 ```
 
-```{rclean_period}
+```{r clean_period}
 clean_period <- function(period){
   
   # Course spanning over multiple period are recorder with a 1, 2 or 3
@@ -740,13 +750,14 @@ d_transcript %>%
 #TODO: list issues here
 ```
 
-
 # Save Data
 ```{r}
-save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO,
-     file = "Output/data_general.RDATA")
-save(d_transcript,
-     file = "Output/data_pillar_1.RDATA")
-save(d_text, d_course, d_transcript,
-     file = "Output/data_pillar_2.RDATA")
+save(
+  d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO,
+  file = "Output/data_general.RDATA"
+  )
+
+save(d_transcript, file = "Output/data_pillar_1.RDATA")
+
+save(d_text, d_transcript, file = "Output/data_pillar_2.RDATA")
 ```
