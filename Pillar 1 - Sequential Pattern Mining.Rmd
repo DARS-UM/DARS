@@ -32,7 +32,7 @@ n_students  <- length(student_all)
 
 ```{r helper function}
 # helper function
-join_d_course     <- function(df) df %>% left_join(d_course, by = c("Course ID"))
+join_d_course     <- function(df) df %>% left_join(select(d_course, - Period), by = c("Course ID"))
 
 paste_ <- function(...) paste(..., sep = "_")
 ```
@@ -170,47 +170,22 @@ d_transactions$T_PF_HL <- d_transactions$taken_PF_HL %>%
 ```{r transactions grade}
 d_transactions$G <- d_transactions$taken_PF_HL %>%
   
-  # Spread along ceiling grades
-  mutate(
-    grade_ceil = ceiling(Grade),
-    Values     = TRUE,
-    id         = 1 : n() # to ensure each row is unique
-    ) %>%
-  spread(
-    key   = grade_ceil, 
-    value = Values
-    ) %>%
+  mutate(row_of_origin = TRUE) %>%
   
-  # grade x or lower
-  mutate(
-    `1`  = `0`|`1`,
-    `2`  = `1`|`2`,
-    `3`  = `2`|`3`,
-    `4`  = `3`|`4`,
-    `5`  = `4`|`5`,
-    `6`  = `5`|`6`,
-    `7`  = `6`|`7`,
-    `8`  = `7`|`8`,
-    `9`  = `8`|`9`,
-    `10` = `9`|`10`
+  complete(
+    nesting(sequenceID, eventID, item, Grade), grade_ceil,
+    fill = list(row_of_origin = FALSE) # fill missing row_of_origin with FALSE
     ) %>%
+   
+  group_by(sequenceID, eventID, item, Grade) %>%
   
-  # Gather along rounded grades
-  gather(
-    key   = grade_ceil,
-    value = X,
-    `0` :`10`, 
-    na.rm   = TRUE, 
-    convert = TRUE
-    ) %>%
-  select(
-    -X
-    ) %>%
-
-  # Identifying item
-  mutate(
-    item_G = paste(item, grade_ceil, sep = "_")
-    )
+  distinct(sequenceID, eventID, item, grade_ceil, Grade, row_of_origin) %>% # reminder that we should get rid of duplicates oin d_transcript
+  
+  arrange(grade_ceil) %>%
+  
+  filter(cumany(row_of_origin)) %>% # only keep grades larger than ceil_grade
+  
+  ungroup()
 ```
 ####Save d_transactions
 ```{r save d_transaction}
