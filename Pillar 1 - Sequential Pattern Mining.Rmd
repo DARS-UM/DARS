@@ -147,7 +147,7 @@ d_transactions$taken_PF_HL <- d_course %>%
   mutate(
     item    = `Course ID`,
     item_PF = if_else(Grade >= pass_grade, paste_(item, "pass"), paste_(item, "fail")),
-    item_PF = if_else(Grade >= high_grade, paste_(item, "high"), paste_(item, "low" ))
+    item_HL = if_else(Grade >= high_grade, paste_(item, "high"), paste_(item, "low" ))
     )
 ```
 
