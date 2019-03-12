@@ -616,9 +616,17 @@ remove_sw <- function(data){
       sw_own,
       by = "word"
       ) %>%
+    
+    # remove words of 1 or 2 letters
     filter(
       nchar(word) > 2
-      )
+      ) %>%
+    
+    # Remove words occuring once or twice in corpus (usually names, website links or typos)
+    add_count(word) %>%
+    filter(n > 2) %>%
+    select(-n)
+
   
 }
 
@@ -677,7 +685,7 @@ d_transcript <- d_transcript %>%
   select(
     `Student ID`   = `Student Number`,
     `Course ID`    = `Module (Abbrev.)`,
-    Year_numerical =`Academic Year`,
+    Year_numerical = `Academic Year`,
     Period         = `Academic Session`,
     Grade          = `Grade symbol`
   )
@@ -715,12 +723,7 @@ d_transcript <- d_transcript %>%
     
     `Academic Year`= str_c(Year_numerical, Year_numerical + 1, sep = "-")
     
-  ) %>%
-  
-  select(
-    - Year_numerical,
-    - Period
-    )
+  )
 ```
 
 ```{r}
