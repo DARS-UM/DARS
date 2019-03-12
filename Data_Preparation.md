@@ -1138,7 +1138,9 @@ d_transcript <- d_transcript %>%
     period_numerical = substr(Period, 1, 1),
     
     # Combine year and period to have be able to order the course in time using a single variable
-    time = str_c(Year_numerical, period_numerical) %>% as.numeric
+    time = str_c(Year_numerical, period_numerical) %>% as.numeric,
+    
+    grade_ceil = ceiling(Grade)
     
     )
 ```
@@ -1154,7 +1156,7 @@ d_transcript %>%
   print
 ```
 
-    ## # A tibble: 64,817 x 9
+    ## # A tibble: 64,817 x 10
     ##    `Student ID` `Course ID` Year_numerical Period Grade `Academic Year`
     ##    <chr>        <chr>                <dbl> <chr>  <dbl> <chr>          
     ##  1 0268755      SKI1005               2007 1 to 6   4   2007-2008      
@@ -1167,8 +1169,8 @@ d_transcript %>%
     ##  8 0268755      SKI1005               2007 1 to 6   6.5 2007-2008      
     ##  9 0315524      COR1003               2008 1 to 6   4.8 2008-2009      
     ## 10 0315524      COR1003               2008 1 to 6   5   2008-2009      
-    ## # ... with 64,807 more rows, and 3 more variables: period_numerical <chr>,
-    ## #   time <dbl>, n <int>
+    ## # ... with 64,807 more rows, and 4 more variables: period_numerical <chr>,
+    ## #   time <dbl>, grade_ceil <dbl>, n <int>
 
 ``` r
 #TODO: list issues here
