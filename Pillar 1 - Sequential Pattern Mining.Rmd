@@ -32,10 +32,21 @@ n_students  <- length(student_all)
 
 ```{r helper function}
 # helper function
-join_d_course     <- function(df) df %>% left_join(d_course    , by = c("Course ID")) # left_join to keep all courses present in d_transcript
-join_d_transcript <- function(df) df %>% right_join(d_transcript, by = c("Course ID")) # right_joint to keep all courses present in d_transcript
+join_d_course     <- function(df) df %>% left_join(d_course, by = c("Course ID"))
 
 paste_ <- function(...) paste(..., sep = "_")
+```
+
+```{r d_course_informative}
+d_transcript_augmented <- d_transcript %>%
+  
+  join_d_course %>%
+  
+  # Exclude courses taken by majority of students (uninformative)
+  filter(
+    Type != "Mandatory",
+    ! Letters %in% c("SKI", "PRO", "SAS", "SAH", "SAC")
+    )
 ```
 
 # Descriptive statistics
@@ -126,12 +137,6 @@ First we transform our data into transaction data. For this, we first create a v
 d_transactions <- list()
 
 d_transactions$taken_PF_HL <- d_course %>%
-  
-  # Exclude courses taken by majority of students (uninformative)
-  filter(
-    Type != "Mandatory",
-    ! Letters %in% c("SKI", "PRO", "SAS", "SAH", "SAC")
-    ) %>%
   
   # Join with transcripts
   select(- Period) %>% # remove Period to avoid duplicates
