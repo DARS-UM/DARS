@@ -147,6 +147,28 @@ d_support$TPH <- d_transcript_augmented %>%
     )
 ```
 
+```{r d_support G}
+d_support$G <- d_transcript_augmented %>%
+  
+  group_by(`Course ID`) %>%
+  
+  summarise(
+    `0`    = mean(Grade <= 0),
+    `1`    = mean(Grade <= 1),
+    `2`    = mean(Grade <= 2),
+    `3`    = mean(Grade <= 3),
+    `4`    = mean(Grade <= 4),
+    `5`    = mean(Grade <= 5),
+    `6`    = mean(Grade <= 6),
+    `7`    = mean(Grade <= 7),
+    `8`    = mean(Grade <= 8),
+    `9`    = mean(Grade <= 9),
+    `10`   = mean(Grade <= 10)
+  ) %>%
+  
+  gather(grade_ceil, rate.grade, `0` : `10`, convert = TRUE)
+```
+
 ## Data Preparation
 
 ### Take, fail, low grade
@@ -310,41 +332,6 @@ sequences <- tribble(
   mutate(sequences = list(data, item) %>% pmap(make_sequence))
 
 inspect(head(sequences$sequences[[2]], 10))
-```
-
-## Support
-
-```{r}
-#
-# Probability of failing, having a low grade
-
-
-
-#
-# Probability oh having a grade equal or lower than x
-d_support$G <- d_transactions$taken_PF_HL %>%
-  group_by(
-    item
-    ) %>%
-  summarise(
-    `0`    = mean(Grade <= 0),
-    `1`    = mean(Grade <= 1),
-    `2`    = mean(Grade <= 2),
-    `3`    = mean(Grade <= 3),
-    `4`    = mean(Grade <= 4),
-    `5`    = mean(Grade <= 5),
-    `6`    = mean(Grade <= 6),
-    `7`    = mean(Grade <= 7),
-    `8`    = mean(Grade <= 8),
-    `9`    = mean(Grade <= 9),
-    `10`   = mean(Grade <= 10)
-    ) %>%
-  gather(
-    key   = grade_ceil,
-    value = support.grade,
-    `0` : `10`,
-    convert = TRUE
-    )
 ```
 
 ```{r, include = FALSE}
