@@ -362,6 +362,8 @@ my_control <- list(
   
 )
 ```
+
+###With Package built in Function
 The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements 
 ```{r function my_FindTopicsNumber }
 my_FindTopicsNumber <- function(data_cast, n_topics){
@@ -425,7 +427,6 @@ save(result_manual, result_overview , result_description,
 print(time.taken)
 ```
 
-
 from 20, to 40, by 5 topics takes
 22min for overview
 11min for description
@@ -447,12 +448,7 @@ result_manual %>%
 
 ```
 
-## Fitting Model
-
-From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the ``Recommender System` folder.
-
-#NEW
-# LDA
+### Manually
 The function `my_cast_tdm` casts our dataframes into a tdm.
 ```{r my_cast_tdm, eval = TRUE}
 my_cast_tdm <- function(data) data %>%
@@ -464,6 +460,7 @@ d_cast <- d_text %>% map(my_cast_tdm)
 rm(my_cast_tdm)
 ```
 
+The function `my_LDA` fits an LDA model on the DTM using the previous controls.
 ```{r my_LDA, eval= TRUE}
 
 #my_LDA
@@ -478,6 +475,55 @@ my_LDA <- function(n_topics, corpus){
 }
 
 ```
+####10-fold Cross-validation
+NOT NEEDED TO BE FINISHED
+```{r manual evaluation, cache = TRUE, eval = TRUE}
+set.seed(1234)
+
+#number of topics for trials
+n_topic = seq(from = 2, to = 80, by = 2)
+
+#create folds
+create_folds <- function(my_dtm){
+  #find number of documents (D)
+  D <- nrow(my_dtm)
+  
+  #Assign documents to a fold
+  folding <- sample(rep(seq_len(10), ceiling(D))[seq_len(D)])
+}
+
+
+#
+##Create folds
+###Find number of documents
+D_overview <- nrow(d_cast$overview)
+D_manual <- nrow(d_cast$manual)
+
+###Assigning random numbers (1:10) to each row of our DTM
+folding_overview <- sample(rep(seq_len(10), ceiling(D_overview))[seq_len(D_overview)])
+folding_manual   <- sample(rep(seq_len(10), ceiling(D_manual))[seq_len(D_manual)])
+
+for(k in n_topics){
+  for(chain in 1:10){
+    ###Divide into training and testing sets
+      #overview
+    training_set_overview <- d_cast$overview[folding!=chain,]
+    test_set_overview     <- d_cast$overview[folding==chain,]
+      #manual
+    training_set_manual   <- d_cast$manual[folding!=chain,]
+    test_set_manual       <- d_cast$manual[folding==chain,]
+    
+    
+  }
+}
+
+
+
+  
+
+```
+## Fitting Model
+From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the ``Recommender System` folder.
 
 ```{r LDA fit, cache = TRUE, eval = TRUE}
 topic_model <- tibble(
@@ -491,7 +537,51 @@ topic_model <- tibble(
     TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
   )
 ```
+##Model Evaluation
+###Perplexity
+Perplexity is a measure of how well a probability model predicts a sample. Thus we need to do cross validation. 
+```{r}
 
+#perplexity Function
+my_perplexity <- function(model, d_cast){
+  perplexity(model, d_cast, estimate_theta = FALSE)
+}
+
+#Get perplexity
+topic_test <- topic_model %>%
+  mutate(perplex_overview = map(.x = TM_overview, .f = my_perplexity, d_cast$overview),
+         perplex_manual   = map(.x = TM_manual,   .f = my_perplexity, d_cast$manual))
+```
+###log_likelihood
+```{r useless stuff}
+#Useless stuff:
+
+my_loglike <- function(model){
+  return(model@loglikelihood)
+}
+topic_test %>% mutate(loglike_overview = map(.x = TM_overview, .f = my_loglike)) %>% select(n_topic, loglike_overview)
+
+
+  for( i in 1:length(topic_model$TM_overview)){
+    tmp <- 
+  }
+}
+
+
+lL <- list()
+for(i in 1:length(topic_model$n_topic)){
+  
+  tmp <- topic_model$TM_overview[i]
+  lL[[paste("n", 2*i)]] <- tmp[[1]]@loglikelihood
+  
+}
+
+test1[[1]]@loglikelihood
+
+log_like <- logLik(test1[[1]])
+
+```
+##Get Beta/Gamma functions
 ```{r getting gamma and beta, eval = TRUE}
 get_beta <- function(results){
   
@@ -510,6 +600,7 @@ get_gamma <- function(results){
 
 ```
 
+##Apply beta and gamma
 ```{r applying get_gamma and get_beta, eval = TRUE}
 topic_model_gb <- topic_model %>%
   transmute(
@@ -521,74 +612,114 @@ topic_model_gb <- topic_model %>%
       )
 ```
 
-```{r saving tidy models, eval= TRUE}
-save(topic_model_gb,
-     file = "Output/topic_model_gb.RDATA")
+##Distributions of best models
+```{r Distributions, eval = TRUE}
+#select number of topics
+n_topics_overview <- 36
+n_topics_manual   <- 40 
 
-save(topic_model_gb,
-     file = "App/Recommender System/topic_model_gb.RDATA")
+#Crop models
+TM_overview <- topic_model_gb %>%
+  filter(n_topic== n_topics_overview) 
+
+TM_manual   <- topic_model_gb %>%
+  filter(n_topic== n_topics_manual)
+
+#Distributions
+distribution <- list()
+
+distribution$beta$overview  <- TM_overview %>% pull(b_overview)
+distribution$beta$manual    <- TM_manual   %>% pull(b_manual)
+
+distribution$gamma$overview <- TM_overview %>% pull(g_overview)
+distribution$gamma$manual   <- TM_manual   %>% pull(g_manual)
+
 ```
+##Inspect topics
+THE TOPICS ARE SUPPER STRANGE!
+```{r inspect topics, eval = T}
 
-```{r saving models, eval= TRUE}
-save(topic_model,
-     file = "Output/topic_model.RDATA")
-
-save(topic_model,
-     file = "App/Recommender System/topic_model.RDATA")
-```
-
-
-```{r LDA fitxxxxxxx, cache = TRUE}
-n_topics <- c(35, 35, 40)
-levels   <- c("description", "overview", "manual")
-list_nam <- character(0)
-
-for(i in seq_along(n_topics)){
-  
-  dataset   <- get(paste("d", levels[i], "cast", sep = "_"))
-  
-  LDA_model <- LDA(
-    x       = dataset,
-    k       = n_topics[i],
-    method  = "Gibbs",
-    control = my_control
-    )
-  
-  nam <- paste("LDA", levels[i], n_topics[i], sep = "_")
-  
-  assign(
-    x     = nam,
-    value = LDA_model
-  )
-  
-  list_nam <- c(list_nam, nam)
+inspect_topics <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(10, beta)
   
 }
 
-save(list = list_nam,
-     file = "Output/topic_model.RDATA")
+topics <-  lapply(
+  distribution$beta,
+  inspect_topics
+)
+```
+#App
+##Selectig keywords
+```{r key words, eval = TRUE}
+get_top_words <- function(d_beta, n = 3){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(n, beta) %>%
+    pull(term)%>%
+    unique
+}
 
-save(list = list_nam,
-     file = "App/Recommender System/topic_model.RDATA")
+kw <- lapply(
+  distribution$beta,
+  get_top_words
+)
+```
+##Convenience vectors for APP
+```{r for convenience, eval = T}
+# set seed
+set.seed(1)
+
+#
+## All courses
+course_all <- d_course %>%
+  inner_join(
+    d_transcript,
+    by = "Course ID"
+  ) %>%
+  distinct(
+    `Course ID`
+  ) %>%
+  # remove semester abroad, skills and projects
+  filter(
+    ! str_detect(`Course ID`, pattern = "SA|SKI|PRO")
+  ) %>%
+  pull
+
+#
+##courses following_semester
+course_following_semester <- sample(
+  x       = course_all,
+  size    = 60,
+  replace = FALSE
+  ) %>% sort
+```
+## Saving files for APP
+```{r app files}
+save(distribution, kw, course_all, course_following_semester,
+     file = "App/Recommender System/data_topic_models.RDATA")
 ```
 
-## Visualization
-### Functions
+# Visualization
+### Functions 
+This part is adapted 
 ```{r LDA prepare, eval = F}
-prepare_data_LDA_beta <- function(results){
+prepare_data_LDA_beta <- function(d_beta){
   
-  tidy(results, matrix = "beta") %>%
+  data.frame(d_beta) %>%
     mutate(topic = paste("Topic", topic)) %>%
       group_by(topic) %>%
         top_n(10, beta) %>%
       ungroup %>%
       arrange(topic, desc(beta))
   
-}
+} #repetition??? of inspect topics?
 
-prepare_data_LDA_gamma <- function(results, level = Course){
+prepare_data_LDA_gamma <- function(d_gamma, level = Course){
   
-  data_gamma <- tidy(results, matrix = "gamma") %>%
+  data_gamma <- data.frame(d_gamma) %>%
     mutate(topic = paste("Topic", topic)) %>%
     rename(`Course ID` = document)
   
@@ -617,12 +748,21 @@ prepare_data_LDA_gamma <- function(results, level = Course){
 }
 
 # Bet Distribution
-LDA_description_120 %>% prepare_data_LDA_beta
+test <- list()
+
+a <-  names(distribution)[1]
+test[[a]] <- lapply(distribution[[a]],
+                      prepare_data_LDA_beta)
 
 # Gamma Distribution
-LDA_description_120 %>% prepare_data_LDA_gamma(level = Cluster)
-```
+b <- names(distribution)[2]
+test[[b]] <- lapply(distribution[[b]],
+                    prepare_data_LDA_gamma)
 
+rm(a,b #,test
+   )
+```
+This part is not adapted
 ```{r LDA visualize, eval = F}
 visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
   
