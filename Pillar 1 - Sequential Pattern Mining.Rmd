@@ -198,60 +198,33 @@ save(
 d_transcript_cum <- d_transactions$taken_PF_HL %>%
   
   # item_take
-  mutate(
-    item_take = paste(item, "take", sep = "_")
-  ) %>%
+  mutate(item_take = paste_(item, "take")) %>%
   
-  # course current
-  group_by(
-    sequenceID,
-    eventID
-    ) %>%
-  summarize_at(
-    c("item", "item_take", "item_PF", "item_HL"),
-    function(x) list(unique(x))
-    ) %>%
+  # current courses
+  group_by(sequenceID, eventID) %>%
   
-  # course current all
-  rowwise %>%
-  mutate(
-    course_current = list(c(item, item_take, item_PF, item_HL))
-    ) %>%
+  summarize_at(vars(matches("item")), ~ unique(.) %>% list) %>%
   
-  # course past
-  group_by(
-    sequenceID
-    ) %>%
+  mutate(course_current = list(item, item_take, item_PF, item_HL) %>% pmap(~ c(...) %>% unique)) %>%
+  
+  # courses so far, past courses and course not taken yet
+  group_by(sequenceID) %>%
+  
+  arrange(eventID) %>%
+  
   mutate(
-    course_past = Reduce(
-      f = c,
-      x = course_current,
-      accumulate = TRUE
-      ) %>%
-      lag(
-        default = as.character(NA)
-        )
+    course_so_far  = course_current %>% accumulate(union),
+    course_past    = course_so_far  %>% lag(default = NA_character_),
+    course_not_yet = course_past    %>% map(~ setdiff(course_all, .) %>% paste_("not"))
     ) %>%
   
-  # course so far, course not so far
-  rowwise %>%
-  mutate(
-    
-    course_past_current = list(union  (course_past, course_current      )),
-    
-    course_not_yet      = list(setdiff(course_all , course_past_current )),
-    course_not_yet      = list(paste(course_not_yet, "not", sep = "_"   )),
-    
-    course_so_far       = list(union  (course_past, course_not_yet))
-    
-    ) %>%
   ungroup %>%
   
-  # lhs: past, rhs: present
-  select(
-    lhs = course_so_far,
+  # lhs: past courses and courses not taken yet, rhs: current courses
+  mutate(
+    lhs = list(course_past, course_not_yet) %>% pmap(union),
     rhs = course_current
-  )
+    )
 ```
 
 ## Transactions
