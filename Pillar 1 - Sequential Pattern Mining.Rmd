@@ -23,13 +23,6 @@ load("Output/data_general.RDATA")
 load("Output/data_pillar_1.RDATA")
 ```
 
-```{r constants}
-# Some old courses are present
-course_all  <- unique(d_transcript$`Course ID` )
-student_all <- unique(d_transcript$`Student ID`)
-n_students  <- length(student_all)
-```
-
 ```{r helper function}
 # helper function
 join_d_course     <- function(df) df %>% left_join(select(d_course, - Period), by = c("Course ID"))
@@ -47,6 +40,12 @@ d_transcript_augmented <- d_transcript %>%
     Type != "Mandatory",
     ! Letters %in% c("SKI", "PRO", "SAS", "SAH", "SAC")
     )
+```
+
+```{r constants}
+course_all  <- unique(d_transcript_augmented$`Course ID` )
+student_all <- unique(d_transcript_augmented$`Student ID`)
+n_students  <- length(student_all)
 ```
 
 # Descriptive statistics
