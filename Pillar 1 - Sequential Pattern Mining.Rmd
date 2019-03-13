@@ -186,15 +186,14 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
   
   ungroup()
 ```
-####Save d_transactions
+
+#### Save d_transactions
 ```{r save d_transaction}
-save(
-  d_transactions,
-  file = "Output/transaction_df.RDATA"
-  )
+save(d_transactions, file = "Output/transaction_df.RDATA")
 ```
+
 ### Transcript with preceding courses (for SR by hand)
-```{r d_transcript_cum, cache = TRUE, warning = FALSE}
+```{r d_transcript_cum, cache = TRUE}
 d_transcript_cum <- d_transactions$taken_PF_HL %>%
   
   # item_take
