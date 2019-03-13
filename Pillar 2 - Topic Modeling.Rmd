@@ -476,7 +476,7 @@ my_LDA <- function(n_topics, corpus){
 
 ```
 ####10-fold Cross-validation
-TO BE FINISHED
+NOT NEEDED TO BE FINISHED
 ```{r manual evaluation, cache = TRUE, eval = TRUE}
 set.seed(1234)
 
@@ -525,8 +525,6 @@ for(k in n_topics){
 ## Fitting Model
 From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the ``Recommender System` folder.
 
-#NEW
-# LDA
 ```{r LDA fit, cache = TRUE, eval = TRUE}
 topic_model <- tibble(
   
@@ -540,20 +538,35 @@ topic_model <- tibble(
   )
 ```
 ##Model Evaluation
+###Perplexity
 Perplexity is a measure of how well a probability model predicts a sample. Thus we need to do cross validation. 
 ```{r}
 
-#Extracting LDA model n_topics = 2
-test1 <- topic_model$TM_overview[1]
+#perplexity Function
+my_perplexity <- function(model, d_cast){
+  perplexity(model, d_cast, estimate_theta = FALSE)
+}
 
-#Getting A single LDA Model:
-test2 <- test1[[1]]
+#Get perplexity
+topic_test <- topic_model %>%
+  mutate(perplex_overview = map(.x = TM_overview, .f = my_perplexity, d_cast$overview),
+         perplex_manual   = map(.x = TM_manual,   .f = my_perplexity, d_cast$manual))
+```
+###log_likelihood
+```{r useless stuff}
+#Useless stuff:
 
-#getting perplexity
-perplexity(test2, d_cast$overview, estimate_theta=FALSE)
+my_loglike <- function(model){
+  return(model@loglikelihood)
+}
+topic_test %>% mutate(loglike_overview = map(.x = TM_overview, .f = my_loglike)) %>% select(n_topic, loglike_overview)
 
-Topic <- topics(test2)
-Terms <- terms(test2,5)
+
+  for( i in 1:length(topic_model$TM_overview)){
+    tmp <- 
+  }
+}
+
 
 lL <- list()
 for(i in 1:length(topic_model$n_topic)){
@@ -638,6 +651,7 @@ topics <-  lapply(
   inspect_topics
 )
 ```
+#App
 ##Selectig keywords
 ```{r key words, eval = TRUE}
 get_top_words <- function(d_beta, n = 3){
@@ -688,7 +702,7 @@ save(distribution, kw, course_all, course_following_semester,
      file = "App/Recommender System/data_topic_models.RDATA")
 ```
 
-## Visualization
+# Visualization
 ### Functions 
 This part is adapted 
 ```{r LDA prepare, eval = F}
