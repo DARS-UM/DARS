@@ -765,6 +765,13 @@ d_transcript %>%
     ) %>%
   print
 
+d_transcript %>%
+  
+  # SSC2046, a course I took, but excluded from my transcript is absent from the data set
+  filter(`Student ID` == "6087587") %>%
+  arrange(`Course ID`) %>%
+  pull(`Course ID`)
+
 #TODO: list issues here
 ```
 
