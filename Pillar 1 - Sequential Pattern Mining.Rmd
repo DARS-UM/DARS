@@ -128,7 +128,23 @@ For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
 item = course
 
-First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
+First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts.
+
+## Support
+
+```{r d_support TNT}
+d_support <- list()
+
+# Probability of taking a course
+d_support$TNT <- d_transcript_augmented %>%
+  
+  group_by(`Course ID`) %>%
+  
+  mutate(rate.take = n_distinct(`Student ID`) / n_students)
+```
+
+
+
 ## Data Preparation
 
 ### Take, fail, low grade
@@ -295,24 +311,8 @@ inspect(head(sequences$sequences[[2]], 10))
 ```
 
 ## Support
+
 ```{r}
-d_support <- list()
-
-# Probability of taking a course
-d_support$TNT <- d_transactions$taken_PF_HL %>%
-  distinct(
-    item,
-    sequenceID
-    ) %>%
-  count(
-    item
-    ) %>%
-  mutate(
-    rate.take = n / n_students,
-    rate.not  = 1 - rate.take
-    )
-
-
 #
 # Probability of failing, having a low grade
 d_support$PF_HL <- d_transactions$taken_PF_HL %>%
