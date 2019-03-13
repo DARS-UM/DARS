@@ -128,7 +128,25 @@ For a first exploration of arules, we conceptualise our framework like this:
 transaction = student
 item = course
 
-First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts. 
+First we transform our data into transaction data. For this, we first create a vector of mandatory courses that we exclude from transcripts.
+
+## Support
+
+```{r d_support TNT}
+d_support <- list()
+
+# Probability of taking / failing / obtaining of low grade a course
+d_support$TPH <- d_transcript_augmented %>%
+  
+  group_by(`Course ID`) %>%
+  
+  mutate(
+    rate.take = n_distinct(`Student ID`) / n_students,
+    rate.fail = mean(Grade < pass_grade),
+    rate.low  = mean(Grade < high_grade)
+    )
+```
+
 ## Data Preparation
 
 ### Take, fail, low grade
@@ -239,7 +257,6 @@ make_transaction <- function(data, item){
     ungroup %>%
     
     pull(list_item) %>%
-    
     as("transactions")
   
 }
@@ -259,89 +276,48 @@ transactions <- tribble(
 inspect(head(transactions$transactions[[2]], 10))
 ```
 
-
 ## Sequences
 ```{r making sequences, cache = TRUE}
-make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
+make_sequence <- function(data, item){
   
   data_temp <- data %>%
-    arrange(
-      sequenceID,
-      eventID
-    ) %>%
-    filter(
-      !is.na(eventID) # exclude courses that were never taken.
-      ) %>% 
     
-    group_by(
-      sequenceID,
-      eventID
-    ) %>%
-    summarise(
-      list_item = list(unique(!!enquo(item)))
-    ) %>%
+    filter(!is.na(eventID)) %>%  # exclude courses that were never taken.
+    
+    arrange(sequenceID, eventID) %>%
+    group_by(sequenceID, eventID) %>%
+    summarise(list_item = list(unique(!!enquo(item)))) %>%
     ungroup
   
-  sequences <- data_temp %>%
-    pull(
-      list_item
-      ) %>%
-    as("transactions")
+  # extract transactions
+  sequences <- data_temp %>% pull(list_item) %>% as("transactions")
   
-  # indicate sequence ID and event ID for each transaction
-  sequences@itemsetInfo <- data_temp %>%
-    select(
-      sequenceID,
-      eventID
-      ) %>%
-    as.data.frame
+  # add attributes fro sequence ID and event ID
+  sequences@itemsetInfo <- data_temp %>% select(sequenceID, eventID) %>% as.data.frame
   
   return(sequences)
   
 }
 
+sequences <- tribble(
+  ~ ID   ,  ~ data                    , ~ item,
+  "taken", d_transactions$taken_PF_HL, quo(item),
+  "PF"   , d_transactions$taken_PF_HL, quo(item_PF),
+  "HL"   , d_transactions$taken_PF_HL, quo(item_HL),
+  "G"    , d_transactions$G          , quo(item_g)
+  ) %>%
+  
+  mutate(sequences = list(data, item) %>% pmap(make_sequence))
 
-#
-# Making sequences
-sequences <- list()
-
-sequences$taken <- make_sequence(item = item   )
-sequences$PF    <- make_sequence(item = item_PF)
-sequences$HL    <- make_sequence(item = item_HL)
-sequences$G     <- make_sequence(data = d_transactions$G    , item = item_G  )
-
-#inspect(head(sequences$G, 10))
+inspect(head(sequences$sequences[[2]], 10))
 ```
 
 ## Support
+
 ```{r}
-d_support <- list()
-
-# Probability of taking a course
-d_support$TNT <- d_transactions$taken_PF_HL %>%
-  distinct(
-    item,
-    sequenceID
-    ) %>%
-  count(
-    item
-    ) %>%
-  mutate(
-    rate.take = n / n_students,
-    rate.not  = 1 - rate.take
-    )
-
-
 #
 # Probability of failing, having a low grade
-d_support$PF_HL <- d_transactions$taken_PF_HL %>%
-  group_by(
-    item
-    ) %>%
-  summarise(
-    rate.fail = mean(PF == "fail"),
-    rate.low  = mean(HL == "low")
-    )
+
 
 
 #
