@@ -135,15 +135,17 @@ First we transform our data into transaction data. For this, we first create a v
 ```{r d_support TNT}
 d_support <- list()
 
-# Probability of taking a course
-d_support$TNT <- d_transcript_augmented %>%
+# Probability of taking / failing / obtaining of low grade a course
+d_support$TPH <- d_transcript_augmented %>%
   
   group_by(`Course ID`) %>%
   
-  mutate(rate.take = n_distinct(`Student ID`) / n_students)
+  mutate(
+    rate.take = n_distinct(`Student ID`) / n_students,
+    rate.fail = mean(Grade < pass_grade),
+    rate.low  = mean(Grade < high_grade)
+    )
 ```
-
-
 
 ## Data Preparation
 
@@ -315,14 +317,7 @@ inspect(head(sequences$sequences[[2]], 10))
 ```{r}
 #
 # Probability of failing, having a low grade
-d_support$PF_HL <- d_transactions$taken_PF_HL %>%
-  group_by(
-    item
-    ) %>%
-  summarise(
-    rate.fail = mean(PF == "fail"),
-    rate.low  = mean(HL == "low")
-    )
+
 
 
 #
