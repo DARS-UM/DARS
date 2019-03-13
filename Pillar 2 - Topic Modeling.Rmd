@@ -493,6 +493,26 @@ create_folds <- function(my_dtm){
 }
 
 
+#cross-validate
+cross_validate <- function(my_dtm){
+  #Number of documents (D)
+  D <- nrow(my_dtm)
+  
+  #Assign documents to a fold
+  folding <- sample(rep(1:10, ceiling(D))[seq_len(D)])
+  
+  for(k in n_topics) {
+    for(chain in 1:10){
+      train_set <- my_dtm[folding != chain, ]
+      test_set  <- my_dtm[folding == chain, ]
+      
+      training <- my_LDA(k, train_set)
+      testing  <- my_LDA(k, train_set)
+    }
+  }
+}
+
+
 #
 ##Create folds
 ###Find number of documents
@@ -537,6 +557,7 @@ topic_model <- tibble(
     TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
   )
 ```
+
 ##Model Evaluation
 ###Perplexity
 Perplexity is a measure of how well a probability model predicts a sample. Thus we need to do cross validation. 
@@ -552,35 +573,35 @@ topic_test <- topic_model %>%
   mutate(perplex_overview = map(.x = TM_overview, .f = my_perplexity, d_cast$overview),
          perplex_manual   = map(.x = TM_manual,   .f = my_perplexity, d_cast$manual))
 ```
+
 ###log_likelihood
 ```{r useless stuff}
-#Useless stuff:
+# #my_loglikelihood function
+# my_loglike <- function(model){
+#   return(model@loglikelihood)
+# }
+# 
+# #get loglikelihood
+# test2 <- topic_test %>% mutate(loglike_overview    = map(.x = TM_overview, .f = my_loglike),
+#                                   loglike_manual   = map(.x = TM_manual,   .f = my_loglike))
 
-my_loglike <- function(model){
-  return(model@loglikelihood)
-}
-topic_test %>% mutate(loglike_overview = map(.x = TM_overview, .f = my_loglike)) %>% select(n_topic, loglike_overview)
-
-
-  for( i in 1:length(topic_model$TM_overview)){
-    tmp <- 
-  }
-}
-
-
-lL <- list()
-for(i in 1:length(topic_model$n_topic)){
-  
-  tmp <- topic_model$TM_overview[i]
-  lL[[paste("n", 2*i)]] <- tmp[[1]]@loglikelihood
-  
-}
-
-test1[[1]]@loglikelihood
-
-log_like <- logLik(test1[[1]])
+#Log likelihood:
+test3 <- topic_test %>% mutate(logLik_overview = map(.x = TM_overview, .f = logLik),
+                               logLik_manual   = map(.x = TM_manual,   .f = logLik))
 
 ```
+
+###Plots
+```{r}
+#perplexity
+plot(topic_test$n_topic, topic_test$perplex_overview)
+plot(topic_test$n_topic, topic_test$perplex_manual)
+
+#log likelihood
+plot(test3$n_topic, test3$logLik_overview)
+plot(test3$n_topic, test3$logLik_manual)
+```
+
 ##Get Beta/Gamma functions
 ```{r getting gamma and beta, eval = TRUE}
 get_beta <- function(results){
