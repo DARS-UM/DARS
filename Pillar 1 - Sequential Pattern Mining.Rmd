@@ -184,6 +184,8 @@ d_transactions$G <- d_transactions$taken_PF_HL %>%
   
   filter(cumany(row_of_origin)) %>% # only keep grades larger than ceil_grade
   
+  mutate(item_g = paste_(item, grade_ceil)) %>%
+  
   ungroup()
 ```
 
