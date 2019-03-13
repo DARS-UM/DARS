@@ -239,7 +239,6 @@ make_transaction <- function(data, item){
     ungroup %>%
     
     pull(list_item) %>%
-    
     as("transactions")
   
 }
@@ -259,58 +258,40 @@ transactions <- tribble(
 inspect(head(transactions$transactions[[2]], 10))
 ```
 
-
 ## Sequences
 ```{r making sequences, cache = TRUE}
-make_sequence <- function(data = d_transactions$taken_PF_HL, item = item){
+make_sequence <- function(data, item){
   
   data_temp <- data %>%
-    arrange(
-      sequenceID,
-      eventID
-    ) %>%
-    filter(
-      !is.na(eventID) # exclude courses that were never taken.
-      ) %>% 
     
-    group_by(
-      sequenceID,
-      eventID
-    ) %>%
-    summarise(
-      list_item = list(unique(!!enquo(item)))
-    ) %>%
+    filter(!is.na(eventID)) %>%  # exclude courses that were never taken.
+    
+    arrange(sequenceID, eventID) %>%
+    group_by(sequenceID, eventID) %>%
+    summarise(list_item = list(unique(!!enquo(item)))) %>%
     ungroup
   
-  sequences <- data_temp %>%
-    pull(
-      list_item
-      ) %>%
-    as("transactions")
+  # extract transactions
+  sequences <- data_temp %>% pull(list_item) %>% as("transactions")
   
-  # indicate sequence ID and event ID for each transaction
-  sequences@itemsetInfo <- data_temp %>%
-    select(
-      sequenceID,
-      eventID
-      ) %>%
-    as.data.frame
+  # add attributes fro sequence ID and event ID
+  sequences@itemsetInfo <- data_temp %>% select(sequenceID, eventID) %>% as.data.frame
   
   return(sequences)
   
 }
 
+sequences <- tribble(
+  ~ ID   ,  ~ data                    , ~ item,
+  "taken", d_transactions$taken_PF_HL, quo(item),
+  "PF"   , d_transactions$taken_PF_HL, quo(item_PF),
+  "HL"   , d_transactions$taken_PF_HL, quo(item_HL),
+  "G"    , d_transactions$G          , quo(item_g)
+  ) %>%
+  
+  mutate(sequences = list(data, item) %>% pmap(make_sequence))
 
-#
-# Making sequences
-sequences <- list()
-
-sequences$taken <- make_sequence(item = item   )
-sequences$PF    <- make_sequence(item = item_PF)
-sequences$HL    <- make_sequence(item = item_HL)
-sequences$G     <- make_sequence(data = d_transactions$G    , item = item_G  )
-
-#inspect(head(sequences$G, 10))
+inspect(head(sequences$sequences[[2]], 10))
 ```
 
 ## Support
