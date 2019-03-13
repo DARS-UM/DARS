@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-02-27
+2019-03-11
 
 -   [Setup](#setup)
 -   [Data Exploration](#data-exploration)
@@ -47,6 +47,7 @@ Setup
 We load the environment `data_pillar1` which we saved at the end of the data preparation. It contains the data sets `d_course` and `d_transcript`.
 
 ``` r
+load("Output/data_general.RDATA")
 load("Output/data_pillar_1.RDATA")
 ```
 
@@ -225,8 +226,6 @@ d_transactions$taken_PF_HL <- d_course %>%
     item_HL = paste(item, HL, sep = "_")
     )
 ```
-
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
 For convenience:
 
@@ -1195,20 +1194,20 @@ print(AR_rulesAPP$THL)
 print(SR_rulesAPP$THL)
 ```
 
-    ## # A tibble: 19,810 x 8
+    ## # A tibble: 19,793 x 8
     ##    lhs   rhs   lhs.rhsTake.cou~ count lhs.rhsTake.sup~ confidence support
     ##    <chr> <chr>            <dbl> <dbl>            <dbl>      <dbl>   <dbl>
-    ##  1 HUM2~ SCI2~              962   376            0.379      0.391   0.148
-    ##  2 HUM2~ SCI2~              965   376            0.38       0.39    0.148
-    ##  3 HUM3~ SCI2~              965   376            0.38       0.39    0.148
-    ##  4 SCI2~ SCI2~              964   376            0.38       0.39    0.148
-    ##  5 SCI2~ SCI2~              960   376            0.378      0.392   0.148
-    ##  6 SCI2~ SCI2~              965   376            0.38       0.39    0.148
-    ##  7 SCI2~ SCI2~              964   376            0.38       0.39    0.148
-    ##  8 SCI3~ SCI2~              965   376            0.38       0.39    0.148
-    ##  9 SCI3~ SCI2~              965   376            0.38       0.39    0.148
-    ## 10 SCI3~ SCI2~              964   376            0.38       0.39    0.148
-    ## # ... with 19,800 more rows, and 1 more variable: lift <dbl>
+    ##  1 HUM2~ SCI2~              937   353            0.369      0.377   0.139
+    ##  2 SCI3~ SCI2~              939   353            0.37       0.376   0.139
+    ##  3 SCI3~ SCI2~              942   353            0.371      0.375   0.139
+    ##  4 SSC3~ SCI2~              942   353            0.371      0.375   0.139
+    ##  5 SCI2~ SCI2~              937   352            0.369      0.376   0.139
+    ##  6 SCI2~ SCI2~              940   352            0.37       0.374   0.139
+    ##  7 SCI2~ SCI2~              939   352            0.37       0.375   0.139
+    ##  8 SCI3~ SCI2~              940   352            0.37       0.374   0.139
+    ##  9 SCI3~ SCI2~              939   352            0.37       0.375   0.139
+    ## 10 SCI3~ SCI2~              941   352            0.37       0.374   0.139
+    ## # ... with 19,783 more rows, and 1 more variable: lift <dbl>
 
 ``` r
 edit_rules_RSAPP <- function(rules){
