@@ -749,9 +749,18 @@ d_transcript <- d_transcript %>%
 ```{r issue d_transcript}
 d_transcript %>%
   
-  # highlight issue: there are several rows with unique student ID - course ID - time combination.
+  # multiple rows with unique student ID - course ID - time combination.
   add_count(
     `Student ID`, `Course ID`, time,
+    sort = TRUE
+    ) %>%
+  print
+
+d_transcript %>%
+  
+  # multiple rows with unique student ID - course ID - time combination - grade.
+  add_count(
+    `Student ID`, `Course ID`, time, Grade,
     sort = TRUE
     ) %>%
   print
