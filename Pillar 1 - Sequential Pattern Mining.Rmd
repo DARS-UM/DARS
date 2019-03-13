@@ -335,34 +335,14 @@ inspect(head(sequences$sequences[[2]], 10))
 ```
 
 ```{r, include = FALSE}
-save(
-  transactions, sequences,
-  d_transcript_cum,
-  d_support, n_students,
-  file = "Output/Transaction and Sequences.RDATA"
-  )
-```
-
-```{r, include = FALSE}
 rm(
-  
-  high_grade, pass_grade, 
-  course_all, student_all, n_students,
-  
+  high_grade, pass_grade, course_all, student_all, n_students,
   d_transactions, d_support, d_transcript_cum,
-  
-  make_transaction, transactions, 
-  make_sequence, sequences
-  
+  make_transaction, transactions, make_sequence, sequences
   )
 ```
-
 
 # Mining Rules
-
-```{r}
-load("Output/Transaction and Sequences.RDATA")
-```
 
 ## Functions
 
