@@ -230,36 +230,33 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
 
 ## Transactions
 ```{r making transactions, cache = TRUE}
-make_transaction <- function(data = d_transactions$taken_PF_HL, item = item){
+make_transaction <- function(data, item){
   
   data %>%
-    group_by(
-      sequenceID
-    ) %>%
-    summarise(
-      list_item = list(unique(!!enquo(item)))
-    ) %>%
+    
+    group_by(sequenceID) %>%
+    summarise(list_item = list(unique(!!item))) %>%
     ungroup %>%
-    pull(
-      list_item
-      ) %>%
+    
+    pull(list_item) %>%
+    
     as("transactions")
   
 }
 
+transactions <- tribble(
+  ~ ID   ,  ~ data                    , ~ item,
+  "taken", d_transactions$taken_PF_HL, quo(item),
+  "PF"   , d_transactions$taken_PF_HL, quo(item_PF),
+  "HL"   , d_transactions$taken_PF_HL, quo(item_HL),
+  "TPF"  , d_transactions$T_PF_HL    , quo(item_TPF),
+  "THL"  , d_transactions$T_PF_HL    , quo(item_TPF),
+  "G"    , d_transactions$G          , quo(item_g)
+  ) %>%
+  
+  mutate(transactions = list(data, item) %>% pmap(make_transaction))
 
-#
-# Making transactions
-transactions <- list()
-
-transactions$taken <- make_transaction(item = item   )
-transactions$PF    <- make_transaction(item = item_PF)
-transactions$HL    <- make_transaction(item = item_HL)
-transactions$TPF   <- make_transaction(data = d_transactions$T_PF_HL, item = item_TPF)
-transactions$THL   <- make_transaction(data = d_transactions$T_PF_HL, item = item_THL)
-transactions$G     <- make_transaction(data = d_transactions$G  , item = item_G  )
-
-# inspect(head(transactions$taken, 10))
+inspect(head(transactions$transactions[[2]], 10))
 ```
 
 
