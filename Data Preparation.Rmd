@@ -622,8 +622,10 @@ remove_sw <- function(data){
     # Remove words occuring once or twice in corpus (usually names, website links or typos)
     add_count(word) %>%
     filter(n > 2) %>%
-    select(-n)
-
+    select(-n) %>%
+    
+    # remove NA
+    filter(!is.na(word))
   
 }
 ```
