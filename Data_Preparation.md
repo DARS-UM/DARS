@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-03-12
+2019-03-14
 
 -   [Import Data](#import-data)
     -   [List of AoD's and Assessments](#list-of-aods-and-assessments)
@@ -19,7 +19,15 @@ DARS
         -   [Stemming](#stemming)
         -   [Removing Stopwords](#removing-stopwords)
     -   [Student Data](#student-data-1)
+    -   [df tailored to pillar 1](#df-tailored-to-pillar-1)
 -   [Save Data](#save-data)
+
+TODO:
+
+-   when student takes a course multiple times:
+    -   keep lowest grade
+    -   keep highest grade
+    -   or keep both (much more complex)
 
 Import Data
 ===========
@@ -971,8 +979,10 @@ remove_sw <- function(data){
     # Remove words occuring once or twice in corpus (usually names, website links or typos)
     add_count(word) %>%
     filter(n > 2) %>%
-    select(-n)
-
+    select(-n) %>%
+    
+    # remove NA
+    filter(!is.na(word))
   
 }
 ```
@@ -1148,7 +1158,7 @@ d_transcript <- d_transcript %>%
 ``` r
 d_transcript %>%
   
-  # highlight issue: there are several rows with unique student ID - course ID - time combination.
+  # multiple rows with unique student ID - course ID - time combination.
   add_count(
     `Student ID`, `Course ID`, time,
     sort = TRUE
@@ -1173,19 +1183,75 @@ d_transcript %>%
     ## #   time <dbl>, grade_ceil <dbl>, n <int>
 
 ``` r
+d_transcript %>%
+  
+  # multiple rows with unique student ID - course ID - time combination - grade.
+  add_count(
+    `Student ID`, `Course ID`, time, Grade,
+    sort = TRUE
+    ) %>%
+  print
+```
+
+    ## # A tibble: 64,817 x 10
+    ##    `Student ID` `Course ID` Year_numerical Period Grade `Academic Year`
+    ##    <chr>        <chr>                <dbl> <chr>  <dbl> <chr>          
+    ##  1 6054681      COR1003               2013 1        5.4 2013-2014      
+    ##  2 6054681      COR1003               2013 1        5.4 2013-2014      
+    ##  3 6055121      COR1002               2013 5        4.2 2013-2014      
+    ##  4 6055121      COR1002               2013 5        4.2 2013-2014      
+    ##  5 6065474      COR1002               2013 5        4.3 2013-2014      
+    ##  6 6065474      COR1002               2013 5        4.3 2013-2014      
+    ##  7 6068399      COR1002               2013 5        4.9 2013-2014      
+    ##  8 6068399      COR1002               2013 5        4.9 2013-2014      
+    ##  9 6082615      COR1005               2014 1        4.6 2014-2015      
+    ## 10 6082615      COR1005               2014 1        4.6 2014-2015      
+    ## # ... with 64,807 more rows, and 4 more variables: period_numerical <chr>,
+    ## #   time <dbl>, grade_ceil <dbl>, n <int>
+
+``` r
+d_transcript %>%
+  
+  # SSC2046, a course I took, but excluded from my transcript is absent from the data set
+  filter(`Student ID` == "6087587") %>%
+  arrange(`Course ID`) %>%
+  pull(`Course ID`)
+```
+
+    ##  [1] "CAP3000" "COR1002" "COR1003" "COR1004" "COR1005" "HUM3045" "PRO1010"
+    ##  [8] "PRO1012" "PRO3008" "SCI1016" "SCI2010" "SCI2019" "SCI2033" "SCI2036"
+    ## [15] "SCI3003" "SCI3051" "SKI1004" "SKI1005" "SKI1008" "SKI1009" "SKI2049"
+    ## [22] "SKI3002" "SSC2039" "SSC2043" "SSC2043" "SSC2061" "SSC3011" "SSC3018"
+    ## [29] "SSC3033" "UGR2001"
+
+``` r
 #TODO: list issues here
+```
+
+df tailored to pillar 1
+-----------------------
+
+``` r
+d_transcript_augmented <- d_transcript %>%  left_join(select(d_course, - Period), by = c("Course ID"))
+
+d_transcript_informative <- d_transcript_augmented %>%
+  
+  # Exclude courses taken by majority of students (uninformative)
+  filter(
+    Type != "Mandatory",
+    ! Letters %in% c("SKI", "PRO", "SAS", "SAH", "SAC")
+    ) %>%
+  
+  select(`Student ID`, `Course ID`, time, grade_ceil)
 ```
 
 Save Data
 =========
 
 ``` r
-save(
-  d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO,
-  file = "Output/data_general.RDATA"
-  )
+save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO, file = "Output/data_general.RDATA")
 
-save(d_transcript, file = "Output/data_pillar_1.RDATA")
+save(d_transcript_augmented, d_transcript_informative, file = "Output/data_pillar_1.RDATA")
 
 save(d_text, d_transcript, file = "Output/data_pillar_2.RDATA")
 ```
