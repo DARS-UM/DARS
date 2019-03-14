@@ -253,7 +253,8 @@ function(input, output, session) {
         )
     
     if(nrow(student$transcript)==0){
-      "ERROR: id not found- we need new students ID's before running this"
+      #"ERROR: id not found- we need new students ID's before running this"
+      "ERROR: Student ID not found"
     }else if(nrow(rules) == 0){
       
       "No red flag"

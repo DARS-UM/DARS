@@ -33,8 +33,8 @@ navbarPage(
         # Input: student id number
         textInput(
           inputId = "student",
-          label   = "Student ID",
-          value   = "6087587"
+          label   = "Student ID"#,
+          #value   = "6087587"
           ),
         
         uiOutput('resetable_input'),
@@ -117,7 +117,12 @@ navbarPage(
         # Output: dataset
         htmlOutput(
           outputId = "course_recommendation"
-          )
+          ),
+        tags$head(tags$style("#course_recommendation{color: black;
+                                 font-size: 20px;
+                                 }"
+        )
+        )
         
         )
       
