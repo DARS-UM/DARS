@@ -147,6 +147,28 @@ d_support$TPH <- d_transcript_augmented %>%
     )
 ```
 
+```{r d_support G}
+d_support$G <- d_transcript_augmented %>%
+  
+  group_by(`Course ID`) %>%
+  
+  summarise(
+    `0`    = mean(Grade <= 0),
+    `1`    = mean(Grade <= 1),
+    `2`    = mean(Grade <= 2),
+    `3`    = mean(Grade <= 3),
+    `4`    = mean(Grade <= 4),
+    `5`    = mean(Grade <= 5),
+    `6`    = mean(Grade <= 6),
+    `7`    = mean(Grade <= 7),
+    `8`    = mean(Grade <= 8),
+    `9`    = mean(Grade <= 9),
+    `10`   = mean(Grade <= 10)
+  ) %>%
+  
+  gather(grade_ceil, rate.grade, `0` : `10`, convert = TRUE)
+```
+
 ## Data Preparation
 
 ### Take, fail, low grade
@@ -246,8 +268,8 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
     )
 ```
 
-## Transactions
-```{r making transactions, cache = TRUE}
+## Transactions and sequences
+```{r make_transaction}
 make_transaction <- function(data, item){
   
   data %>%
@@ -260,25 +282,12 @@ make_transaction <- function(data, item){
     as("transactions")
   
 }
-
-transactions <- tribble(
-  ~ ID   ,  ~ data                    , ~ item,
-  "taken", d_transactions$taken_PF_HL, quo(item),
-  "PF"   , d_transactions$taken_PF_HL, quo(item_PF),
-  "HL"   , d_transactions$taken_PF_HL, quo(item_HL),
-  "TPF"  , d_transactions$T_PF_HL    , quo(item_TPF),
-  "THL"  , d_transactions$T_PF_HL    , quo(item_TPF),
-  "G"    , d_transactions$G          , quo(item_g)
-  ) %>%
-  
-  mutate(transactions = list(data, item) %>% pmap(make_transaction))
-
-inspect(head(transactions$transactions[[2]], 10))
 ```
 
-## Sequences
-```{r making sequences, cache = TRUE}
+```{r make_sequence}
 make_sequence <- function(data, item){
+  
+  if(item == sym("item_TPF") | item == sym("item_THL")) return("Compute sequences that include courses nto taken yet by hand")
   
   data_temp <- data %>%
     
@@ -298,84 +307,37 @@ make_sequence <- function(data, item){
   return(sequences)
   
 }
+```
 
-sequences <- tribble(
-  ~ ID   ,  ~ data                    , ~ item,
-  "taken", d_transactions$taken_PF_HL, quo(item),
-  "PF"   , d_transactions$taken_PF_HL, quo(item_PF),
-  "HL"   , d_transactions$taken_PF_HL, quo(item_HL),
-  "G"    , d_transactions$G          , quo(item_g)
+```{r transactions, cache = TRUE}
+transactions <- tribble(
+  ~ ID   ,  ~ data                   , ~ item,
+  "taken", d_transactions$taken_PF_HL, sym("item"),
+  "PF"   , d_transactions$taken_PF_HL, sym("item_PF"),
+  "HL"   , d_transactions$taken_PF_HL, sym("item_HL"),
+  "TPF"  , d_transactions$T_PF_HL    , sym("item_TPF"),
+  "THL"  , d_transactions$T_PF_HL    , sym("item_TPF"),
+  "G"    , d_transactions$G          , sym("item_g")
   ) %>%
   
-  mutate(sequences = list(data, item) %>% pmap(make_sequence))
-
-inspect(head(sequences$sequences[[2]], 10))
-```
-
-## Support
-
-```{r}
-#
-# Probability of failing, having a low grade
-
-
-
-#
-# Probability oh having a grade equal or lower than x
-d_support$G <- d_transactions$taken_PF_HL %>%
-  group_by(
-    item
-    ) %>%
-  summarise(
-    `0`    = mean(Grade <= 0),
-    `1`    = mean(Grade <= 1),
-    `2`    = mean(Grade <= 2),
-    `3`    = mean(Grade <= 3),
-    `4`    = mean(Grade <= 4),
-    `5`    = mean(Grade <= 5),
-    `6`    = mean(Grade <= 6),
-    `7`    = mean(Grade <= 7),
-    `8`    = mean(Grade <= 8),
-    `9`    = mean(Grade <= 9),
-    `10`   = mean(Grade <= 10)
-    ) %>%
-  gather(
-    key   = grade_ceil,
-    value = support.grade,
-    `0` : `10`,
-    convert = TRUE
+  mutate(
+    transactions = list(data, item) %>% pmap(make_transaction),
+    sequences    = list(data, item) %>% pmap(make_sequence   )
     )
-```
 
-```{r, include = FALSE}
-save(
-  transactions, sequences,
-  d_transcript_cum,
-  d_support, n_students,
-  file = "Output/Transaction and Sequences.RDATA"
-  )
+inspect(head(transactions$transactions[[3]], 10))
+inspect(head(transactions$sequences   [[3]], 10))
 ```
 
 ```{r, include = FALSE}
 rm(
-  
-  high_grade, pass_grade, 
-  course_all, student_all, n_students,
-  
+  high_grade, pass_grade, course_all, student_all, n_students,
   d_transactions, d_support, d_transcript_cum,
-  
-  make_transaction, transactions, 
-  make_sequence, sequences
-  
+  make_transaction, transactions, make_sequence, sequences
   )
 ```
 
-
 # Mining Rules
-
-```{r}
-load("Output/Transaction and Sequences.RDATA")
-```
 
 ## Functions
 
