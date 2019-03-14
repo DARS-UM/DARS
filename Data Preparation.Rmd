@@ -779,7 +779,7 @@ d_transcript %>%
 
 ## df tailored to pillar 1
 ```{r}
-d_transcript_augmented <- d_transcript %>%  left_join(select(d_course, - Period), by = c("Course ID"))
+d_transcript_augmented <- d_transcript %>% left_join(select(d_course, - Period), by = c("Course ID"))
 
 d_transcript_informative <- d_transcript_augmented %>%
   
