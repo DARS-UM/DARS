@@ -285,8 +285,8 @@ function(input, output, session) {
     #
     # Set up
     
-    beta_distribution <- distribution$beta$manual 
-    gamma_distribution <- distribution$gamma$manual
+    beta_distribution <- distribution$beta$overview     #***********************************************SELECT: overview/manual
+    gamma_distribution <- distribution$gamma$overview   #***********************************************SELECT: overview/manual
     
     # Key words
     key_words_additional <- c(

@@ -81,16 +81,16 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = sort(kw$manual),
-          selected = c("international", "economic", "conflict", "develop", "policy"),
+          choices  = sort(kw$overview),      #***********************************************SELECT: overview/manual
+          #selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),
         
         # Input: additional key word 1-5
         textInput(
           inputId = "key_word_1",
-          label   = "Additional Key Word 1",
-          value   = "war"
+          label   = "Additional Key Word 1" #,
+          #value   = "war"
           ),
         textInput(
           inputId = "key_word_2",
