@@ -348,6 +348,8 @@ function(input, output, session) {
         wt = course_score
         ) %>%
       
+      arrange(desc(course_score)) %>%
+      
       # Key words per recommendation
       left_join(
         gamma_distribution,
