@@ -24,7 +24,6 @@ library(ggthemes)
 library(rlang)
 library(ldatuning) # ideal number of topics in LDA
 
-library(modelr) #cross_validation
 ```
 
 ```{r function reorder_within & co., echo = FALSE}
