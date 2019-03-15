@@ -511,7 +511,7 @@ topic_model <- tibble(
 ##Model Evaluation
 ###Perplexity
 Perplexity is a measure of how well a probability model predicts a sample. Thus we need to do cross validation. 
-```{r}
+```{r perplexity function, eval = TRUE}
 
 #perplexity Function
 my_perplexity <- function(model, d_cast){
@@ -519,13 +519,13 @@ my_perplexity <- function(model, d_cast){
 }
 
 #Get perplexity
-topic_test <- topic_model %>%
+test_perplexity <- topic_model %>%
   mutate(perplex_overview = map(.x = TM_overview, .f = my_perplexity, d_cast$overview),
          perplex_manual   = map(.x = TM_manual,   .f = my_perplexity, d_cast$manual))
 ```
 
 ###log_likelihood
-```{r useless stuff}
+```{r log likelihood, eval = TRUE}
 # #my_loglikelihood function
 # my_loglike <- function(model){
 #   return(model@loglikelihood)
@@ -536,13 +536,13 @@ topic_test <- topic_model %>%
 #                                   loglike_manual   = map(.x = TM_manual,   .f = my_loglike))
 
 #Log likelihood:
-test3 <- topic_test %>% mutate(logLik_overview = map(.x = TM_overview, .f = logLik),
+test_likelihood <- topic_test %>% mutate(logLik_overview = map(.x = TM_overview, .f = logLik),
                                logLik_manual   = map(.x = TM_manual,   .f = logLik))
 
 ```
 
 ###Plots
-```{r}
+```{r perplexity plots, eval = TRUE}
 #perplexity
 plot(topic_test$n_topic, topic_test$perplex_overview)
 plot(topic_test$n_topic, topic_test$perplex_manual)
@@ -582,9 +582,15 @@ topic_model_gb <- topic_model %>%
     b_manual   = TM_manual   %>% map( .f = get_beta)
       )
 ```
-
+##Saving filed for different sessions
+```{r saving, eval = TRUE}
+save(topic_model_gb, 
+     file = "Output/topic_model_gb.RDATA")
+```
+#Distributions
+#NOTE: We need to select how many topics to use
 ##Distributions of best models
-```{r Distributions, eval = TRUE}
+```{r Distributions, eval = FALSE}
 #select number of topics
 n_topics_overview <- 36
 n_topics_manual   <- 40 
@@ -608,7 +614,7 @@ distribution$gamma$manual   <- TM_manual   %>% pull(g_manual)
 ```
 ##Inspect topics
 THE TOPICS ARE SUPPER STRANGE!
-```{r inspect topics, eval = T}
+```{r inspect topics, eval = FALSE}
 
 inspect_topics <- function(d_beta){
   data.frame(d_beta) %>%
@@ -624,7 +630,7 @@ topics <-  lapply(
 ```
 #App
 ##Selectig keywords
-```{r key words, eval = TRUE}
+```{r key words}
 get_top_words <- function(d_beta, n = 5){
   data.frame(d_beta) %>%
     group_by(topic) %>%
@@ -656,7 +662,7 @@ kw1 <- lapply(
 
 ```
 ##Convenience vectors for APP
-```{r for convenience, eval = T}
+```{r for convenience}
 # set seed
 set.seed(1)
 
@@ -688,8 +694,8 @@ course_following_semester <- sample(
 ```{r app files}
 save(distribution, kw, course_all, course_following_semester,
      file = "App/Recommender System/data_topic_models.RDATA")
-save(kw1, file="App/Recommender System/tmp_data.RDATA")#DELETE LATER
 ```
+
 
 # Visualization
 ### Functions 
