@@ -498,7 +498,7 @@ Next we train our model with different number of topics.
 ```{r LDA fit, cache = TRUE, eval = TRUE}
 topic_model <- tibble(
   
-  n_topic = seq(from = 2, to = 150, by = 2)
+  n_topic = seq(from = 5, to = 250, by = 5)
   
   ) %>%
   
