@@ -359,7 +359,7 @@ my_control <- list(
   best   = TRUE,
   
   burnin = 1000,
-  iter   = 5000,
+  iter   = 15000,
   thin   = 100
   
 )
@@ -464,8 +464,9 @@ result_manual %>%
   FindTopicsNumber_plot
 
 ```
+From the results we see that the ideal number of topics is somewhere between 35 and 40.
 
-### Manually
+## Fitting Model
 The function `my_cast_tdm` casts our dataframes into a tdm.
 ```{r my_cast_tdm, eval = TRUE}
 my_cast_tdm <- function(data) data %>%
@@ -492,118 +493,12 @@ my_LDA <- function(n_topics, corpus, control = my_control){
 }
 
 ```
-####10-fold Cross-validation
-NOT NEEDED TO BE FINISHED
-```{r manual evaluation, cache = TRUE, eval = TRUE}
-set.seed(1234)
 
-#number of topics for trials
-n_topic = seq(from = 2, to = 80, by = 2)
-
-this_control <- list(
-  
-  nstart = 10,
-  seed   = 1 : 10,
-  best   = FALSE, #this is different
-  
-  burnin = 1000,
-  iter   = 5000,
-  thin   = 100
-  
-)
-
-#
-##cross-validate
-
-#crossv_sets returns data.frame with 10-folds divided into train (DTM) and test sets(DTM)
-crossv_sets <- function(dtm){
-  #Setup
-  n_documents <- nrow(dtm)
-  folding <- sample(rep(1:10, ceiling(n_documents))[seq_len(n_documents)]) #not very elegant
-  
-  #functions
-  create_trainset <- function(Fold){
-    train_set = dtm[folding != Fold,]
-  }
-  
-  create_testset <- function(Fold){
-    test_set  = dtm[folding == Fold,]
-  }
-  
-  #create folds
-  folds <-  data.frame(Fold = 1:10) %>%
-    mutate(train_set = map(Fold, .f = create_trainset),
-           test_set  = map(Fold, .f = create_testset))
-  return(folds)
-}
-
-
-
-
-
-
-
-
-cross_validate <- function(my_dtm){
-  #Number of documents (D)
-  D <- nrow(my_dtm)
-  
-  #Assign documents to a fold
-  folding <- sample(rep(1:10, ceiling(D))[seq_len(D)])
-  
-  for(k in n_topics) {
-    for(chain in 1:10){
-      #Sets
-      train_set <- my_dtm[folding != chain, ]
-      test_set  <- my_dtm[folding == chain, ]
-      
-      #LDA
-      training      <- LDA(train_set, k = k, control = my_control, method = "Gibbs")
-      
-      #best_training <- training@fitted[[which.max(logLik(training))]]
-      return(perplexity(training, newdata = test_set))
-      #testing  <- my_LDA(test_set, model = best_training, control = list())
-    }
-  }
-}
-
-
-#
-##Create folds
-###Find number of documents
-D_overview <- nrow(d_cast$overview)
-D_manual <- nrow(d_cast$manual)
-
-###Assigning random numbers (1:10) to each row of our DTM
-folding_overview <- sample(rep(seq_len(10), ceiling(D_overview))[seq_len(D_overview)])
-folding_manual   <- sample(rep(seq_len(10), ceiling(D_manual))[seq_len(D_manual)])
-
-for(k in n_topics){
-  for(chain in 1:10){
-    ###Divide into training and testing sets
-      #overview
-    training_set_overview <- d_cast$overview[folding!=chain,]
-    test_set_overview     <- d_cast$overview[folding==chain,]
-      #manual
-    training_set_manual   <- d_cast$manual[folding!=chain,]
-    test_set_manual       <- d_cast$manual[folding==chain,]
-    
-    
-  }
-}
-
-
-
-  
-
-```
-## Fitting Model
-From the results we see that the ideal number of topics is somewhere between 35 and 40. We train our models on 35 topics. Then we save them in the `Output`folder and in the ``Recommender System` folder.
-
+Next we train our model with different number of topics.
 ```{r LDA fit, cache = TRUE, eval = TRUE}
 topic_model <- tibble(
   
-  n_topic = seq(from = 2, to = 80, by = 2)
+  n_topic = seq(from = 2, to = 150, by = 2)
   
   ) %>%
   
