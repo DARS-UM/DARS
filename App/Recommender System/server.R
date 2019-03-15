@@ -6,7 +6,6 @@ library(hunspell)
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
-load("tmp_data.RDATA") #delete later
 
 
 
