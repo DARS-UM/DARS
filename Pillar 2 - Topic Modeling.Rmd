@@ -366,7 +366,7 @@ my_control <- list(
 ```
 
 
-```{r}
+```{r fast control}
 my_control_fast <- list(
   
   nstart = 1,
