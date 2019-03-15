@@ -38,30 +38,3 @@ b <- a %>%
   
   mutate(model = list(n_topic, train_set) %>% pmap(my_LDA, control = my_control_fast))
 
-#
-## Developing next function
-crossv_model <-  function(sets_dtm) {
-  b <- sets_dtm %>%
-    mutate(n_topic = 2) %>% #we want 
-}
-
-
-
-
-
-
-topic_model <- tibble(
-  
-  n_topic = seq(from = 2, to = 80, by = 2)
-  
-) %>%
-  
-  mutate(
-    TM_overview = n_topic %>% map( .f = my_LDA, corpus = d_cast$overview),
-    TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
-  )
-
-
-
-
-save(d_course, d_transcript, file = "tmp_import_APP.RDATA")
