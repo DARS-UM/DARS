@@ -23,6 +23,8 @@ library(lemon)
 library(ggthemes)
 library(rlang)
 library(ldatuning) # ideal number of topics in LDA
+
+library(modelr) #cross_validation
 ```
 
 ```{r function reorder_within & co., echo = FALSE}
@@ -363,6 +365,21 @@ my_control <- list(
 )
 ```
 
+
+```{r}
+my_control_fast <- list(
+  
+  nstart = 1,
+  seed   = 1,
+  best   = TRUE,
+  
+  burnin = 5,
+  iter   = 10,
+  thin   = 2
+  
+)
+```
+
 ###With Package built in Function
 The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements 
 ```{r function my_FindTopicsNumber }
@@ -464,13 +481,13 @@ The function `my_LDA` fits an LDA model on the DTM using the previous controls.
 ```{r my_LDA, eval= TRUE}
 
 #my_LDA
-my_LDA <- function(n_topics, corpus){
+my_LDA <- function(n_topics, corpus, control = my_control){
 
   LDA_model <- LDA(
     x       = corpus,
     k       = n_topics,
     method  = "Gibbs",
-    control = my_control
+    control = control
     )
 }
 
@@ -483,17 +500,50 @@ set.seed(1234)
 #number of topics for trials
 n_topic = seq(from = 2, to = 80, by = 2)
 
-#create folds
-create_folds <- function(my_dtm){
-  #find number of documents (D)
-  D <- nrow(my_dtm)
+this_control <- list(
   
-  #Assign documents to a fold
-  folding <- sample(rep(seq_len(10), ceiling(D))[seq_len(D)])
+  nstart = 10,
+  seed   = 1 : 10,
+  best   = FALSE, #this is different
+  
+  burnin = 1000,
+  iter   = 5000,
+  thin   = 100
+  
+)
+
+#
+##cross-validate
+
+#crossv_sets returns data.frame with 10-folds divided into train (DTM) and test sets(DTM)
+crossv_sets <- function(dtm){
+  #Setup
+  n_documents <- nrow(dtm)
+  folding <- sample(rep(1:10, ceiling(n_documents))[seq_len(n_documents)]) #not very elegant
+  
+  #functions
+  create_trainset <- function(Fold){
+    train_set = dtm[folding != Fold,]
+  }
+  
+  create_testset <- function(Fold){
+    test_set  = dtm[folding == Fold,]
+  }
+  
+  #create folds
+  folds <-  data.frame(Fold = 1:10) %>%
+    mutate(train_set = map(Fold, .f = create_trainset),
+           test_set  = map(Fold, .f = create_testset))
+  return(folds)
 }
 
 
-#cross-validate
+
+
+
+
+
+
 cross_validate <- function(my_dtm){
   #Number of documents (D)
   D <- nrow(my_dtm)
@@ -503,11 +553,16 @@ cross_validate <- function(my_dtm){
   
   for(k in n_topics) {
     for(chain in 1:10){
+      #Sets
       train_set <- my_dtm[folding != chain, ]
       test_set  <- my_dtm[folding == chain, ]
       
-      training <- my_LDA(k, train_set)
-      testing  <- my_LDA(k, train_set)
+      #LDA
+      training      <- LDA(train_set, k = k, control = my_control, method = "Gibbs")
+      
+      #best_training <- training@fitted[[which.max(logLik(training))]]
+      return(perplexity(training, newdata = test_set))
+      #testing  <- my_LDA(test_set, model = best_training, control = list())
     }
   }
 }
@@ -675,7 +730,7 @@ topics <-  lapply(
 #App
 ##Selectig keywords
 ```{r key words, eval = TRUE}
-get_top_words <- function(d_beta, n = 3){
+get_top_words <- function(d_beta, n = 5){
   data.frame(d_beta) %>%
     group_by(topic) %>%
     top_n(n, beta) %>%
@@ -687,6 +742,23 @@ kw <- lapply(
   distribution$beta,
   get_top_words
 )
+```
+####stopwords for keywords
+THIS NEEDS CLEANING!!!!!!!!!!!!!!!!!!!!!!!!!
+```{r}
+#kw$overview
+not_include <- c("source", "primary", "type", "assess", "involve", "e.g", "discussion", "institute", "ha", "introduce",
+                 "role","address", "student", "examination","coordinator", "maastrichtuniversity.nl", NA, "identify", "manner", "mechanism", "concept", "hour", "teach",  "depth","question", "specific", "busy","academic", "semester", "week", "test", "session", "team", "communicate", "theory", "text", "library", "article", "examine", "current", "routledge", "temporary", "flow", "level", "study")
+
+remove_words <- function(x){
+  setdiff(x, not_include)
+}
+
+kw1 <- lapply(
+  kw,
+  remove_words
+)
+
 ```
 ##Convenience vectors for APP
 ```{r for convenience, eval = T}
@@ -721,6 +793,7 @@ course_following_semester <- sample(
 ```{r app files}
 save(distribution, kw, course_all, course_following_semester,
      file = "App/Recommender System/data_topic_models.RDATA")
+save(kw1, file="App/Recommender System/tmp_data.RDATA")#DELETE LATER
 ```
 
 # Visualization
