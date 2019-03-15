@@ -743,9 +743,9 @@ kw <- lapply(
   get_top_words
 )
 ```
-####stopwords for keywords
-THIS NEEDS CLEANING!!!!!!!!!!!!!!!!!!!!!!!!!
-```{r}
+####TEMPORTARY: stopwords for keywords
+This section is for presentations
+```{r stopwords for kw}
 #kw$overview
 not_include <- c("source", "primary", "type", "assess", "involve", "e.g", "discussion", "institute", "ha", "introduce",
                  "role","address", "student", "examination","coordinator", "maastrichtuniversity.nl", NA, "identify", "manner", "mechanism", "concept", "hour", "teach",  "depth","question", "specific", "busy","academic", "semester", "week", "test", "session", "team", "communicate", "theory", "text", "library", "article", "examine", "current", "routledge", "temporary", "flow", "level", "study")
