@@ -1,4 +1,4 @@
-#saved in workspace
+#saved in workspace  #YOU MUST DELETE n_topics_Find.RDATA
 load("Output/LDA_ntopics.RDATA")
 
 save(result_manual, result_overview , result_description,
