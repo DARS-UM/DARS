@@ -800,3 +800,7 @@ save(d_transcript_augmented, d_transcript_informative, file = "Output/data_pilla
 
 save(d_text, d_transcript, file = "Output/data_pillar_2.RDATA")
 ```
+
+```{r}
+save(d_course, d_text, d_transcript, file = "Output/data_pillar_2.RDATA")
+```
