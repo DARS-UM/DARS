@@ -61,7 +61,6 @@ d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 Include d_course
 ```{r d_course}
 load("Output/data_general.RDATA")
-d_course <- d_course %>% select(`Course ID`, Cluster) %>% distinct 
 
 rm(d_AoD, d_assessment, d_ILO)
 ```
@@ -319,40 +318,32 @@ prepare_tf_idf_concentration <- function(data){
   
 } 
 
-tf_idf_description %>%
-  prepare_tf_idf_concentration %>%
-  plot_tf_idf(id_plot = "Concentration_description")
-
-tf_idf_overview %>%
+tf_idf$overview %>%
   prepare_tf_idf_concentration %>%
   plot_tf_idf(id_plot = "Concentration_overview")
 
-tf_idf_manual %>%
+tf_idf$manual %>%
   prepare_tf_idf_concentration %>%
   plot_tf_idf(id_plot = "Concentration_manual")
 
-rm(prepare_tf_idf_concentration, plot_tf_idf,
-   tf_idf_description, tf_idf_overview, tf_idf_manual)
+rm(prepare_tf_idf_concentration, plot_tf_idf)
 ```
 
 # LDA
-The function `my_cast_tdm` casts our dataframes into a tdm.
-```{r my_cast_tdmxxxxx}
-my_cast_tdm <- function(data, level) data %>%
+##Setup
+###Cast DTM
+The function `my_cast_dtm` casts our dataframes into a DTM.
+```{r my_cast_dtm, eval = TRUE}
+my_cast_dtm <- function(data) data %>%
   count(`Course ID`, word) %>%
   cast_dtm(`Course ID`, word, n)
 
-d_description_cast <- my_cast_tdm(d_description)
-d_overview_cast <- my_cast_tdm(d_overview)
-d_manual_cast <- my_cast_tdm(d_manual)
+d_cast <- d_text %>% map(my_cast_dtm)
 
-rm(my_cast_tdm)
+rm(my_cast_dtm)
 ```
-
-## Ideal Number of Topics (RUN ON UM COMPUTER)
-To decide the number of topics to discover, we run (four) three different tests.
-
-First we set the control for the test.
+###Controls
+The control parameters we use are:
 ```{r controls, eval = TRUE}
 my_control <- list(
   
@@ -366,8 +357,7 @@ my_control <- list(
   
 )
 ```
-
-
+The control parameters we use for fast testing are:
 ```{r fast control}
 my_control_fast <- list(
   
@@ -382,7 +372,8 @@ my_control_fast <- list(
 )
 ```
 
-###With Package built in Function
+##Ideal Number of Topics Package Test
+To decide the number of topics to discover, we run three different tests.
 The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements 
 ```{r function my_FindTopicsNumber }
 my_FindTopicsNumber <- function(data_cast, n_topics){
