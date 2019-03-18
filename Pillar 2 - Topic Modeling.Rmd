@@ -62,7 +62,7 @@ Include d_course
 ```{r d_course}
 load("Output/data_general.RDATA")
 
-rm(d_AoD, d_assessment, d_ILO)
+rm(d_AoD, d_assessment, d_ILO, list_AoD_assessment)
 ```
 # TF-IDF
 ## Functions for Generating Barplots and Word Clouds
@@ -487,6 +487,10 @@ topic_model <- tibble(
     TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
   )
 ```
+#DELETE LATERRRRRR- HELPER IMPORT
+```{r}
+load("Output/topic_model.RDATA")
+```
 
 ##Model Evaluation
 ###Perplexity
@@ -506,30 +510,21 @@ test_perplexity <- topic_model %>%
 
 ###log_likelihood
 ```{r log likelihood, eval = TRUE}
-# #my_loglikelihood function
-# my_loglike <- function(model){
-#   return(model@loglikelihood)
-# }
-# 
-# #get loglikelihood
-# test2 <- topic_test %>% mutate(loglike_overview    = map(.x = TM_overview, .f = my_loglike),
-#                                   loglike_manual   = map(.x = TM_manual,   .f = my_loglike))
-
 #Log likelihood:
-test_likelihood <- topic_test %>% mutate(logLik_overview = map(.x = TM_overview, .f = logLik),
-                               logLik_manual   = map(.x = TM_manual,   .f = logLik))
+test_likelihood <- topic_model %>% mutate(logLik_overview = map(.x = TM_overview, .f = logLik),
+                                         logLik_manual   = map(.x = TM_manual,   .f = logLik))
 
 ```
 
 ###Plots
 ```{r perplexity plots, eval = TRUE}
 #perplexity
-plot(topic_test$n_topic, topic_test$perplex_overview)
-plot(topic_test$n_topic, topic_test$perplex_manual)
+plot(test_perplexity$n_topic, test_perplexity$perplex_overview)
+plot(test_perplexity$n_topic, test_perplexity$perplex_manual)
 
 #log likelihood
-plot(test3$n_topic, test3$logLik_overview)
-plot(test3$n_topic, test3$logLik_manual)
+plot(test_likelihood$n_topic, test_likelihood$logLik_overview)
+plot(test_likelihood$n_topic, test_likelihood$logLik_manual)
 ```
 
 ##Get Beta/Gamma functions
@@ -563,6 +558,11 @@ topic_model_gb <- topic_model %>%
       )
 ```
 ##Saving filed for different sessions
+For internal use:
+```{r}
+# save(topic_model, file = "Output/topic_model.RDATA" )
+```
+For different sessions:
 ```{r saving, eval = TRUE}
 save(topic_model_gb, 
      file = "Output/topic_model_gb.RDATA")
@@ -593,7 +593,6 @@ distribution$gamma$manual   <- TM_manual   %>% pull(g_manual)
 
 ```
 ##Inspect topics
-THE TOPICS ARE SUPPER STRANGE!
 ```{r inspect topics, eval = FALSE}
 
 inspect_topics <- function(d_beta){
