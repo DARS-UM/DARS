@@ -57,11 +57,20 @@ load("output/data_pillar_2.RDATA")
 # Only keep course descriptions and overviews from most recent year
 d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
+#DELETE LATERRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
+Include d_course
+```{r d_course}
+load("Output/data_general.RDATA")
+d_course <- d_course %>% select(`Course ID`, Cluster) %>% distinct 
 
+rm(d_AoD, d_assessment, d_ILO)
+```
 # TF-IDF
 ## Functions for Generating Barplots and Word Clouds
 The function `compute_tf_idf` computes the inverse term document frequency, we apply `compute_tf_idf` on descriptions, overviews and manuals. 
 ```{r compute_tf_idf, cache = TRUE}
+#
+##Function
 compute_tf_idf <- function(data){
   
   data %>%
@@ -77,10 +86,12 @@ compute_tf_idf <- function(data){
   
 }
 
-tf_idf_description <- compute_tf_idf(d_description)
-tf_idf_overview    <- compute_tf_idf(d_overview)
-tf_idf_manual      <- compute_tf_idf(d_manual)
+#
+##Application
+tf_idf <- map(d_text, .f = compute_tf_idf)
 
+#
+##Clean workspace
 rm(compute_tf_idf)
 ```
 
@@ -197,18 +208,14 @@ prepare_tf_idf_course <- function(data){
 
   }
 
-set.seed(123)
-tf_idf_description %>%
-  prepare_tf_idf_course %>%
-  plot_tf_idf(id_plot = "Course_description")
 
 set.seed(123)
-tf_idf_overview %>%
+tf_idf$overview %>%
   prepare_tf_idf_course %>%
   plot_tf_idf(id_plot = "Course_overview")
 
 set.seed(123)
-tf_idf_manual %>%
+tf_idf$manual %>%
   prepare_tf_idf_course %>%
   plot_tf_idf(id_plot = "Course_manual")
 
@@ -255,15 +262,11 @@ prepare_tf_idf_cluster <- function(data){
   
 }
 
-tf_idf_description %>%
-  prepare_tf_idf_cluster %>%
-  plot_tf_idf(id_plot = "Cluster_description")
-
-tf_idf_overview %>%
+tf_idf$overview %>%
   prepare_tf_idf_cluster %>%
   plot_tf_idf(id_plot = "Cluster_overview")
 
-tf_idf_manual %>%
+tf_idf$manual %>%
   prepare_tf_idf_cluster %>%
   plot_tf_idf(id_plot = "Cluster_manual")
 
