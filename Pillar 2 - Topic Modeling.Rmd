@@ -460,21 +460,8 @@ result_manual %>%
 From the results we see that the ideal number of topics is somewhere between 35 and 40.
 
 ## Fitting Model
-The function `my_cast_tdm` casts our dataframes into a tdm.
-```{r my_cast_tdm, eval = TRUE}
-my_cast_tdm <- function(data) data %>%
-  count(`Course ID`, word) %>%
-  cast_dtm(`Course ID`, word, n)
-
-d_cast <- d_text %>% map(my_cast_tdm)
-
-rm(my_cast_tdm)
-```
-
 The function `my_LDA` fits an LDA model on the DTM using the previous controls.
 ```{r my_LDA, eval= TRUE}
-
-#my_LDA
 my_LDA <- function(n_topics, corpus, control = my_control){
 
   LDA_model <- LDA(
@@ -487,7 +474,7 @@ my_LDA <- function(n_topics, corpus, control = my_control){
 
 ```
 
-Next we train our model with different number of topics.
+We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models under `topic_model`
 ```{r LDA fit, cache = TRUE, eval = TRUE}
 topic_model <- tibble(
   
@@ -503,7 +490,7 @@ topic_model <- tibble(
 
 ##Model Evaluation
 ###Perplexity
-Perplexity is a measure of how well a probability model predicts a sample. Thus we need to do cross validation. 
+Perplexity is a measure of how well a probability model predicts a sample. (Thus may want to do cross validation.) 
 ```{r perplexity function, eval = TRUE}
 
 #perplexity Function
