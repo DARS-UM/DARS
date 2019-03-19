@@ -487,6 +487,45 @@ my_perplexity <- function(model, dtm){
 }
 
 ```
+
+The following functions allow us to inspect the distributions and get kw
+```{r}
+# FUNCTION
+#get_top_match <- function(<INPUT GAMMA OR BETA DISTRIB>){<FUNCTION GENERALIZATION>}
+
+# get_top_match <- function(d_distribution){
+#   print(!!sym(d_distribution))
+# }
+
+
+get_top_terms_topic <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(10, beta) %>%
+    select(topic, term) %>%
+    group_by(topic) %>%
+    summarise(top_words = list(term))
+  
+}
+
+get_top_topics_course <- function(d_gamma){
+  data.frame(d_gamma) %>%
+    group_by(document) %>%
+    top_n(5, gamma) %>%
+    select(document, topic) %>%
+    summarise(top_topic = list(topic))
+}
+
+get_kw <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(3, beta) %>%
+    ungroup()%>%
+    pull(term)%>%
+    unique()
+}
+
+```
 ###Training Models
 ```{r LDA fit, cache = TRUE, eval = TRUE}
 
@@ -512,7 +551,20 @@ test_topic_model <- tibble( #change to topic_model
          Perplexity = pmap_dbl(.l = list(Model, DTM), .f = my_perplexity),
          
          #Loglikelihood
-         LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik) #this removes the degrees of freedom data
+         LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik), #this removes the degrees of freedom data
+         
+         
+         #
+         ##Inspect
+         
+         #top words per topic
+         top_terms_topic = map(Beta, .f = get_top_terms_topic),
+         
+         #top topics per course
+         top_topic_course = map(Gamma, .f = get_top_topics_course),
+         
+         #selecting keywords
+         kw = map(Beta, .f = get_kw)
          )
 
 #View(test_topic_model)
@@ -557,132 +609,7 @@ For internal use:
 # save(topic_model, file = "Output/topic_model.RDATA" ) #needs to be renamed to match what is currently test_topic_model
 ```
 
-#Distributions
-#NOTE: select how many topics to use
-
-##Distributions of best models
-```{r Distributions, eval = FALSE}
-#select number of topics
-n_topics_overview <- 36
-n_topics_manual   <- 40 
-
-extract_overview <- function() topic_model_gb %>% filter(n_topic == n_topics_overview)
-extract_manual   <- function() topic_model_gb %>% filter(n_topic == n_topics_manual  )
-
-
-
-df %>% mutate(var_new = list(var_old1, var_old2) %>% pmap(my_function))
-
-data <- tribble(
-  ~ ID,
-  "overview",
-  "manual"
-  ) %>%
-  mutate(df = if_else(ID == "overview", extract_overview(), extract_manual))
-
-#Crop models
-TM_overview <- topic_model_gb %>%
-  filter(n_topic== n_topics_overview) 
-
-TM_manual   <- topic_model_gb %>%
-  filter(n_topic== n_topics_manual)
-
-#Distributions
-distribution <- list()
-
-distribution$beta$overview  <- TM_overview %>% pull(b_overview)
-distribution$beta$manual    <- TM_manual   %>% pull(b_manual)
-
-distribution$gamma$overview <- TM_overview %>% pull(g_overview)
-distribution$gamma$manual   <- TM_manual   %>% pull(g_manual)
-
-```
-##Inspect topics
-```{r inspect topics, eval = FALSE}
-
-# FUNCTION
-#get_top_match <- function(<INPUT GAMMA OR BETA DISTRIB>){<FUNCTION GENERALIZATION>}
-get_top_match <- function(d_distribution){
-  print(!!sym(d_distribution))
-}
-Hi <- "hello"
-get_top_match(Hi)
-
-get_top_terms_topic <- function(d_beta){
-  data.frame(d_beta) %>%
-    group_by(topic) %>%
-    top_n(10, beta) %>%
-    select(topic, term) %>%
-    group_by(topic) %>%
-    summarise(top_words = list(term))
-  
-}
-
-get_top_topics_course <- function(d_gamma){
-  data.frame(d_gamma) %>%
-    group_by(document) %>%
-    top_n(5, gamma) %>%
-    select(document, topic) %>%
-    summarise(top_topic = list(topic))
-}
-
-get_kw <- function(d_beta){
-  data.frame(d_beta) %>%
-    group_by(topic) %>%
-    top_n(10, beta) %>%
-    select(topic, term) %>%
-    group_by(topic) %>%
-    summarise(top_words = list(term)) %>%
-    select(top_words) %>%
-    collapse(top_words)
-}
-#Saving to models
-test_topic_model <-  test_topic_model %>%
-  mutate(top_terms_topic = map(Beta, .f = get_top_terms_topic))
-
-
-test_topic_model <- test_topic_model %>%
-  mutate(top_topic_course = map(Gamma, .f = get_top_topics_course))
-
-```
 #App
-##Selectig keywords
-```{r key words}
-get_top_words <- function(d_beta, n = 5){
-  data.frame(d_beta) %>%
-    group_by(topic) %>%
-    top_n(n, beta) %>%
-    pull(term)%>%
-    unique
-}
-
-go_down <- function(my_list, i){
-  my_list[[i]]
-}
-
-get_key_words <-  function(d_top_words){
-    
-  select(top_words) %>%
-    top_n(5)
-}
-
-View(test_topic_model)
-
-a <- test_topic_model[["top_terms_topic"]]
-
-
-
-d_top_words <- a[1]
-
-#mutate(kw = get_key_words(top_terms_topic)) 
-d_top_words <- a$top_terms_topic
-
-kw <- lapply(
-  distribution$beta,
-  get_top_words
-)
-
-```
 ####TEMPORTARY: stopwords for keywords
 This section is for presentations
 ```{r stopwords for kw}
@@ -734,8 +661,6 @@ course_following_semester <- sample(
 save(distribution, kw, course_all, course_following_semester,
      file = "App/Recommender System/data_topic_models.RDATA")
 ```
-
-
 # Visualization
 ### Functions 
 This part is adapted 
@@ -793,8 +718,7 @@ b <- names(distribution)[2]
 test[[b]] <- lapply(distribution[[b]],
                     prepare_data_LDA_gamma)
 
-rm(a,b #,test
-   )
+rm(a,b #,test)
 ```
 This part is not adapted
 ```{r LDA visualize, eval = F}
