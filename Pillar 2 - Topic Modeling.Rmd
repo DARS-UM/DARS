@@ -475,17 +475,70 @@ my_LDA <- function(n_topics, corpus, control = my_control){
 ```
 
 We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models under `topic_model`
+##Functions for models (get gamma, get beta, extract_dtm)
+```{r getting gamma and beta, eval = TRUE}
+#extract dtm
+extract_dtm <- function(wt) d_cast[[wt]]
+
+# #get beta
+# get_beta <- function(results){
+#   
+#   tidy(results, matrix = "beta")           %>%
+#     mutate(topic = paste("Topic", topic) ) %>%
+#       arrange(topic, desc(beta) )
+#   
+# }
+# 
+# #get gamma
+# get_gamma <- function(results){
+#   
+#   tidy(results, matrix = "gamma")          %>%
+#     mutate(topic = paste("Topic", topic) ) %>%
+#       arrange(topic, desc(gamma) )
+# }
+
+get_distributions <- function(model, distrib_str){ #input gamma or beta
+  tidy(model, matrix = distrib_str)        %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(!!sym(distrib_str)))
+}
+
+#perplexity Function
+my_perplexity <- function(model, d_cast){
+  perplexity(model, d_cast, estimate_theta = FALSE)
+}
+
+my_logLik <-  function (model)
+
+```
+
 ```{r LDA fit, cache = TRUE, eval = TRUE}
-topic_model <- tibble(
-  
-  n_topic = seq(from = 5, to = 250, by = 5)
+
+test_topic_model <- tibble( #change to topic_model
+  #repeat each topic number twice
+  n_topic = rep(seq(from = 2, to = 4, by = 1), each = 2) # from = 5, to = 250, by = 5
   
   ) %>%
-  
-  mutate(
-    TM_overview = n_topic %>% map( .f = my_LDA, corpus = d_cast$overview),
-    TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
-  )
+  mutate(Origin     = rep(c("overview", "manuals"), 3),         # should be 50
+         `Topic ID` = paste(Origin, n_topic, sep = "_"),
+         DTM        = pmap(.l = list(Origin), .f = extract_dtm),
+         
+         #fit model
+         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control_fast),
+         
+         #Gamma distribution
+         Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
+         
+         #Beta distribution
+         Beta = pmap(.l = list(Model),  .f = get_distributions, distrib_str = "beta"),
+         
+         #Perplexity
+         Perplexity = pmap_dbl(.l = list(Model, DTM), .f = my_perplexity),
+         
+         #Loglikelihood
+         LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik) #this removes the degrees of freedom data
+         )
+
 ```
 #DELETE LATERRRRRR- HELPER IMPORT
 ```{r}
@@ -493,58 +546,30 @@ load("Output/topic_model.RDATA")
 ```
 
 ##Model Evaluation
-###Perplexity
-Perplexity is a measure of how well a probability model predicts a sample. (Thus may want to do cross validation.) 
-```{r perplexity function, eval = TRUE}
-
-#perplexity Function
-my_perplexity <- function(model, d_cast){
-  perplexity(model, d_cast, estimate_theta = FALSE)
-}
-
-#Get perplexity
-test_perplexity <- topic_model %>%
-  mutate(perplex_overview = map(.x = TM_overview, .f = my_perplexity, d_cast$overview),
-         perplex_manual   = map(.x = TM_manual,   .f = my_perplexity, d_cast$manual))
-```
-
-###log_likelihood
-```{r log likelihood, eval = TRUE}
-#Log likelihood:
-test_likelihood <- topic_model %>% mutate(logLik_overview = map(.x = TM_overview, .f = logLik),
-                                         logLik_manual   = map(.x = TM_manual,   .f = logLik))
-
-```
-
 ###Plots
 ```{r perplexity plots, eval = TRUE}
-#perplexity
-plot(test_perplexity$n_topic, test_perplexity$perplex_overview)
-plot(test_perplexity$n_topic, test_perplexity$perplex_manual)
-
-#log likelihood
-plot(test_likelihood$n_topic, test_likelihood$logLik_overview)
-plot(test_likelihood$n_topic, test_likelihood$logLik_manual)
-```
-
-##Get Beta/Gamma functions
-```{r getting gamma and beta, eval = TRUE}
-get_beta <- function(results){
+#plot evaluation
+plot_evaluation <- function(){
   
-  tidy(results, matrix = "beta")           %>%
-    mutate(topic = paste("Topic", topic) ) %>%
-      arrange(topic, desc(beta) )
-  
+  #data
+  test_topic_model %>%
+    
+    #Wrangling
+    select(n_topic, Origin, Perplexity, LogLikelihood) %>%
+    
+    gather(key = "Eval Type", value = "Eval Value", c(Perplexity, LogLikelihood)) %>%
+    
+    #Graphics
+    ggplot(mapping = aes(x = n_topic, y = `Eval Value`)) +
+    geom_point() +
+    facet_wrap(`Eval Type` ~ Origin, scales = "free") +
+    theme_minimal()
+    
 }
 
-get_gamma <- function(results){
-  
-  tidy(results, matrix = "gamma")          %>%
-    mutate(topic = paste("Topic", topic) ) %>%
-      arrange(topic, desc(gamma) )
-}
-
+plot_evaluation()
 ```
+
 
 ##Apply beta and gamma
 ```{r applying get_gamma and get_beta, eval = TRUE}
@@ -574,6 +599,20 @@ save(topic_model_gb,
 #select number of topics
 n_topics_overview <- 36
 n_topics_manual   <- 40 
+
+extract_overview <- function() topic_model_gb %>% filter(n_topic == n_topics_overview)
+extract_manual   <- function() topic_model_gb %>% filter(n_topic == n_topics_manual  )
+
+
+
+df %>% mutate(var_new = list(var_old1, var_old2) %>% pmap(my_function))
+
+data <- tribble(
+  ~ ID,
+  "overview",
+  "manual"
+  ) %>%
+  mutate(df = if_else(ID == "overview", extract_overview(), extract_manual))
 
 #Crop models
 TM_overview <- topic_model_gb %>%
