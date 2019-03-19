@@ -478,25 +478,9 @@ We train the LDA for different numbers of topics (5 to 250 by 5), we save the re
 ##Functions for models (get gamma, get beta, extract_dtm)
 ```{r getting gamma and beta, eval = TRUE}
 #extract dtm
-extract_dtm <- function(wt) d_cast[[wt]]
+extract_dtm <- function(origin) d_cast[[origin]]
 
-# #get beta
-# get_beta <- function(results){
-#   
-#   tidy(results, matrix = "beta")           %>%
-#     mutate(topic = paste("Topic", topic) ) %>%
-#       arrange(topic, desc(beta) )
-#   
-# }
-# 
-# #get gamma
-# get_gamma <- function(results){
-#   
-#   tidy(results, matrix = "gamma")          %>%
-#     mutate(topic = paste("Topic", topic) ) %>%
-#       arrange(topic, desc(gamma) )
-# }
-
+#extract Distributions (Gamma/Beta)
 get_distributions <- function(model, distrib_str){ #input gamma or beta
   tidy(model, matrix = distrib_str)        %>%
     mutate(topic = paste("Topic", topic) ) %>%
@@ -504,11 +488,9 @@ get_distributions <- function(model, distrib_str){ #input gamma or beta
 }
 
 #perplexity Function
-my_perplexity <- function(model, d_cast){
-  perplexity(model, d_cast, estimate_theta = FALSE)
+my_perplexity <- function(model, dtm){
+  perplexity(model, dtm, estimate_theta = FALSE)
 }
-
-my_logLik <-  function (model)
 
 ```
 
@@ -539,6 +521,8 @@ test_topic_model <- tibble( #change to topic_model
          LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik) #this removes the degrees of freedom data
          )
 
+#View(test_topic_model)
+test_topic_model
 ```
 #DELETE LATERRRRRR- HELPER IMPORT
 ```{r}
@@ -548,7 +532,7 @@ load("Output/topic_model.RDATA")
 ##Model Evaluation
 ###Plots
 ```{r perplexity plots, eval = TRUE}
-#plot evaluation
+#Function
 plot_evaluation <- function(){
   
   #data
@@ -567,31 +551,16 @@ plot_evaluation <- function(){
     
 }
 
+#Plot
 plot_evaluation()
 ```
 
-
-##Apply beta and gamma
-```{r applying get_gamma and get_beta, eval = TRUE}
-topic_model_gb <- topic_model %>%
-  transmute(
-    n_topic    = n_topic,
-    g_overview = TM_overview %>% map( .f = get_gamma),
-    g_manual   = TM_manual   %>% map( .f = get_gamma),
-    b_overview = TM_overview %>% map( .f = get_beta),
-    b_manual   = TM_manual   %>% map( .f = get_beta)
-      )
-```
 ##Saving filed for different sessions
 For internal use:
 ```{r}
 # save(topic_model, file = "Output/topic_model.RDATA" )
 ```
-For different sessions:
-```{r saving, eval = TRUE}
-save(topic_model_gb, 
-     file = "Output/topic_model_gb.RDATA")
-```
+
 #Distributions
 #NOTE: We need to select how many topics to use
 ##Distributions of best models
