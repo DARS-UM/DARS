@@ -57,13 +57,7 @@ load("output/data_pillar_2.RDATA")
 # Only keep course descriptions and overviews from most recent year
 d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
-#DELETE LATERRRRRRRRRRRRRRRRRRRRRRRRRRRRRR
-Include d_course
-```{r d_course}
-load("Output/data_general.RDATA")
 
-rm(d_AoD, d_assessment, d_ILO, list_AoD_assessment)
-```
 # TF-IDF
 ## Functions for Generating Barplots and Word Clouds
 The function `compute_tf_idf` computes the inverse term document frequency, we apply `compute_tf_idf` on descriptions, overviews and manuals. 
@@ -475,7 +469,7 @@ my_LDA <- function(n_topics, corpus, control = my_control){
 ```
 
 We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models under `topic_model`
-##Functions for models (get gamma, get beta, extract_dtm)
+###Functions for models (get gamma, get beta, extract_dtm)
 ```{r getting gamma and beta, eval = TRUE}
 #extract dtm
 extract_dtm <- function(origin) d_cast[[origin]]
@@ -493,7 +487,7 @@ my_perplexity <- function(model, dtm){
 }
 
 ```
-
+###Training Models
 ```{r LDA fit, cache = TRUE, eval = TRUE}
 
 test_topic_model <- tibble( #change to topic_model
@@ -533,36 +527,39 @@ load("Output/topic_model.RDATA")
 ###Plots
 ```{r perplexity plots, eval = TRUE}
 #Function
-plot_evaluation <- function(){
+plot_evaluation <- function(origin){
   
   #data
   test_topic_model %>%
     
     #Wrangling
     select(n_topic, Origin, Perplexity, LogLikelihood) %>%
-    
     gather(key = "Eval Type", value = "Eval Value", c(Perplexity, LogLikelihood)) %>%
+    filter(Origin == origin) %>%
     
     #Graphics
     ggplot(mapping = aes(x = n_topic, y = `Eval Value`)) +
     geom_point() +
-    facet_wrap(`Eval Type` ~ Origin, scales = "free") +
+    geom_line() +
+    facet_grid(rows = vars(`Eval Type`), scales = "free") +
     theme_minimal()
     
 }
 
 #Plot
-plot_evaluation()
+plot_evaluation("overview")
+plot_evaluation("manuals")
 ```
 
-##Saving filed for different sessions
+##Saving model_data:
 For internal use:
 ```{r}
-# save(topic_model, file = "Output/topic_model.RDATA" )
+# save(topic_model, file = "Output/topic_model.RDATA" ) #needs to be renamed to match what is currently test_topic_model
 ```
 
 #Distributions
-#NOTE: We need to select how many topics to use
+#NOTE: select how many topics to use
+
 ##Distributions of best models
 ```{r Distributions, eval = FALSE}
 #select number of topics
@@ -603,17 +600,50 @@ distribution$gamma$manual   <- TM_manual   %>% pull(g_manual)
 ##Inspect topics
 ```{r inspect topics, eval = FALSE}
 
-inspect_topics <- function(d_beta){
+# FUNCTION
+#get_top_match <- function(<INPUT GAMMA OR BETA DISTRIB>){<FUNCTION GENERALIZATION>}
+get_top_match <- function(d_distribution){
+  print(!!sym(d_distribution))
+}
+Hi <- "hello"
+get_top_match(Hi)
+
+get_top_terms_topic <- function(d_beta){
   data.frame(d_beta) %>%
     group_by(topic) %>%
-    top_n(10, beta)
+    top_n(10, beta) %>%
+    select(topic, term) %>%
+    group_by(topic) %>%
+    summarise(top_words = list(term))
   
 }
 
-topics <-  lapply(
-  distribution$beta,
-  inspect_topics
-)
+get_top_topics_course <- function(d_gamma){
+  data.frame(d_gamma) %>%
+    group_by(document) %>%
+    top_n(5, gamma) %>%
+    select(document, topic) %>%
+    summarise(top_topic = list(topic))
+}
+
+get_kw <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(10, beta) %>%
+    select(topic, term) %>%
+    group_by(topic) %>%
+    summarise(top_words = list(term)) %>%
+    select(top_words) %>%
+    collapse(top_words)
+}
+#Saving to models
+test_topic_model <-  test_topic_model %>%
+  mutate(top_terms_topic = map(Beta, .f = get_top_terms_topic))
+
+
+test_topic_model <- test_topic_model %>%
+  mutate(top_topic_course = map(Gamma, .f = get_top_topics_course))
+
 ```
 #App
 ##Selectig keywords
@@ -626,10 +656,32 @@ get_top_words <- function(d_beta, n = 5){
     unique
 }
 
+go_down <- function(my_list, i){
+  my_list[[i]]
+}
+
+get_key_words <-  function(d_top_words){
+    
+  select(top_words) %>%
+    top_n(5)
+}
+
+View(test_topic_model)
+
+a <- test_topic_model[["top_terms_topic"]]
+
+
+
+d_top_words <- a[1]
+
+#mutate(kw = get_key_words(top_terms_topic)) 
+d_top_words <- a$top_terms_topic
+
 kw <- lapply(
   distribution$beta,
   get_top_words
 )
+
 ```
 ####TEMPORTARY: stopwords for keywords
 This section is for presentations
