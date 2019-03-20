@@ -21,7 +21,7 @@ library(ggwordcloud) # Word Clouds
 library(topicmodels)
 library(lemon)
 library(ggthemes)
-library(rlang)
+library(rlang) #quote
 library(ldatuning) # ideal number of topics in LDA
 
 ```
@@ -378,7 +378,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   topics = n_topics,
   metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
-  control = my_control,
+  control = my_control_fast,
   mc.cores = 4L
   
   )
@@ -386,17 +386,17 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
 }
 ```
-We run the test for descriptions, documenting the duration (starting_time - ending_time). We build 95 models (5 to 100 in increments of 1).
-```{r description topics, cache = TRUE}
+
+```{r package test on topics, cache = TRUE}
 start.time <- Sys.time()
 
-result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 2))
+result_topic_test <- map(.x = d_cast, .f = my_FindTopicsNumber, n_topics = seq(from = 5, to = 15, by = 5))
 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
-save(result_description,
-     file = "Output/LDA_ntopics.RDATA")
+#save(result_topic_test,
+#     file = "Output/LDA_ntopics.RDATA")
 
 print(time.taken)
 ```
@@ -410,7 +410,7 @@ result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from =
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
-save(result_overview , result_description,
+save(result_overview ,
      file = "Output/LDA_ntopics.RDATA")
 
 print(time.taken)
@@ -425,7 +425,7 @@ result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, 
 end.time <- Sys.time()
 time.taken <- end.time - start.time
 
-save(result_manual, result_overview , result_description,
+save(result_manual, result_overview ,
      file = "Output/LDA_ntopics.RDATA")
 
 print(time.taken)
@@ -491,11 +491,19 @@ my_perplexity <- function(model, dtm){
 The following functions allow us to inspect the distributions and get kw
 ```{r}
 # FUNCTION
-#get_top_match <- function(<INPUT GAMMA OR BETA DISTRIB>){<FUNCTION GENERALIZATION>}
-
-# get_top_match <- function(d_distribution){
-#   print(!!sym(d_distribution))
-# }
+# #get_top_match <- function(<INPUT GAMMA OR BETA DISTRIB>){<FUNCTION GENERALIZATION>}
+# 
+#  get_top_match <- function(d_distribution){
+#    
+#   #save user input as string
+#   name_selected <- deparse(substitute(d_distribution))
+#   beta_gamma_sym <- tolower(name_selected)
+#   
+#   #prepare variables for grouping
+#   grouping <- ifelse(name_selected == "Beta", "topic", "document")
+#   top_num <- ifelse(name_selected  == "Beta", 10, 5) #select how many terms or topics(respectively) to show
+#   
+#  }
 
 
 get_top_terms_topic <- function(d_beta){
@@ -575,8 +583,7 @@ test_topic_model
 load("Output/topic_model.RDATA")
 ```
 
-##Model Evaluation
-###Plots
+##Plots - Model Evaluation
 ```{r perplexity plots, eval = TRUE}
 #Function
 plot_evaluation <- function(origin){
