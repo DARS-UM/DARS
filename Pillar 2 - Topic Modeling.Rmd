@@ -7,12 +7,14 @@ output:
     toc: TRUE
 ---
 
+
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/",
                       eval = FALSE)
 ```
 
-
+#Setup
+##Libraries
 ```{r library, message = FALSE, eval = TRUE}
 library(tidyverse)
 library(tidytext)
@@ -26,7 +28,8 @@ library(ldatuning) # ideal number of topics in LDA
 
 ```
 
-```{r function reorder_within & co., echo = FALSE}
+##Functions for internal faceting
+```{r function reorder_within & co., echo = FALSE, eval = TRUE}
 
 # Function for ordering within facet:
 # https://github.com/dgrtwo/drlib/blob/master/R/reorder_within.R
@@ -47,18 +50,22 @@ scale_y_reordered <- function(..., sep = "___") {
 }
 ```
 
-# Setup
+##Loading data
 We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
-`d_AoD`, `d_assessment`, `d_course`, `d_description`, `d_manual`, `d_overview`, `d_transcript`, and a list `lists`.
-For `d_description` and `d_overview`, we keep only the most recent year.
+`d_course`, `d_transcript`, and a list `d_text` with the textual data for catalogues and manuals (for $overview, $description, $manuals we have (`Course ID`, `year`, `word_original`, `word`) ).
+
+For `d_text` we keep only the most recent year.
 ```{r import data, eval = TRUE}
+#load
 load("output/data_pillar_2.RDATA")
 
-# Only keep course descriptions and overviews from most recent year
+# keep most recent year
 d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
 
 # TF-IDF
+We will perform an initial (visual) exploratory analysis of our textual data using TF- IDF.
+
 ## Functions for Generating Barplots and Word Clouds
 The function `compute_tf_idf` computes the inverse term document frequency, we apply `compute_tf_idf` on descriptions, overviews and manuals. 
 ```{r compute_tf_idf, cache = TRUE}
@@ -76,7 +83,6 @@ compute_tf_idf <- function(data){
       document = `Course ID`,
       n = n
       )
-  
 }
 
 #
@@ -368,6 +374,7 @@ my_control_fast <- list(
 
 ##Ideal Number of Topics Package Test
 To decide the number of topics to discover, we run three different tests.
+###Function
 The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements 
 ```{r function my_FindTopicsNumber }
 my_FindTopicsNumber <- function(data_cast, n_topics){
@@ -378,7 +385,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   topics = n_topics,
   metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
-  control = my_control_fast,
+  control = my_control,
   mc.cores = 4L
   
   )
@@ -386,70 +393,36 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   
 }
 ```
-
+###Train
 ```{r package test on topics, cache = TRUE}
+#Start timer
 start.time <- Sys.time()
 
-result_topic_test <- map(.x = d_cast, .f = my_FindTopicsNumber, n_topics = seq(from = 5, to = 15, by = 5))
+#
+##apply my_FindTopicsNumber
+result_topic_test <- as_tibble(map(.x = d_cast, .f = my_FindTopicsNumber, n_topics = seq(from = 5, to = 100, by = 2)))
 
+
+#Stop timer
 end.time <- Sys.time()
-time.taken <- end.time - start.time
+print(end.time - start.time)
 
+#
+##Save results
 #save(result_topic_test,
-#     file = "Output/LDA_ntopics.RDATA")
-
-print(time.taken)
+#     file = "Output/LDA_ntopics.RDATA") #this file still contains old results.
 ```
+Previous separate experiments (from 20, to 40, by 5 topics) had the following time:
+* Overview:     22min 
+* Description:  11min 
+* Manuals:      5.5hrs  
 
-We run the test for overview, documeting its duration. 
-```{r overview topics, cache = TRUE}
-start.time <- Sys.time()
-
-result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 2))
-
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-
-save(result_overview ,
-     file = "Output/LDA_ntopics.RDATA")
-
-print(time.taken)
-```
-
-We run the test for manuals, documenting its duration.
-```{r manual topics, cache = TRUE}
-start.time <- Sys.time()
-
-result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 75, by = 5))
-
-end.time <- Sys.time()
-time.taken <- end.time - start.time
-
-save(result_manual, result_overview ,
-     file = "Output/LDA_ntopics.RDATA")
-
-print(time.taken)
-```
-
-from 20, to 40, by 5 topics takes
-22min for overview
-11min for description
-5.5hrs for manuals 
-
+###Graph 
 We examine the result of the experiment by plotting them on a graph.
 ```{r LDA number topics plot}
+#load("Output/LDA_ntopics.RDATA")
 
-load("Output/LDA_ntopics.RDATA")
-
-result_description %>%
-  FindTopicsNumber_plot
-
-result_overview %>%
-  FindTopicsNumber_plot
-
-result_manual %>%
-  FindTopicsNumber_plot
-
+result_topic_test %>% map(.f = ldatuning::FindTopicsNumber_plot) #order is: Overview, Manuals, Description
 ```
 From the results we see that the ideal number of topics is somewhere between 35 and 40.
 
@@ -468,8 +441,8 @@ my_LDA <- function(n_topics, corpus, control = my_control){
 
 ```
 
-We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models under `topic_model`
-###Functions for models (get gamma, get beta, extract_dtm)
+###Functions for models (extract_dtm, get_distributions, perplexity)
+The following functions are used as input in a map to compute and evaluate topic models. 
 ```{r getting gamma and beta, eval = TRUE}
 #extract dtm
 extract_dtm <- function(origin) d_cast[[origin]]
@@ -488,22 +461,28 @@ my_perplexity <- function(model, dtm){
 
 ```
 
-The following functions allow us to inspect the distributions and get kw
+The following functions allow us to inspect the results from our models(inspect distributions and get kw):
 ```{r}
-# FUNCTION
-# #get_top_match <- function(<INPUT GAMMA OR BETA DISTRIB>){<FUNCTION GENERALIZATION>}
-# 
-#  get_top_match <- function(d_distribution){
-#    
-#   #save user input as string
-#   name_selected <- deparse(substitute(d_distribution))
-#   beta_gamma_sym <- tolower(name_selected)
-#   
-#   #prepare variables for grouping
-#   grouping <- ifelse(name_selected == "Beta", "topic", "document")
-#   top_num <- ifelse(name_selected  == "Beta", 10, 5) #select how many terms or topics(respectively) to show
-#   
-#  }
+ # get_top_match <- function(d_distribution){
+ # 
+ #  #save user input as string
+ #  name_selected <- deparse(substitute(d_distribution)) #takes Gamma or Beta
+ #  beta_gamma_sym <- tolower(name_selected)             #transforms to "gamma" or "beta"
+ # 
+ #  #Compute Case (Beta or Gamma, respectively)
+ #  grouping         <- ifelse( name_selected == "Beta",  "topic", "document")
+ #  objects_to_group <- ifelse( name_selected == "Beta",  "term",  "topic"   )
+ #  top_num          <- ifelse( name_selected == "Beta",   10,      5       ) #select how many terms or topics(respectively) to show
+ # 
+ #  #
+ #  ## DATA
+ #  data.frame(d_distribution) %>%
+ #    group_by(!!sym(grouping)) %>%
+ #    top_n(top_num, !!sym(beta_gamma_sym)) %>%
+ #    select(!!sym(grouping), !!sym(objects_to_group)) %>%
+ #    group_by(!!sym(grouping)) %>%
+ #    summarise(top = list(!!sym(objects_to_group)))
+ # }
 
 
 get_top_terms_topic <- function(d_beta){
@@ -535,18 +514,22 @@ get_kw <- function(d_beta){
 
 ```
 ###Training Models
+We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models under `topic_model`, along with the DTM used to build the model, the corpus of origin (overview or manuals), the word and topic distributions results from that model, it's evaluation measures, and vectors of words and topics that allow us humans to get a feel of the model, along with some key words.
 ```{r LDA fit, cache = TRUE, eval = TRUE}
 
-test_topic_model <- tibble( #change to topic_model
-  #repeat each topic number twice
+test_topic_model <- tibble( #CHANGE NAME TO: topic_model
+  
+  #repeat each topic number twice (once for overview and once for manual)
   n_topic = rep(seq(from = 2, to = 4, by = 1), each = 2) # from = 5, to = 250, by = 5
   
   ) %>%
   mutate(Origin     = rep(c("overview", "manuals"), 3),         # should be 50
          `Topic ID` = paste(Origin, n_topic, sep = "_"),
+         
+         #Document Term Matrix
          DTM        = pmap(.l = list(Origin), .f = extract_dtm),
          
-         #fit model
+         #Fit Model
          Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control_fast),
          
          #Gamma distribution
@@ -571,19 +554,20 @@ test_topic_model <- tibble( #change to topic_model
          #top topics per course
          top_topic_course = map(Gamma, .f = get_top_topics_course),
          
-         #selecting keywords
+         #Select keywords
          kw = map(Beta, .f = get_kw)
          )
 
-#View(test_topic_model)
-test_topic_model
-```
-#DELETE LATERRRRRR- HELPER IMPORT
-```{r}
-load("Output/topic_model.RDATA")
+# Clean workspace
+
+# rm(extract_dtm, get_distributions, my_perplexity,
+#    get_top_terms_topic, get_top_topics_course, get_kw)
+
+# test_topic_model
 ```
 
 ##Plots - Model Evaluation
+To evaluate how many topics are optiomal, we graph the perplexity and log Likelihood of models against the number of topics.
 ```{r perplexity plots, eval = TRUE}
 #Function
 plot_evaluation <- function(origin){
@@ -611,30 +595,40 @@ plot_evaluation("manuals")
 ```
 
 ##Saving model_data:
-For internal use:
+We save our tibble with all the information.
 ```{r}
 # save(topic_model, file = "Output/topic_model.RDATA" ) #needs to be renamed to match what is currently test_topic_model
 ```
 
 #App
-####TEMPORTARY: stopwords for keywords
-This section is for presentations
-```{r stopwords for kw}
-#kw$overview
-not_include <- c("source", "primary", "type", "assess", "involve", "e.g", "discussion", "institute", "ha", "introduce",
-                 "role","address", "student", "examination","coordinator", "maastrichtuniversity.nl", NA, "identify", "manner", "mechanism", "concept", "hour", "teach",  "depth","question", "specific", "busy","academic", "semester", "week", "test", "session", "team", "communicate", "theory", "text", "library", "article", "examine", "current", "routledge", "temporary", "flow", "level", "study")
+For our recommender system, we pass the distributions, number of topics, origin, and key words to the app.
+##Distributions and Key words
+The function `clean_kw` removes stopwords from our key words.
+```{r function clean key words}
+clean_kw <- function(kw_list){
 
-remove_words <- function(x){
-  setdiff(x, not_include)
+  #stopwords
+  kw_stopwords <- c("source", "primary", "type", "assess", "involve", "e.g", "discussion", "institute", "ha", "introduce",
+                 "role","address", "student", "examination","coordinator", "maastrichtuniversity.nl", "identify", "manner", "mechanism", "concept", "hour",
+                 "teach",  "depth","question", "specific", "busy","academic", "semester", "week", "test", "session", "team", "communicate", "theory", "text",
+                 "library", "article", "examine", "current", "routledge", "temporary", "flow", "level", "study", "task")
+  
+  #remove stopwords
+  kw <- setdiff(kw_list, kw_stopwords)
+  #return
+  return(kw[!is.na(kw)])
+  
 }
 
-kw1 <- lapply(
-  kw,
-  remove_words
-)
-
 ```
-##Convenience vectors for APP
+On our `topic_model` tibble we filter only information relevant for the app, and apply `clean_kw` on our `kw` column
+```{r crop and clean TM for App}
+app_topic_model <- test_topic_model %>% select(`Topic ID`, n_topic, Origin, Gamma, Beta, kw) %>%
+  mutate(kw = map(kw, .f = clean_kw))
+```
+
+##Convenience Vectors
+For the app we also need to have a list of all courses and an example of a prospective semester
 ```{r for convenience}
 # set seed
 set.seed(1)
@@ -662,11 +656,12 @@ course_following_semester <- sample(
   size    = 60,
   replace = FALSE
   ) %>% sort
+
 ```
 ## Saving files for APP
 ```{r app files}
-save(distribution, kw, course_all, course_following_semester,
-     file = "App/Recommender System/data_topic_models.RDATA")
+# save(app_topic_model, course_all, course_following_semester,
+#      file = "App/Recommender System/data_topic_models.RDATA")
 ```
 # Visualization
 ### Functions 
