@@ -789,7 +789,7 @@ d_transcript_informative <- d_transcript_augmented %>%
     ! Letters %in% c("SKI", "PRO", "SAS", "SAH", "SAC")
     ) %>%
   
-  select(`Student ID`, `Course ID`, time, grade_ceil)
+  select(`Student ID`, `Course ID`, time, Grade, grade_ceil)
 ```
 
 # Save Data
