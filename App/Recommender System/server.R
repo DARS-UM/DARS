@@ -6,7 +6,6 @@ library(hunspell)
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
-load("tmp_data.RDATA") #delete later
 
 
 
@@ -380,18 +379,19 @@ function(input, output, session) {
         n  = 3,
         wt = word_contribution_to_document
         ) %>%
-      arrange(word_contribution_to_document) %>%
       summarize(
-        key_words = paste(term, collapse = ", ")
+        key_words = paste(term, collapse = ", "),
+        doc_score = sum(word_contribution_to_document)
         ) %>%
       ungroup %>%
-      
+
       # Editing
       left_join(
         select(d_course, `Course ID`, `Course Title`),
         by = c("document" = "Course ID")
-        ) %>%
-      
+      ) %>%
+      arrange(desc(doc_score)) %>%
+
       transmute(
         recommendation = paste(
           "Course Recommendation", "<em>","<b>",
@@ -402,7 +402,7 @@ function(input, output, session) {
       
       pull %>%
       
-      sort %>% 
+      #sort %>% 
       
       paste0(
         collapse = "<br/><br/>"
