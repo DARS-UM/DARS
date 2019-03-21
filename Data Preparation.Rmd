@@ -798,9 +798,5 @@ save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO, file = "Output/d
 
 save(d_transcript_augmented, d_transcript_informative, file = "Output/data_pillar_1.RDATA")
 
-save(d_text, d_transcript, file = "Output/data_pillar_2.RDATA")
-```
-
-```{r}
 save(d_course, d_text, d_transcript, file = "Output/data_pillar_2.RDATA")
 ```

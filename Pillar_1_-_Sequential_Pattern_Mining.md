@@ -770,7 +770,7 @@ edit_rules <- function(rules){
 ```
 
 ``` r
-rules_clean <- rules_clean %>% mutate(rules_rules = rules %>% map(edit_rules))
+rules_clean <- rules_clean %>% mutate(rules_rules = rules %>% map(edit_rules)) %>% select(-rules)
 ```
 
 ``` r

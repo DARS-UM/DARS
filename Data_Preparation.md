@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-03-19
+2019-03-21
 
 -   [Import Data](#import-data)
     -   [List of AoD's and Assessments](#list-of-aods-and-assessments)
@@ -108,8 +108,6 @@ d_assessment <- gsheet2tbl('https://docs.google.com/spreadsheets/d/1soRA1u5zf9oL
   
   print
 ```
-
-    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
     ## # A tibble: 482 x 2
     ##    `Course ID` Assessment
@@ -1244,7 +1242,7 @@ d_transcript_informative <- d_transcript_augmented %>%
     ! Letters %in% c("SKI", "PRO", "SAS", "SAH", "SAC")
     ) %>%
   
-  select(`Student ID`, `Course ID`, time, grade_ceil)
+  select(`Student ID`, `Course ID`, time, Grade, grade_ceil)
 ```
 
 Save Data
@@ -1255,9 +1253,5 @@ save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO, file = "Output/d
 
 save(d_transcript_augmented, d_transcript_informative, file = "Output/data_pillar_1.RDATA")
 
-save(d_text, d_transcript, file = "Output/data_pillar_2.RDATA")
-```
-
-``` r
 save(d_course, d_text, d_transcript, file = "Output/data_pillar_2.RDATA")
 ```
