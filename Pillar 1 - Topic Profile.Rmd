@@ -1,0 +1,50 @@
+---
+title: "Pillar 1 - Student Topic Profile"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 1/")
+
+library(tidyverse)
+library(magrittr)
+```
+
+```{r}
+load("App/Recommender System/topic_model_gb.RDATA")
+load("Output/data_pillar_1.RDATA")
+
+topic_model_gb
+```
+
+```{r}
+gamma <- topic_model_gb$g_overview[[10]]
+```
+
+```{r}
+gamma_spread <- gamma %>% spread(topic, gamma)
+```
+
+```{r}
+d_transcript_informative %>% 
+  
+  left_join(gamma_spread, by = c("Course ID" = "document")) %>%
+  filter(!is.na(`Topic 1`)) %>%
+  
+  mutate_at(vars(matches("Topic")), .funs = funs(Grade/10 * .)) %>% # weigh by grade
+  
+  group_by(`Student ID`, time) %>%
+  summarize_at(vars(matches("Topic")), sum) %>% 
+  
+  group_by(`Student ID`) %>%
+  arrange(time) %>% 
+  mutate_at(vars(matches("Topic")), cumsum) %>% # topic profile of student at time t
+  
+  arrange(`Student ID`)
+```

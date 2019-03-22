@@ -19,8 +19,6 @@ library(magrittr)
 
 TODO: simplify support into one df: var1 = course id, var2 = type, var3 = rate
 
-AR with not taken on lhs is not useful.
-
 # Set up
 We load the environment `data_pillar1` which we saved at the end of the data preparation. It contains the data sets `d_course` and `d_transcript`.
 ```{r loading data}
@@ -310,9 +308,11 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
   mutate(
     lhs = list(course_past, course_not_yet) %>% pmap(union),
     rhs = course_current
-    ) %>%
-  
-  select(lhs, rhs) # for memory requirement
+    )
+```
+
+```{r}
+save(d_transcript_cum, file = "output/d_transcript_cum.RDATA")
 ```
 
 ```{r, include = FALSE}
