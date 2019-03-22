@@ -93,7 +93,8 @@ graph_per_origin <-  function(origin){
          x = "Number of Topics",
          y = NULL) +
     theme(plot.title = element_text(size = 20),
-          axis.title = element_text(size = 20)
+          axis.title = element_text(size = 20),
+          legend.position = "none"
           )
 }
 
