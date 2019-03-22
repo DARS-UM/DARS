@@ -530,7 +530,7 @@ test_topic_model <- tibble( #CHANGE NAME TO: topic_model
          DTM        = pmap(.l = list(Origin), .f = extract_dtm),
          
          #Fit Model
-         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control_fast),
+         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control_fast), #my_control
          
          #Gamma distribution
          Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
@@ -658,10 +658,17 @@ course_following_semester <- sample(
   ) %>% sort
 
 ```
+
+```{r adding convenience vectors}
+app_topic_model <- app_topic_model %>%
+  mutate(`All Courses`     = course_all,
+         `Sample semester` = course_following_semester)
+
+#rm(course_all, course_following_semester)
+```
 ## Saving files for APP
 ```{r app files}
-# save(app_topic_model, course_all, course_following_semester,
-#      file = "App/Recommender System/data_topic_models.RDATA")
+# save(app_topic_model, file = "App/Recommender System/data_topic_models.RDATA")
 ```
 # Visualization
 ### Functions 
@@ -720,7 +727,13 @@ b <- names(distribution)[2]
 test[[b]] <- lapply(distribution[[b]],
                     prepare_data_LDA_gamma)
 
-rm(a,b #,test)
+test <- test_topic_model %>%
+  mutate(preparedBeta = pmap(list(Beta), .f = prepare_data_LDA_beta),
+         preparededGamma = pmap(list(Gamma), .f = prepare_data_LDA_gamma)
+         )
+test[["preparedBeta"]]
+rm(a,b #,test
+   )
 ```
 This part is not adapted
 ```{r LDA visualize, eval = F}
