@@ -671,6 +671,8 @@ rules_clean <- rules_clean %>% mutate(rules_rules = rules %>% map(edit_rules)) %
 
 ```{r save rules_clean}
 save(rules_clean, file = "App/rules_clean.RDATA")
+save(rules_clean, file = "App/Rules/rules_clean.RDATA")
+save(rules_clean, file = "App/Recommender System//rules_clean.RDATA")
 ```
 
 ```{r save data_general}
