@@ -35,7 +35,7 @@ function(input, output, session) {
           inputId  = "course_chosen",
           label    = "Tentative Courses for following period",
           choices  = course_all,
-          selected = course_all,
+          #selected = course_all,
           inline   = TRUE
         ))
   })
