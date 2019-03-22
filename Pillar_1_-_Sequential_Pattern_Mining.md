@@ -1,7 +1,7 @@
 Pillar 1 - Sequential Pattern Mining
 ================
 DARS
-2019-03-21
+2019-03-22
 
 -   [Set up](#set-up)
 -   [Descriptive statistics](#descriptive-statistics)
@@ -87,7 +87,11 @@ statistics <- list()
 
 # Student level
 statistics$student <- provide_statistics(`Student ID`)
+```
 
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
+
+``` r
 # Course level
 statistics$course  <- provide_statistics(`Course ID`)
 
@@ -775,6 +779,8 @@ rules_clean <- rules_clean %>% mutate(rules_rules = rules %>% map(edit_rules)) %
 
 ``` r
 save(rules_clean, file = "App/rules_clean.RDATA")
+save(rules_clean, file = "App/Rules/rules_clean.RDATA")
+save(rules_clean, file = "App/Recommender System//rules_clean.RDATA")
 ```
 
 ``` r
