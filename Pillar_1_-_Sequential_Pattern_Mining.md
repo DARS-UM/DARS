@@ -389,9 +389,11 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
   mutate(
     lhs = list(course_past, course_not_yet) %>% pmap(union),
     rhs = course_current
-    ) %>%
-  
-  select(lhs, rhs) # for memory requirement
+    )
+```
+
+``` r
+save(d_transcript_cum, file = "output/d_transcript_cum.RDATA")
 ```
 
 Mining Rules
