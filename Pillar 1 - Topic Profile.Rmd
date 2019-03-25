@@ -24,17 +24,13 @@ topic_model_gb
 ```
 
 ```{r}
-gamma <- topic_model_gb$g_overview[[10]]
+gamma <- topic_model_gb$g_overview[[10]] %>% spread(topic, gamma)
 ```
 
 ```{r}
-gamma_spread <- gamma %>% spread(topic, gamma)
-```
-
-```{r}
-d_transcript_informative %>% 
+student_TP <- d_transcript_informative %>% 
   
-  left_join(gamma_spread, by = c("Course ID" = "document")) %>%
+  left_join(gamma, by = c("Course ID" = "document")) %>%
   filter(!is.na(`Topic 1`)) %>%
   
   mutate_at(vars(matches("Topic")), .funs = funs(Grade/10 * .)) %>% # weigh by grade
@@ -43,8 +39,14 @@ d_transcript_informative %>%
   summarize_at(vars(matches("Topic")), sum) %>% 
   
   group_by(`Student ID`) %>%
-  arrange(time) %>% 
+  arrange(time) %>%
+  
+  mutate_at(vars(matches("Topic")), lag) %>% # topic profile of student at time t
+  mutate_at(vars(matches("Topic")), replace_na, replace = 0) %>% # topic profile of student at time t
   mutate_at(vars(matches("Topic")), cumsum) %>% # topic profile of student at time t
   
+  right_join(d_transcript_informative, by = c("Student ID", "time")) %>%
+  
+  select(`Student ID`, `Course ID`, time, everything()) %>%
   arrange(`Student ID`)
 ```
