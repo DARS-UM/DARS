@@ -19,6 +19,7 @@ library(magrittr)
 ```{r}
 load("App/Recommender System/topic_model_gb.RDATA")
 load("Output/data_pillar_1.RDATA")
+load("Output/d_transcript_cum.RDATA")
 
 topic_model_gb
 ```
@@ -41,12 +42,14 @@ student_TP <- d_transcript_informative %>%
   group_by(`Student ID`) %>%
   arrange(time) %>%
   
-  mutate_at(vars(matches("Topic")), lag) %>% # topic profile of student at time t
-  mutate_at(vars(matches("Topic")), replace_na, replace = 0) %>% # topic profile of student at time t
-  mutate_at(vars(matches("Topic")), cumsum) %>% # topic profile of student at time t
-  
-  right_join(d_transcript_informative, by = c("Student ID", "time")) %>%
-  
-  select(`Student ID`, `Course ID`, time, everything()) %>%
-  arrange(`Student ID`)
+  mutate_at(vars(matches("Topic")), lag) %>%
+  mutate_at(vars(matches("Topic")), replace_na, replace = 0) %>%
+  mutate_at(vars(matches("Topic")), cumsum) # topic profile at beginning of period
 ```
+
+```{r}
+d_transcript_cum %>%
+  
+  right_join(student_TP, by = c("sequenceID" = "Student ID", "eventID" = "time"))
+```
+
