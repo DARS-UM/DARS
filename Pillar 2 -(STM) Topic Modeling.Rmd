@@ -64,10 +64,11 @@ We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
 For `d_text` we keep only the most recent year.
 ```{r import data, eval = TRUE}
 #load
-load("output/data_pillar_2.RDATA")
+#load("output/data_pillar_2.RDATA")
+load("Output/d_text.RDATA")
 
 # keep most recent year
-d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
+#d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
 
 # TF-IDF
@@ -656,37 +657,36 @@ plot_eval("overview")
 
 #New Documents
 ##Align vocabulary
-```{r}
-mod.out #is model
+```{r align vocab}
+#single case: Fasos topics
+d_text1 <- d_text #backup current code
 
-#now we process the remaining documents
-temp<-textProcessor(documents=gadarian$open.ended.response[101:nrow(gadarian)],
-                    metadata=gadarian[101:nrow(gadarian),])
+fasos_docs <- d_text$catalogues%>%filter(department == "European_studies") %>%
+  select(-department)
 
-newdocs <- alignCorpus(new=temp, old.vocab=mod.out$vocab)
-#we get some helpful feedback on what has been retained and lost in the print out.
-#and now we can fit our new held-out documents
-
-fitNewDocuments(model=mod.out, documents=newdocs$documents, newData=newdocs$meta,
-                origData=out$meta, prevalence=~treatment + s(pid_rep),
-                prevalencePrior="Covariate")
+fasos_cast <- my_cast_dtm(fasos_docs)
 
 ```
 ##Fit new docs
 ```{r}
-#An example using the Gadarian data.  From Raw text to fitted model.
-#(for a case where documents are all not processed at once see the help
-# file for alignCorpus)
-temp<-textProcessor(documents=gadarian$open.ended.response,metadata=gadarian)
-out <- prepDocuments(temp$documents, temp$vocab, temp$meta)
-set.seed(02138)
-#Maximum EM its is set low to make this run fast, run models to convergence!
-mod.out <- stm(out$documents, out$vocab, 3, prevalence=~treatment + s(pid_rep), 
-              data=out$meta, max.em.its=5)
-fitNewDocuments(model=mod.out, documents=out$documents[1:5], newData=out$meta[1:5,],
-               origData=out$meta, prevalence=~treatment + s(pid_rep),
-               prevalencePrior="Covariate")
+model <- stm_model %>% filter(`Topic ID`=="overview_10")%>%
+  pull(Model)
+
+model <- model[[1]]
+
+
+# fitting:
+out <- asSTMCorpus(fasos_cast)
+
+newdocs <- alignCorpus(new=out, old.vocab = model$vocab)
+
+
+fasos_theta <- fitNewDocuments(model = model, documents=newdocs$documents) #returns a course by topic matrix
+
+plot.STM(model, type ="summary")
+
+fasos_theta$theta #nice kind of makes sense
+
 
 ```
-
 
