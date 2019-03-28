@@ -5,6 +5,56 @@ date: "March 12, 2019"
 output: pdf_document
 ---
 
+# Extracting description (UCM only)
+
+Since the overviews contain a lot of information that does not interest us, we extract the description section from the overviews. The description section contains a brief description (200-500 words) of the content of the course. To accomplish this, for each overview, we need to identify the line where the description starts and the line where it ends. The description section is always preceeded by a header saying *Description* or *Course Description* (`start_descrip`), making it relatively easy to find the starting line of the decription section with `grep`. The description section is usually followed by the literature section which starts with header saying *Literature*, *Recommended Literature* or similar (see `end_descrip`). Using `grep` together with `end_descrip`, we can again identify the ending line of the description section of almost all overviews. A handful overviews do not contain a *Literature* section. For these, the section *Instructional Format* marks the end of the description section.
+
+
+```{r description set up}
+start_descrip  <- c("^Description", "^Course Description") %>% collapse_or
+end_descrip    <- c(
+  "^Recommended Literature", "^ ?Required Litera", "^ ?Literature$", "Literature \\(all",
+  "^Instructional format$"
+  ) %>% collapse_or
+```
+
+```{r description helper function}
+is_start_descrip   <- function(string) string %>% str_detect(pattern = start_descrip )
+is_end_descrip     <- function(string) string %>% str_detect(pattern = end_descrip   )
+```
+
+```{r extract_description}
+extract_description <- function(overview){
+  
+  overview %>%
+    
+    split %>% tibble(line = .) %>%
+    
+    mutate(
+      is_start_descrip = line %>% is_start_descrip,
+      is_end_descrip   = line %>% is_end_descrip # Having multiple ends (e.g. "literature" and "instructional format") is ok because we only use the first (cumany)
+      ) %>%
+  
+    # filter the description section
+    mutate(
+      is_after_start_descrip = cumany( is_start_descrip),
+      is_before_end_descrip  = cumall(!is_end_descrip  ),
+      is_descrip             = is_after_start_descrip & is_before_end_descrip
+      ) %>%
+    
+    filter(is_descrip, !is_start_descrip, !is_end_descrip) %>%
+    
+    summarise(description = str_c(line, collapse = " ")) %>%
+    
+    pull
+  
+}
+```
+
+```{r description}
+d_text$description <- d_text$overview %>% mutate(text = text %>% map_chr(extract_description))
+```
+
 # Estimating concentrations
 For our analysis we would also like to know what the concentration of each student is. However, this is not given, so we will have to estimate. We know that the maximimum amount of courses a student can take outside of their concentration is 2. Therefore, if any student has more than two courses in one concetration, this should count towards the concentration. We expect students who addhere strictly to single concentrations, and then students who have a mixed concentration. However, it is possible that a person has not yet taken sufficient courses to make a call on their concentration, we will mark these people as "Undecided". Furthermore, it is possible that a student has taken too many courses out of all the concentrations, we will label these "Confused" and for all other cases we need to check the specifics, therefore we will label them "oops" 
 
