@@ -630,7 +630,7 @@ rm(findK, k_topics)
 ```
 ###From stm_eval
 ```{r manual eval plots}
-
+#Function
 plot_eval <- function(origin){
 stm_eval_model %>%
   filter(Origin == origin) %>%
@@ -649,6 +649,7 @@ stm_eval_model %>%
        title = "Model diagnostics by number of topics")
 }
 
+#Create plots
 plot_eval("manuals")
 plot_eval("overview")
 ```
