@@ -1,0 +1,637 @@
+---
+title: "Pillar 2 - (STM) Topic Modeling"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/",
+                      eval = FALSE)
+```
+
+#Setup
+##Libraries
+```{r library, message = FALSE, eval = TRUE}
+library(tidyverse)
+library(tidytext)
+
+#Topic Models
+library(stm)
+library(topicmodels)
+library(quanteda) #used for DTM implementation called dfm
+
+
+library(ggwordcloud) # Word Clouds
+
+
+library(lemon)
+library(ggthemes)
+library(rlang) #quote
+library(ldatuning) # ideal number of topics in LDA
+
+```
+
+##Functions for internal faceting
+```{r function reorder_within & co., echo = FALSE, eval = TRUE}
+
+# Function for ordering within facet:
+# https://github.com/dgrtwo/drlib/blob/master/R/reorder_within.R
+
+reorder_within <- function(x, by, within, fun = mean, sep = "___", ...) {
+  new_x <- paste(x, within, sep = sep)
+  stats::reorder(new_x, by, FUN = fun)
+}
+
+scale_x_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_x_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+
+scale_y_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_y_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+```
+
+##Loading data
+We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
+`d_course`, `d_transcript`, and a list `d_text` with the textual data for catalogues and manuals (for $overview, $description, $manuals we have (`Course ID`, `year`, `word_original`, `word`) ).
+
+For `d_text` we keep only the most recent year.
+```{r import data, eval = TRUE}
+#load
+load("output/data_pillar_2.RDATA")
+
+# keep most recent year
+d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
+```
+
+# TF-IDF
+We will perform an initial (visual) exploratory analysis of our textual data using TF- IDF.
+
+## Functions for Generating Barplots and Word Clouds
+The function `compute_tf_idf` computes the inverse term document frequency, we apply `compute_tf_idf` on descriptions, overviews and manuals. 
+```{r compute_tf_idf, cache = TRUE}
+#
+##Function
+compute_tf_idf <- function(data){
+  
+  data %>%
+    count(
+      `Course ID`,
+      word
+      ) %>%
+    bind_tf_idf(
+      term = word, 
+      document = `Course ID`,
+      n = n
+      )
+}
+
+#
+##Application
+tf_idf <- map(d_text, .f = compute_tf_idf)
+
+#
+##Clean workspace
+rm(compute_tf_idf)
+```
+
+The function `plot_tf_idf` plots a bar-graph of the most important words for each level of granularity and  their corresponding word clouds. 
+```{r plot_tf_idf}
+plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
+  
+  
+  #
+  # Barplot
+  g <- data %>%
+    ggplot(
+      aes(
+        x = reorder_within(word, tf_idf, facet), 
+        y = tf_idf
+        )
+      ) +
+    geom_col(
+      show.legend = FALSE
+      ) +
+    labs(
+      x = NULL,
+      y = "tf-idf"
+      ) +
+    scale_x_reordered() +
+    facet_wrap(
+      facets = ~ facet, 
+      scales = "free",
+      ncol = n_col
+      ) +
+    coord_flip()
+  
+  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Output/Plots/tf_idf", width = 16, height = 8)
+  
+  
+  #
+  # Word Cloud
+  g <- data %>%
+    group_by(
+      facet
+      ) %>%
+    mutate(
+      freq = tf_idf / sum(tf_idf)
+      ) %>% # normalization within facet
+    ggplot(
+      aes(
+        size = freq ^ 0.7, 
+        label = word, 
+        color = freq ^ 0.7
+        )
+      ) +
+    geom_text_wordcloud_area(
+      area_corr_power = 1,
+      eccentricity    = 1,
+      rm_outside      = T
+      ) +
+    scale_radius(
+      range = c(2, 10),
+      limits = c(0, NA)
+      ) +
+    scale_color_gradient(
+      low = "red", 
+      high = "blue"
+      ) +
+    facet_wrap(
+      facet = ~ facet,
+      ncol = n_col
+      ) + 
+    theme(
+      strip.text.x     = element_text(),
+      panel.background = element_rect(fill = "white"),
+      plot.title       = element_text(hjust = 0.5)
+    )
+  
+  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Output/Plots/tf_idf", width = 16, height = 8)
+
+}
+```
+
+## Course Level
+The function `prepare_tf_idf_course` selects 25 random courses, the top ten words with highest tf_idf, and finally renames a facet to 'Course ID').
+We apply the function to `id_plot` and pipe it to produce graphs.
+```{r tf-idf course, cache = TRUE}
+prepare_tf_idf_course <- function(data){
+  
+  data %>%
+    
+    # Selection 25 courses randomly
+    filter(
+      `Course ID` %in% sample(
+        x = unique(.$`Course ID`),
+        size = 25, 
+        replace = FALSE
+        )
+      ) %>%
+    
+    # Select top 10 words per course 
+    group_by(
+      `Course ID`
+      ) %>%
+    filter(
+      n >= 2
+      ) %>%
+    top_n(
+      n = 10,
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = `Course ID`
+      )
+
+  }
+
+
+set.seed(123)
+tf_idf$overview %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(id_plot = "Course_overview")
+
+set.seed(123)
+tf_idf$manual %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(id_plot = "Course_manual")
+
+rm(prepare_tf_idf_course)
+```
+
+## Cluster Level
+```{r tf-idf cluster, cache = TRUE}
+prepare_tf_idf_cluster <- function(data){
+  
+  data %>%
+    
+    # Include the variable Cluster
+    left_join(
+      select(d_course, `Course ID`, Cluster),
+      by = "Course ID"
+      ) %>%
+    filter(
+      !is.na(Cluster)
+      ) %>%
+    
+    # Select top 10 words per cluster
+    group_by(
+      Cluster, 
+      word
+      ) %>%
+    summarise(
+      tf_idf = sum(tf_idf),
+      n = sum(n)
+      ) %>%
+    filter(
+      n >= 10
+      ) %>%
+    top_n(
+      n = 10, 
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = Cluster
+      )
+  
+}
+
+tf_idf$overview %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(id_plot = "Cluster_overview")
+
+tf_idf$manual %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(id_plot = "Cluster_manual")
+
+rm(prepare_tf_idf_cluster)
+```
+
+## Concentration Level
+```{r tf-idf concentration, cache = TRUE}
+prepare_tf_idf_concentration <- function(data){
+  
+  data %>%
+    
+    # Include the variable Concentration
+    left_join(
+      select(d_course, `Course ID`, Concentration, `Concentration (additional)`),
+      by = "Course ID"
+      ) %>%
+    filter(
+      !is.na(Concentration)
+      ) %>%
+    gather(
+      key = X,
+      value = Concentration,
+      Concentration, `Concentration (additional)`,
+      na.rm = TRUE
+      ) %>%
+    
+    # Select top 10 words per cluster
+    group_by(
+      Concentration, 
+      word
+      ) %>%
+    summarise(
+      tf_idf = sum(tf_idf),
+      n = sum(n)
+      ) %>%
+    filter(
+      n >= 10
+      ) %>%
+    top_n(
+      n = 10,
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = Concentration
+      )
+  
+} 
+
+tf_idf$overview %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(id_plot = "Concentration_overview")
+
+tf_idf$manual %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(id_plot = "Concentration_manual")
+
+rm(prepare_tf_idf_concentration, plot_tf_idf)
+```
+
+# STM
+##Setup
+###Cast DTM
+The function `my_cast_dtm` casts our dataframes into a DTM (dfm from package quanteda)
+```{r my_cast_dtm, eval = TRUE}
+my_cast_dtm <- function(data) data %>%
+  count(`Course ID`, word) %>%
+  cast_dfm(`Course ID`, word, n)
+
+d_cast <- d_text %>% map(my_cast_dtm)
+
+rm(my_cast_dtm)
+```
+
+###STM Corpus
+We convert our DTMs into STM corpus to access to full functionality in STM package.
+```{r as STM corpus, eval = TRUE}
+stm_corpus <- d_cast %>% map(asSTMCorpus)
+```
+
+##Fitting STM
+We will to train several models to have some flexibility in the number of topics we select. For this purpose we want to create two tibbles. One that trains on the entire data (for use), and one that we divide on training set and test set. 
+###Functions
+Several functions are needed to work with tibble and tidyverse functionality:
+####My_stm Function
+The function `my_LDA` fits an LDA model on the DTM using the previous controls.
+```{r my_STM, eval= TRUE}
+my_stm <- function(n_topics, corpus){
+
+  STM_model <- stm(corpus$documents, corpus$vocab, K = n_topics, init.type = "Spectral")
+}
+```
+####My_stm_eval Function
+This function applied stm but with heldout vocab and documents. 
+```{r}
+my_stm_eval <- function(heldout, n_topic){
+  stm::stm(heldout$documents, heldout$vocab, n_topic, init.type = "Spectral")
+}
+```
+
+
+####Extraction Functions
+We will be working with many lists of lists. The following functions help us extract information from lower levels of the list (e.g. access element in second list).
+```{r getting gamma and beta, eval = TRUE}
+#
+##From external Lists:
+
+#Extract DTM
+extract_dtm <- function(origin) d_cast[[origin]]
+#Extract CORPUS
+extract_corpus <- function(origin) stm_corpus[[origin]]
+
+
+#
+## From STM_corpus class
+
+#Extract documents
+extract_documents <- function(corpus) corpus$documents
+#Extract vocab
+extract_vocab     <- function(corpus) corpus$vocab
+#Extract data
+extract_data     <- function(corpus) corpus$data
+
+
+#
+##From Partition
+
+#Extract heldout docs
+extract_held_doc <- function(heldout) heldout$documents#[[1]]
+#Extract herlout vocab
+extract_held_vocab <- function(heldout) heldout$vocab#[[1]]
+#Extract missing
+extract_helout_missing <- function(heldout) heldout$missing#[[1]]
+
+#
+## MODEL HELDOUT
+my_model <- function(heldout){
+  
+  docs <- heldout$documents[[1]]
+  voc  <- heldout$vocab
+  k    <- n_topics 
+  
+  Model <- stm(docs, voc, 5, init.type = "Spectral")
+  
+  return(Model)
+}
+
+#
+##From Model
+#tidy gamma
+my_tidy_gamma <- function(Gamma, DTM){
+  tidy(Gamma, matrix = "gamma", document_names = rownames(DTM))}
+
+#extract 
+
+#extract Distributions (Gamma/Beta)
+get_distributions <- function(model, distrib_str){ #input gamma or beta
+  tidy(model, matrix = distrib_str)        %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(!!sym(distrib_str)))}
+
+```
+####Inspection functions
+The following functions allow us to inspect the results from our models(inspect distributions and get kw):
+```{r}
+get_top_terms_topic <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(10, beta) %>%
+    select(topic, term) %>%
+    group_by(topic) %>%
+    summarise(top_words = list(term))
+  
+}
+
+get_top_topics_course <- function(d_gamma){
+  data.frame(d_gamma) %>%
+    group_by(document) %>%
+    top_n(5, gamma) %>%
+    select(document, topic) %>%
+    summarise(top_topic = list(topic))
+}
+
+get_kw <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(3, beta) %>%
+    ungroup()%>%
+    pull(term)%>%
+    unique()
+}
+```
+###Model Tibbles
+####For use:
+```{r models in tibble}
+topic_numbers <- seq(from = 5, to = 10, by = 5) # seq(from = 5, to = 20, by = 5) #seq(from = 5, to = 150, by = 5)
+
+
+stm_model <- tibble(
+  #repeat each topic number twice (once for overview and once for manual)
+  n_topic = rep(topic_numbers, each = 2) ) %>%
+  
+  mutate(
+    #Identification information
+    Origin     = rep(c("overview", "manuals"), length(topic_numbers)),         
+    `Topic ID` = paste(Origin, n_topic, sep = "_"),
+    
+    #DTM
+    DTM       = pmap(.l = list(Origin), .f = extract_dtm),
+    doc_names = map(DTM, rownames),
+    
+    #STM Corpus
+    Corpus           = pmap(.l = list(Origin), .f = extract_corpus), 
+    #Documents- STM corpus
+    Documents_stm     = pmap(.l=list(Corpus),    .f = extract_documents),
+    #Vocab- STM corpus
+    Vocab_stm         = pmap(.l=list(Corpus),    .f = extract_vocab),
+    #Data- STM corpus
+    Data_stm          = pmap(.l=list(Corpus),    .f = extract_data),
+    
+    #Fit Model 
+    Model  = pmap(.l = list(n_topic, Corpus), .f = my_stm),
+    
+    #Evaluation
+    Exclusivity        = map(Model, exclusivity),
+    semantic_coherence = pmap(.l = list(Model,DTM), semanticCoherence, M = 10), #M = num. of top words per topic
+    #Alretnative input to semantic_coherence = pmap(.l = list(Model, Documents_stm), semanticCoherence, M = 10),
+    
+    #
+    ##Inspection
+    
+    #Beta distribution
+    Beta = pmap(.l = list(Model),  .f = tidy),
+    #Gamma distribution
+    Gamma = pmap(.l = list(Model, DTM), .f = my_tidy_gamma), #fix this
+    
+    #top words per topic
+    top_terms_topic = map(Beta, .f = get_top_terms_topic),
+    
+    #top topics per course
+    top_topic_course = map(Gamma, .f = get_top_topics_course), 
+    
+    #Select keywords
+    kw = map(Beta, .f = get_kw)
+    
+    #END MUTATE PARENTHESIS
+         )
+
+```
+
+
+```{r} 
+#testing 
+test_model <- stm_eval_model[1, ]
+
+my_stm_eval(list(test_model$documents, test_model$vocab, test_model$n_topic))
+
+my_stm_eval(documents = test_model$documents, vocab = test_model$vocab, n_topic = test_model$n_topic)
+
+test <- list(test_model$documents, test_model$vocab, test_model$n_topic)
+test %>% my_stm_eval
+
+test <- list(stm_eval_model$documents, stm_eval_model$vocab, stm_eval_model$n_topic)
+
+test %>% my_stm_eval
+
+
+test <- stm_eval_model %>% mutate(test = list(documents, vocab, n_topic) %>% pmap(list))
+
+stm_eval_model %>% mutate(test = test %>% map(my_stm_eval))
+test1<- test$test[[1]]
+
+```
+
+
+####For evaluation
+```{r models in tibble}
+topic_numbers <-  seq(from = 5, to = 10, by = 5) #seq(from = 5, to = 150, by = 5)
+
+#
+##STM EVALUATION TIBBLE
+stm_eval_model <- tibble(
+  
+  #repeat each topic number twice (once for overview and once for manual)
+  n_topic = rep(topic_numbers, each = 2)
+  
+  ) %>%
+  mutate(
+    #Identification information
+    Origin     = rep(c("overview", "manuals"), length(topic_numbers)),         
+    `Topic ID` = paste(Origin, n_topic, sep = "_"),
+    
+    #DTM
+    DTM       = pmap(.l = list(Origin),  .f = extract_dtm),
+    Heldout   = pmap(.l = list(DTM),     .f = make.heldout, proportion = 0.5),
+
+    #Fitting Model
+    Model     = pmap(.l = list(Heldout, n_topic), .f = my_stm_eval),
+    
+    #Evaluation measures
+    Exclusivity        = map(Model, exclusivity),
+    
+    semantic_coherence = pmap(.l = list(Model, Heldout), 
+                              function(model,  heldout) semanticCoherence(model, heldout$documents)),
+    
+    eval_heldout       = pmap(.l = list(Model, Heldout), 
+                              function(model,  heldout) eval.heldout(model, heldout$missing)),
+    
+    residual           = pmap(.l = list(Model, Heldout), 
+                              function(model,  heldout) checkResiduals(model, heldout$documents, tol = 1/100)),
+    
+    bound              = pmap_dbl(.l = list(Model), 
+                                  function(model) max(model$convergence$bound)),
+    
+    lfact              = map_dbl(Model,       
+                                 function(model) lfactorial(model$settings$dim$K)),
+    
+    lbound             = bound + lfact,
+    iterations         = map_dbl(Model,       
+                                 function(model) length(model$convergence$bound))
+    ) 
+```
+
+##Finding Number of Topics
+We want to estimate the number of topics that exist in the data, to select a model for them.
+
+###Using search K
+`stm::searchK` helps in the search.
+The function `findK` is used to vectorise searchK so we can apply it to the different elements of our corpus list (overview, manuals, description) in one go.
+```{r findK}
+#findK function 
+findK <- function(dtm, k_topics){
+  searchK(dtm$documents, dtm$vocab, K = k_topics, init.type = "Spectral")
+}
+```
+
+We train models for 74 different numbers of topics (14-200 by 2).
+Time estimate: for seq(from = 50, to = 100, by = 10) #18 models trained took 4:31-3:09 = (1 hour and 22 min)
+```{r finding K}
+#select number of topics
+k_topics = seq(from = 4, to = 150, by = 2)
+
+#Run findK
+findingK <- stm_corpus %>%
+  map(findK, k_topics)
+```
+We inspect the findings:
+```{r plot evaluation}
+findK_plots <- map(findingK, plot) #see how to show.
+```
+
+```{r save findK}
+#save files
+save(findingK, file= "STM_estimate_k.RDATA")
+
+#clean
+rm(findK, k_topics)
+```
+###Manual selection
