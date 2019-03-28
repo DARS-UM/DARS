@@ -526,31 +526,6 @@ stm_model <- tibble(
 
 ```
 
-
-```{r} 
-#testing 
-test_model <- stm_eval_model[1, ]
-
-my_stm_eval(list(test_model$documents, test_model$vocab, test_model$n_topic))
-
-my_stm_eval(documents = test_model$documents, vocab = test_model$vocab, n_topic = test_model$n_topic)
-
-test <- list(test_model$documents, test_model$vocab, test_model$n_topic)
-test %>% my_stm_eval
-
-test <- list(stm_eval_model$documents, stm_eval_model$vocab, stm_eval_model$n_topic)
-
-test %>% my_stm_eval
-
-
-test <- stm_eval_model %>% mutate(test = list(documents, vocab, n_topic) %>% pmap(list))
-
-stm_eval_model %>% mutate(test = test %>% map(my_stm_eval))
-test1<- test$test[[1]]
-
-```
-
-
 ####For evaluation
 ```{r models in tibble}
 topic_numbers <-  seq(from = 5, to = 10, by = 5) #seq(from = 5, to = 150, by = 5)
@@ -597,6 +572,25 @@ stm_eval_model <- tibble(
     iterations         = map_dbl(Model,       
                                  function(model) length(model$convergence$bound))
     ) 
+```
+###Saving Results
+```{r save}
+#saving
+save(list(use = stm_model, eval = stm_eval_model), file ="/Output/STM_models.RDATA")
+```
+
+```{r clean workspace}
+#clean workspace
+rm(# Generating functions:
+  my_stm, my_stm_eval,
+  #Extraction Functions
+  extract_dtm, extract_corpus, extract_documents, extract_vocab, extract_data,
+  extract_held_doc, extract_held_vocab, extract_helout_missing, 
+  my_model, my_tidy_gamma,
+  get_top_terms_topic, 
+  get_top_topics_course,
+  get_kw
+  )
 ```
 
 ##Finding Number of Topics
@@ -658,4 +652,3 @@ stm_eval_model %>%
 plot_eval("manuals")
 plot_eval("overview")
 ```
-
