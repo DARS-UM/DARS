@@ -653,3 +653,40 @@ stm_eval_model %>%
 plot_eval("manuals")
 plot_eval("overview")
 ```
+
+#New Documents
+##Align vocabulary
+```{r}
+mod.out #is model
+
+#now we process the remaining documents
+temp<-textProcessor(documents=gadarian$open.ended.response[101:nrow(gadarian)],
+                    metadata=gadarian[101:nrow(gadarian),])
+
+newdocs <- alignCorpus(new=temp, old.vocab=mod.out$vocab)
+#we get some helpful feedback on what has been retained and lost in the print out.
+#and now we can fit our new held-out documents
+
+fitNewDocuments(model=mod.out, documents=newdocs$documents, newData=newdocs$meta,
+                origData=out$meta, prevalence=~treatment + s(pid_rep),
+                prevalencePrior="Covariate")
+
+```
+##Fit new docs
+```{r}
+#An example using the Gadarian data.  From Raw text to fitted model.
+#(for a case where documents are all not processed at once see the help
+# file for alignCorpus)
+temp<-textProcessor(documents=gadarian$open.ended.response,metadata=gadarian)
+out <- prepDocuments(temp$documents, temp$vocab, temp$meta)
+set.seed(02138)
+#Maximum EM its is set low to make this run fast, run models to convergence!
+mod.out <- stm(out$documents, out$vocab, 3, prevalence=~treatment + s(pid_rep), 
+              data=out$meta, max.em.its=5)
+fitNewDocuments(model=mod.out, documents=out$documents[1:5], newData=out$meta[1:5,],
+               origData=out$meta, prevalence=~treatment + s(pid_rep),
+               prevalencePrior="Covariate")
+
+```
+
+
