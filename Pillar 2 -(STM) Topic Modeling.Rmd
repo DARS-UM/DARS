@@ -623,7 +623,7 @@ findingK <- stm_corpus %>%
   map(findK, k_topics)
 ```
 We inspect the findings:
-```{r plot evaluation}
+```{r plot evaluation- package}
 findK_plots <- map(findingK, plot) #see how to show.
 ```
 
@@ -634,4 +634,28 @@ save(findingK, file= "STM_estimate_k.RDATA")
 #clean
 rm(findK, k_topics)
 ```
-###Manual selection
+###From stm_eval
+```{r manual eval plots}
+
+plot_eval <- function(origin){
+stm_eval_model %>%
+  filter(Origin == origin) %>%
+  transmute(n_topic,
+            `Lower bound` = lbound,
+             Residuals    = map_dbl(residual, "dispersion"),
+            `Semantic coherence` = map_dbl(semantic_coherence, mean),
+            `Held-out likelihood` = map_dbl(eval_heldout, "expected.heldout")) %>%
+  gather(Metric, Value, -n_topic) %>%
+  ggplot(aes(n_topic, Value, color = Metric)) +
+  geom_line(size = 1.5, alpha = 0.7, show.legend = FALSE) +
+  geom_point()+
+  facet_wrap(~Metric, scales = "free_y") +
+  labs(x = "Number of Topics)",
+       y = NULL,
+       title = "Model diagnostics by number of topics")
+}
+
+plot_eval("manuals")
+plot_eval("overview")
+```
+
