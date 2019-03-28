@@ -62,7 +62,7 @@ d_TP_cum <- d_transcript_cum %>%
 course_all <- unique(d_transcript_informative$`Course ID`)
 course_obj <- course_all[! course_all %>% str_detect("^...10")]
 
-find_prep <- function(objective){
+find_prep <- function(objective, subset_size = 6){
   
   data_temp <- d_TP_cum %>%
     
@@ -70,13 +70,13 @@ find_prep <- function(objective){
     
     select(Grade, matches("Topic"))
   
-  if(nrow(data_temp) <= 7) return(NULL)
+  if(nrow(data_temp) <= (subset_size + 1)) return(NULL) # perhaps use formula similar to min(8, nrow(df) / 2)
   
   #
   # best subset selection
-  m <- regsubsets(Grade ~ ., data_temp, nvmax = 6)
+  m <- regsubsets(Grade ~ ., data_temp, nvmax = subset_size)
   
-  coefi <- coef(m, 6)[-1]  # check that 6 is usually a good subset size
+  coefi <- coef(m, subset_size)[-1]  # check that 6 is usually a good subset size
   
   tibble(topic = names(coefi), weight = coefi) %>%
     
