@@ -671,22 +671,23 @@ fasos_cast <- my_cast_dtm(fasos_docs)
 ```{r}
 model <- stm_model %>% filter(`Topic ID`=="overview_10")%>%
   pull(Model)
-
 model <- model[[1]]
 
 
 # fitting:
 out <- asSTMCorpus(fasos_cast)
-
 newdocs <- alignCorpus(new=out, old.vocab = model$vocab)
-
-
 fasos_theta <- fitNewDocuments(model = model, documents=newdocs$documents) #returns a course by topic matrix
 
-plot.STM(model, type ="summary")
+my_names <- names(newdocs$documents)
 
 fasos_theta$theta #nice kind of makes sense
+plot.STM(model, type ="summary")
 
+rownames(fasos_theta$theta) <- my_names
 
+new_courses_theta <- fasos_theta$theta
+set_names(fasos_theta$theta, old = colnames(fasos_theta$theta), new = paste0("Topic", 1:10))
+new_courses_theta %>%  mutate(Topic = paste("Topic_" rownames))
 ```
 
