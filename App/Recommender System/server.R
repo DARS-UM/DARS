@@ -13,6 +13,20 @@ function(input, output, session) {
   #
   ##Set up
   
+  #Raw Data for RS:
+  raw_rules <- rules_clean %>%
+    select(-rules_rules)   %>%
+    filter(type_rule == "SR")
+  
+  #Helper function: return tibble of type_rules
+  get_type_rules <-  function(type){
+    tmp <- raw_rules %>%
+      filter(ID == type) %>%
+      pull(rules_RS)
+    
+    return(tmp[[1]])
+  }
+  
   #Helper: resettabe input
   output$resetable_input <- renderUI({
     times <- input$reset_input
@@ -25,6 +39,7 @@ function(input, output, session) {
           inline   = TRUE
         ))
   })
+  
   
   # Helper function: Return student
   student_trans <- function(d_student){
@@ -91,7 +106,7 @@ function(input, output, session) {
     rules <- list()
     
     # rules not
-    rules$not <- SR_RSAPP$THL %>%
+    rules$not <- get_type_rules("THL") %>%
       
       # select appropriate rules
       filter(
@@ -124,7 +139,7 @@ function(input, output, session) {
     
     
     # rules low
-    rules$low <- SR_RSAPP$HL %>%
+    rules$low <- get_type_rules("HL") %>%
       
       filter(
         lhs_course %in% student$course_low,
@@ -155,7 +170,7 @@ function(input, output, session) {
     
     
     # rules fail
-    rules$fail <- SR_RSAPP$PF %>%
+    rules$fail <- get_type_rules("PF") %>%
       
       filter(
         lhs_course %in% student$course_fail,
@@ -186,7 +201,7 @@ function(input, output, session) {
     
     
     # rules grade
-    rules$grade <- SR_RSAPP$G %>%
+    rules$grade <- get_type_rules("G") %>%
       
       left_join(
         student$transcript,
@@ -379,18 +394,19 @@ function(input, output, session) {
         n  = 3,
         wt = word_contribution_to_document
         ) %>%
-      arrange(word_contribution_to_document) %>%
       summarize(
-        key_words = paste(term, collapse = ", ")
+        key_words = paste(term, collapse = ", "),
+        doc_score = sum(word_contribution_to_document)
         ) %>%
       ungroup %>%
-      
+
       # Editing
       left_join(
         select(d_course, `Course ID`, `Course Title`),
         by = c("document" = "Course ID")
-        ) %>%
-      
+      ) %>%
+      arrange(desc(doc_score)) %>%
+
       transmute(
         recommendation = paste(
           "Course Recommendation", "<em>","<b>",
@@ -401,7 +417,7 @@ function(input, output, session) {
       
       pull %>%
       
-      sort %>% 
+      #sort %>% 
       
       paste0(
         collapse = "<br/><br/>"

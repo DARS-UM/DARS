@@ -7,9 +7,15 @@ library(tidyverse)
 library(tidytext)
 library(shiny)
 
-load("rules.RDATA")
+#load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
+load("rules_clean.RDATA")
+
+# stopwords <- c("2016", "academic", "account", "age", "analysis","apply", "approach")
+# kw_clean <- kw$overview %>% setdiff(stopwords)
+# kw_clean <- sort(kw_clean)
+
 
 
 #

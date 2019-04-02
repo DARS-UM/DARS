@@ -1,0 +1,122 @@
+---
+title: "Pillar 1 - Student Topic Profile"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 1/")
+
+library(tidyverse)
+library(magrittr)
+library(glmnet)
+library(leaps)
+```
+
+```{r}
+load("App/Recommender System/topic_model_gb.RDATA")
+load("Output/data_pillar_1.RDATA")
+load("Output/d_transcript_cum.RDATA")
+
+topic_model_gb
+```
+
+```{r}
+gamma        <- topic_model_gb$g_overview[[10]] %>% mutate(topic = topic %>% str_replace(" ", "_"))
+gamma_spread <- gamma %>% spread(topic, gamma)
+```
+
+```{r}
+student_TP <- d_transcript_informative %>% 
+  
+  left_join(gamma_spread, by = c("Course ID" = "document")) %>%
+  filter(!is.na(`Topic_1`)) %>%
+  
+  mutate_at(vars(matches("Topic")), .funs = funs(Grade/10 * .)) %>% # weigh by grade
+  
+  group_by(`Student ID`, time) %>%
+  summarize_at(vars(matches("Topic")), sum) %>% 
+  
+  group_by(`Student ID`) %>%
+  arrange(time) %>%
+  
+  mutate_at(vars(matches("Topic")), lag) %>%
+  mutate_at(vars(matches("Topic")), replace_na, replace = 0) %>%
+  mutate_at(vars(matches("Topic")), cumsum) # topic profile at beginning of period
+```
+
+```{r}
+d_TP_cum <- d_transcript_cum %>%
+  
+  right_join(d_transcript_informative, by = c("sequenceID" = "Student ID", "eventID" = "time")) %>%
+  
+  right_join(student_TP, by = c("sequenceID" = "Student ID", "eventID" = "time"))
+```
+
+```{r}
+course_all <- unique(d_transcript_informative$`Course ID`)
+course_obj <- course_all[! course_all %>% str_detect("^...10")]
+
+find_prep <- function(objective, subset_size = 6){
+  
+  data_temp <- d_TP_cum %>%
+    
+    filter(`Course ID` == objective) %>%
+    
+    select(Grade, matches("Topic"))
+  
+  if(nrow(data_temp) <= (subset_size + 1)) return(NULL) # perhaps use formula similar to min(8, nrow(df) / 2)
+  
+  #
+  # best subset selection
+  m <- regsubsets(Grade ~ ., data_temp, nvmax = subset_size)
+  
+  coefi <- coef(m, subset_size)[-1]  # check that 6 is usually a good subset size
+  
+  tibble(topic = names(coefi), weight = coefi) %>%
+    
+    right_join(gamma, by = "topic") %>%
+    
+    mutate(weight = weight %>% replace_na(0)) %>%
+    
+    # double prep_score of intro courses
+    mutate(is_intro = document %>% str_detect("^...10")) %>%
+    mutate(weight = weight * (1 + is_intro)) %>%
+    
+    group_by(document) %>%
+    summarize(prep_score = sum(weight * gamma)) %>%
+    mutate(objective = objective) %>%
+  
+    arrange(desc(prep_score)) %>%
+  
+    filter(! document %>% str_detect("^...30")) %>%
+    filter(document %in% course_all) %>%
+    
+    top_n(10, prep_score)
+  
+}
+
+results <- course_obj %>% map(find_prep) %>% bind_rows
+View(results)
+```
+
+```{r}
+#
+# lasso (instead of best subset selection due to the large number of predictors (number of topics))
+# disadvantage: difficult to estimate lambda a-priori
+x <- model.matrix(Grade ~ ., test)[ , -1]
+y <- test$Grade
+lambda <- 10^seq(-0.1, -2, length = 14)
+
+results <- glmnet(x, y, alpha = 1, lambda = lambda)
+coef(results)
+
+# first positive coefficient is topic 5. Topic 3 and 19 appear a little later.
+results$lambda
+```
+

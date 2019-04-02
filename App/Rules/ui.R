@@ -15,10 +15,10 @@ fluidPage(
         inputId = "rules",
         label   = "Type of rules",
         choices = c(
-          "Association rules" = "AR_rulesAPP",
-          "Sequence rules"    = "SR_rulesAPP"
+          "Association rules" = "AR",
+          "Sequence rules"    = "SR"
         ),
-        selected = "AR_rulesAPP"
+        selected = "SR"
       ),
       
       # Input: button for the type of rules
@@ -26,12 +26,12 @@ fluidPage(
         inputId = "item",
         label   = "Type of item in rules",
         choices = c(
-          "take => take"                   = "taken",
-          "fail => fail"                   = "PF",
-          "Low grade (< 6.5) => low grade" = "HL",
-          "not taken => fail"              = "TPF",
-          "not taken => low"               = "THL",
-          "less than => less than"         = "G"
+          "taken"  = "taken",
+          "PF"     = "PF",
+          "HL"     = "HL",
+          "TPF"    = "TPF",
+          "THL"    = "THL",
+          "G"      = "G"
         ),
         selected = "taken"
       ),
@@ -43,10 +43,10 @@ fluidPage(
       sliderInput(
         inputId = "count",
         label   = "Count",
-        min     = 10,
+        min     = 1,
         max     = 3000,
         step    = 1,
-        value   = c(10, 3000)
+        value   = c(1, 3000)
         ),
       
       # Input: Slider for the Cconfidence
@@ -73,9 +73,15 @@ fluidPage(
       tags$hr(),
       
       # Text
-      helpText("For rules concerning failed courses or course with low grade, we compute the confidence and lift in the following way:"),
-      helpText("Confidence(A_fail -> B_fail) = P( (A_fail -> B_fail) | (A_fail -> B) ). In other words, given a student has failed course A and is taking course B, what is the probability that (s)he will fail course B"),
-      helpText("Lift(A_fail - B_fail) = Confidence(A_fail -> B_fail) / Probability(B_fail | B). In other words, we compare the confidence of the rule and the probability of failing course_B *given we take course B*.")
+      helpText("For PF and HL rules, we compute the confidence and lift as follows:"),
+      helpText(" "),
+      helpText(" "),
+      helpText("Confidence(A_fail -> B_fail) = P( (A_fail -> B_fail) | (A_fail -> B) )."), 
+      helpText("In other words, given a student has failed course A and is taking course B, what is the probability that (s)he will fail course B"),
+      helpText(" "),
+      helpText(" "),
+      helpText("Lift(A_fail - B_fail) = Confidence(A_fail -> B_fail) / Probability(B_fail | B)."),
+      helpText("In other words, we compare the confidence of the rule and the probability of failing course_B *given we take course B*.")
       
     ),
     

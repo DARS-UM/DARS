@@ -11,4 +11,5 @@ forcats
 Matrix
 arules
 arulesSequences
+magrittr
 bindrcpp
