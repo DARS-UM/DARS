@@ -1,0 +1,939 @@
+---
+title: "Pillar 2 - Topic Modeling"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/",
+                      eval = FALSE)
+```
+
+
+```{r library, message = FALSE, eval = TRUE}
+library(tidyverse)
+library(tidytext)
+
+library(ggwordcloud) # Word Clouds
+library(topicmodels)
+library(lemon)
+library(ggthemes)
+library(rlang)
+library(ldatuning) # ideal number of topics in LDA
+
+library(modelr) #cross_validation
+```
+
+```{r function reorder_within & co., echo = FALSE}
+
+# Function for ordering within facet:
+# https://github.com/dgrtwo/drlib/blob/master/R/reorder_within.R
+
+reorder_within <- function(x, by, within, fun = mean, sep = "___", ...) {
+  new_x <- paste(x, within, sep = sep)
+  stats::reorder(new_x, by, FUN = fun)
+}
+
+scale_x_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_x_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+
+scale_y_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_y_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+```
+
+# Setup
+We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
+`d_AoD`, `d_assessment`, `d_course`, `d_description`, `d_manual`, `d_overview`, `d_transcript`, and a list `lists`.
+For `d_description` and `d_overview`, we keep only the most recent year.
+```{r import data, eval = TRUE}
+load("output/data_pillar_2.RDATA")
+
+# Only keep course descriptions and overviews from most recent year
+d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
+```
+
+# TF-IDF
+## Functions for Generating Barplots and Word Clouds
+The function `compute_tf_idf` computes the inverse term document frequency, we apply `compute_tf_idf` on descriptions, overviews and manuals. 
+```{r compute_tf_idf, cache = TRUE}
+compute_tf_idf <- function(data){
+  
+  data %>%
+    count(
+      `Course ID`,
+      word
+      ) %>%
+    bind_tf_idf(
+      term = word, 
+      document = `Course ID`,
+      n = n
+      )
+  
+}
+
+tf_idf_description <- compute_tf_idf(d_description)
+tf_idf_overview    <- compute_tf_idf(d_overview)
+tf_idf_manual      <- compute_tf_idf(d_manual)
+
+rm(compute_tf_idf)
+```
+
+The function `plot_tf_idf` plots a bar-graph of the most important words for each level of granularity and  their corresponding word clouds. 
+```{r plot_tf_idf}
+plot_tf_idf <- function(data, n_col = 5, id_plot = NULL){
+  
+  
+  #
+  # Barplot
+  g <- data %>%
+    ggplot(
+      aes(
+        x = reorder_within(word, tf_idf, facet), 
+        y = tf_idf
+        )
+      ) +
+    geom_col(
+      show.legend = FALSE
+      ) +
+    labs(
+      x = NULL,
+      y = "tf-idf"
+      ) +
+    scale_x_reordered() +
+    facet_wrap(
+      facets = ~ facet, 
+      scales = "free",
+      ncol = n_col
+      ) +
+    coord_flip()
+  
+  ggsave(paste(id_plot, "_BP.jpeg", sep = ""), path = "Output/Plots/tf_idf", width = 16, height = 8)
+  
+  
+  #
+  # Word Cloud
+  g <- data %>%
+    group_by(
+      facet
+      ) %>%
+    mutate(
+      freq = tf_idf / sum(tf_idf)
+      ) %>% # normalization within facet
+    ggplot(
+      aes(
+        size = freq ^ 0.7, 
+        label = word, 
+        color = freq ^ 0.7
+        )
+      ) +
+    geom_text_wordcloud_area(
+      area_corr_power = 1,
+      eccentricity    = 1,
+      rm_outside      = T
+      ) +
+    scale_radius(
+      range = c(2, 10),
+      limits = c(0, NA)
+      ) +
+    scale_color_gradient(
+      low = "red", 
+      high = "blue"
+      ) +
+    facet_wrap(
+      facet = ~ facet,
+      ncol = n_col
+      ) + 
+    theme(
+      strip.text.x     = element_text(),
+      panel.background = element_rect(fill = "white"),
+      plot.title       = element_text(hjust = 0.5)
+    )
+  
+  ggsave(paste(id_plot, "_WC.jpeg", sep = ""), path = "Output/Plots/tf_idf", width = 16, height = 8)
+
+}
+```
+
+## Course Level
+The function `prepare_tf_idf_course` selects 25 random courses, the top ten words with highest tf_idf, and finally renames a facet to 'Course ID').
+We apply the function to `id_plot` and pipe it to produce graphs.
+```{r tf-idf course, cache = TRUE}
+prepare_tf_idf_course <- function(data){
+  
+  data %>%
+    
+    # Selection 25 courses randomly
+    filter(
+      `Course ID` %in% sample(
+        x = unique(.$`Course ID`),
+        size = 25, 
+        replace = FALSE
+        )
+      ) %>%
+    
+    # Select top 10 words per course 
+    group_by(
+      `Course ID`
+      ) %>%
+    filter(
+      n >= 2
+      ) %>%
+    top_n(
+      n = 10,
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = `Course ID`
+      )
+
+  }
+
+set.seed(123)
+tf_idf_description %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(id_plot = "Course_description")
+
+set.seed(123)
+tf_idf_overview %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(id_plot = "Course_overview")
+
+set.seed(123)
+tf_idf_manual %>%
+  prepare_tf_idf_course %>%
+  plot_tf_idf(id_plot = "Course_manual")
+
+rm(prepare_tf_idf_course)
+```
+
+## Cluster Level
+```{r tf-idf cluster, cache = TRUE}
+prepare_tf_idf_cluster <- function(data){
+  
+  data %>%
+    
+    # Include the variable Cluster
+    left_join(
+      select(d_course, `Course ID`, Cluster),
+      by = "Course ID"
+      ) %>%
+    filter(
+      !is.na(Cluster)
+      ) %>%
+    
+    # Select top 10 words per cluster
+    group_by(
+      Cluster, 
+      word
+      ) %>%
+    summarise(
+      tf_idf = sum(tf_idf),
+      n = sum(n)
+      ) %>%
+    filter(
+      n >= 10
+      ) %>%
+    top_n(
+      n = 10, 
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = Cluster
+      )
+  
+}
+
+tf_idf_description %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(id_plot = "Cluster_description")
+
+tf_idf_overview %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(id_plot = "Cluster_overview")
+
+tf_idf_manual %>%
+  prepare_tf_idf_cluster %>%
+  plot_tf_idf(id_plot = "Cluster_manual")
+
+rm(prepare_tf_idf_cluster)
+```
+
+## Concentration Level
+```{r tf-idf concentration, cache = TRUE}
+prepare_tf_idf_concentration <- function(data){
+  
+  data %>%
+    
+    # Include the variable Concentration
+    left_join(
+      select(d_course, `Course ID`, Concentration, `Concentration (additional)`),
+      by = "Course ID"
+      ) %>%
+    filter(
+      !is.na(Concentration)
+      ) %>%
+    gather(
+      key = X,
+      value = Concentration,
+      Concentration, `Concentration (additional)`,
+      na.rm = TRUE
+      ) %>%
+    
+    # Select top 10 words per cluster
+    group_by(
+      Concentration, 
+      word
+      ) %>%
+    summarise(
+      tf_idf = sum(tf_idf),
+      n = sum(n)
+      ) %>%
+    filter(
+      n >= 10
+      ) %>%
+    top_n(
+      n = 10,
+      wt = tf_idf
+      ) %>%
+    ungroup %>%
+    
+    # Prepare data for function `plot_tf_idf()`
+    rename(
+      facet = Concentration
+      )
+  
+} 
+
+tf_idf_description %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(id_plot = "Concentration_description")
+
+tf_idf_overview %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(id_plot = "Concentration_overview")
+
+tf_idf_manual %>%
+  prepare_tf_idf_concentration %>%
+  plot_tf_idf(id_plot = "Concentration_manual")
+
+rm(prepare_tf_idf_concentration, plot_tf_idf,
+   tf_idf_description, tf_idf_overview, tf_idf_manual)
+```
+
+# LDA
+The function `my_cast_tdm` casts our dataframes into a tdm.
+```{r my_cast_tdmxxxxx}
+my_cast_tdm <- function(data, level) data %>%
+  count(`Course ID`, word) %>%
+  cast_dtm(`Course ID`, word, n)
+
+d_description_cast <- my_cast_tdm(d_description)
+d_overview_cast <- my_cast_tdm(d_overview)
+d_manual_cast <- my_cast_tdm(d_manual)
+
+rm(my_cast_tdm)
+```
+
+## Ideal Number of Topics (RUN ON UM COMPUTER)
+To decide the number of topics to discover, we run (four) three different tests.
+
+First we set the control for the test.
+```{r controls, eval = TRUE}
+my_control <- list(
+  
+  nstart = 20,
+  seed   = 1 : 20,
+  best   = TRUE,
+  
+  burnin = 1000,
+  iter   = 15000,
+  thin   = 100
+  
+)
+```
+
+
+```{r fast control}
+my_control_fast <- list(
+  
+  nstart = 1,
+  seed   = 1,
+  best   = TRUE,
+  
+  burnin = 5,
+  iter   = 10,
+  thin   = 2
+  
+)
+```
+
+###With Package built in Function
+The function `my_FindTopicsNumber` builds a Topic Model and applies the measurements 
+```{r function my_FindTopicsNumber }
+my_FindTopicsNumber <- function(data_cast, n_topics){
+  
+  FindTopicsNumber(
+  
+  dtm = data_cast,
+  topics = n_topics,
+  metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"),
+  method = "Gibbs",
+  control = my_control,
+  mc.cores = 4L
+  
+  )
+  
+  
+}
+```
+We run the test for descriptions, documenting the duration (starting_time - ending_time). We build 95 models (5 to 100 in increments of 1).
+```{r description topics, cache = TRUE}
+start.time <- Sys.time()
+
+result_description <- d_description_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 2))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_description,
+     file = "Output/LDA_ntopics.RDATA")
+
+print(time.taken)
+```
+
+We run the test for overview, documeting its duration. 
+```{r overview topics, cache = TRUE}
+start.time <- Sys.time()
+
+result_overview <- d_overview_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 100, by = 2))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_overview , result_description,
+     file = "Output/LDA_ntopics.RDATA")
+
+print(time.taken)
+```
+
+We run the test for manuals, documenting its duration.
+```{r manual topics, cache = TRUE}
+start.time <- Sys.time()
+
+result_manual <- d_manual_cast %>% my_FindTopicsNumber(n_topics = seq(from = 5, to = 75, by = 5))
+
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+
+save(result_manual, result_overview , result_description,
+     file = "Output/LDA_ntopics.RDATA")
+
+print(time.taken)
+```
+
+from 20, to 40, by 5 topics takes
+22min for overview
+11min for description
+5.5hrs for manuals 
+
+We examine the result of the experiment by plotting them on a graph.
+```{r LDA number topics plot}
+
+load("Output/LDA_ntopics.RDATA")
+
+result_description %>%
+  FindTopicsNumber_plot
+
+result_overview %>%
+  FindTopicsNumber_plot
+
+result_manual %>%
+  FindTopicsNumber_plot
+
+```
+From the results we see that the ideal number of topics is somewhere between 35 and 40.
+
+## Fitting Model
+The function `my_cast_tdm` casts our dataframes into a tdm.
+```{r my_cast_tdm, eval = TRUE}
+my_cast_tdm <- function(data) data %>%
+  count(`Course ID`, word) %>%
+  cast_dtm(`Course ID`, word, n)
+
+d_cast <- d_text %>% map(my_cast_tdm)
+
+rm(my_cast_tdm)
+```
+
+The function `my_LDA` fits an LDA model on the DTM using the previous controls.
+```{r my_LDA, eval= TRUE}
+
+#my_LDA
+my_LDA <- function(n_topics, corpus, control = my_control){
+
+  LDA_model <- LDA(
+    x       = corpus,
+    k       = n_topics,
+    method  = "Gibbs",
+    control = control
+    )
+}
+
+```
+
+Next we train our model with different number of topics.
+```{r LDA fit, cache = TRUE, eval = TRUE}
+topic_model <- tibble(
+  
+  n_topic = seq(from = 5, to = 250, by = 5)
+  
+  ) %>%
+  
+  mutate(
+    TM_overview = n_topic %>% map( .f = my_LDA, corpus = d_cast$overview),
+    TM_manual   = n_topic %>% map( .f = my_LDA, corpus = d_cast$manuals)
+  )
+```
+
+##Model Evaluation
+###Perplexity
+Perplexity is a measure of how well a probability model predicts a sample. Thus we need to do cross validation. 
+```{r perplexity function, eval = TRUE}
+
+#perplexity Function
+my_perplexity <- function(model, d_cast){
+  perplexity(model, d_cast, estimate_theta = FALSE)
+}
+
+#Get perplexity
+test_perplexity <- topic_model %>%
+  mutate(perplex_overview = map(.x = TM_overview, .f = my_perplexity, d_cast$overview),
+         perplex_manual   = map(.x = TM_manual,   .f = my_perplexity, d_cast$manual))
+```
+
+###log_likelihood
+```{r log likelihood, eval = TRUE}
+# #my_loglikelihood function
+# my_loglike <- function(model){
+#   return(model@loglikelihood)
+# }
+# 
+# #get loglikelihood
+# test2 <- topic_test %>% mutate(loglike_overview    = map(.x = TM_overview, .f = my_loglike),
+#                                   loglike_manual   = map(.x = TM_manual,   .f = my_loglike))
+
+#Log likelihood:
+test_likelihood <- topic_test %>% mutate(logLik_overview = map(.x = TM_overview, .f = logLik),
+                               logLik_manual   = map(.x = TM_manual,   .f = logLik))
+
+```
+
+###Plots
+```{r perplexity plots, eval = TRUE}
+#perplexity
+plot(topic_test$n_topic, topic_test$perplex_overview)
+plot(topic_test$n_topic, topic_test$perplex_manual)
+
+#log likelihood
+plot(test3$n_topic, test3$logLik_overview)
+plot(test3$n_topic, test3$logLik_manual)
+```
+
+##Get Beta/Gamma functions
+```{r getting gamma and beta, eval = TRUE}
+get_beta <- function(results){
+  
+  tidy(results, matrix = "beta")           %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(beta) )
+  
+}
+
+get_gamma <- function(results){
+  
+  tidy(results, matrix = "gamma")          %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(gamma) )
+}
+
+```
+
+##Apply beta and gamma
+```{r applying get_gamma and get_beta, eval = TRUE}
+topic_model_gb <- topic_model %>%
+  transmute(
+    n_topic    = n_topic,
+    g_overview = TM_overview %>% map( .f = get_gamma),
+    g_manual   = TM_manual   %>% map( .f = get_gamma),
+    b_overview = TM_overview %>% map( .f = get_beta),
+    b_manual   = TM_manual   %>% map( .f = get_beta)
+      )
+```
+##Saving filed for different sessions
+```{r saving, eval = TRUE}
+save(topic_model_gb, 
+     file = "Output/topic_model_gb.RDATA")
+```
+#Distributions
+#NOTE: We need to select how many topics to use
+##Distributions of best models
+```{r Distributions, eval = FALSE}
+#select number of topics
+n_topics_overview <- 36
+n_topics_manual   <- 40 
+
+#Crop models
+TM_overview <- topic_model_gb %>%
+  filter(n_topic== n_topics_overview) 
+
+TM_manual   <- topic_model_gb %>%
+  filter(n_topic== n_topics_manual)
+
+#Distributions
+distribution <- list()
+
+distribution$beta$overview  <- TM_overview %>% pull(b_overview)
+distribution$beta$manual    <- TM_manual   %>% pull(b_manual)
+
+distribution$gamma$overview <- TM_overview %>% pull(g_overview)
+distribution$gamma$manual   <- TM_manual   %>% pull(g_manual)
+
+```
+##Inspect topics
+THE TOPICS ARE SUPPER STRANGE!
+```{r inspect topics, eval = FALSE}
+
+inspect_topics <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(10, beta)
+  
+}
+
+topics <-  lapply(
+  distribution$beta,
+  inspect_topics
+)
+```
+#App
+##Selectig keywords
+```{r key words}
+get_top_words <- function(d_beta, n = 5){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(n, beta) %>%
+    pull(term)%>%
+    unique
+}
+
+kw <- lapply(
+  distribution$beta,
+  get_top_words
+)
+```
+####TEMPORTARY: stopwords for keywords
+This section is for presentations
+```{r stopwords for kw}
+#kw$overview
+not_include <- c("source", "primary", "type", "assess", "involve", "e.g", "discussion", "institute", "ha", "introduce",
+                 "role","address", "student", "examination","coordinator", "maastrichtuniversity.nl", NA, "identify", "manner", "mechanism", "concept", "hour", "teach",  "depth","question", "specific", "busy","academic", "semester", "week", "test", "session", "team", "communicate", "theory", "text", "library", "article", "examine", "current", "routledge", "temporary", "flow", "level", "study")
+
+remove_words <- function(x){
+  setdiff(x, not_include)
+}
+
+kw1 <- lapply(
+  kw,
+  remove_words
+)
+
+```
+##Convenience vectors for APP
+```{r for convenience}
+# set seed
+set.seed(1)
+
+#
+## All courses
+course_all <- d_course %>%
+  inner_join(
+    d_transcript,
+    by = "Course ID"
+  ) %>%
+  distinct(
+    `Course ID`
+  ) %>%
+  # remove semester abroad, skills and projects
+  filter(
+    ! str_detect(`Course ID`, pattern = "SA|SKI|PRO")
+  ) %>%
+  pull
+
+#
+##courses following_semester
+course_following_semester <- sample(
+  x       = course_all,
+  size    = 60,
+  replace = FALSE
+  ) %>% sort
+```
+## Saving files for APP
+```{r app files}
+save(distribution, kw, course_all, course_following_semester,
+     file = "App/Recommender System/data_topic_models.RDATA")
+```
+
+
+# Visualization
+### Functions 
+This part is adapted 
+```{r LDA prepare, eval = F}
+prepare_data_LDA_beta <- function(d_beta){
+  
+  data.frame(d_beta) %>%
+    mutate(topic = paste("Topic", topic)) %>%
+      group_by(topic) %>%
+        top_n(10, beta) %>%
+      ungroup %>%
+      arrange(topic, desc(beta))
+  
+} #repetition??? of inspect topics?
+
+prepare_data_LDA_gamma <- function(d_gamma, level = Course){
+  
+  data_gamma <- data.frame(d_gamma) %>%
+    mutate(topic = paste("Topic", topic)) %>%
+    rename(`Course ID` = document)
+  
+  if(ensym(level) == sym("Course")) data_gamma <- data_gamma %>%
+                                      rename(facet = `Course ID`) 
+  
+  if(ensym(level) == sym("Cluster")) data_gamma <- data_gamma %>% 
+                                       left_join(select(d_course, `Course ID`, Cluster), by = "Course ID") %>%
+                                       filter(!is.na(Cluster)) %>%
+                                       rename(facet = Cluster)
+                                       
+  if(ensym(level) == sym("Concentration")) data_gamma <- data_gamma %>%
+                                             left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
+                                             gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
+                                             rename(facet = Concentration)
+  
+  data_gamma <- data_gamma %>%
+    group_by(facet, topic) %>%
+      summarise(gamma = sum(gamma)) %>%
+    filter(gamma > 0.05) %>%
+    ungroup %>%
+    arrange(facet, desc(gamma))
+  
+  return(data_gamma)
+  
+}
+
+# Bet Distribution
+test <- list()
+
+a <-  names(distribution)[1]
+test[[a]] <- lapply(distribution[[a]],
+                      prepare_data_LDA_beta)
+
+# Gamma Distribution
+b <- names(distribution)[2]
+test[[b]] <- lapply(distribution[[b]],
+                    prepare_data_LDA_gamma)
+
+rm(a,b #,test
+   )
+```
+This part is not adapted
+```{r LDA visualize, eval = F}
+visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
+  
+  data_prepared %>%
+  ggplot(aes(x = reorder_within(term,
+                                by = beta,
+                                within = topic),
+             y = beta,
+             fill = topic)) +
+    geom_col(show.legend = F) +
+    facet_wrap(~ topic, scales = "free") +
+    scale_x_reordered() +
+    labs(x = "Terms", y = "Beta", title = "Main Terms of each Topic") +
+    coord_flip() +
+    theme_light() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste(id_plot, "beta.jpeg"),
+         width = 16, height = 10, path = "Plots/Topic Model")
+  
+}
+
+visualize_LDA_gamma1 <- function(data_prepared, id_plot = "test"){
+  
+  data_prepared %>%
+    ggplot(aes(reorder_within(facet, 
+                              by = gamma, 
+                              within = topic), 
+               y = gamma, 
+               fill = topic)) +
+    geom_col(show.legend = F) +
+    facet_wrap(~ topic, 
+               scales = "free") +
+    scale_x_reordered() +
+    coord_flip() +
+   # labs(x = ensym(facet), y = "Gamma", title = paste("Main", ensym(facet), "of each Topic") +
+    theme_light() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 0),
+          plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste(id_plot, "gamma1.jpeg"),
+         width = 16, height = 10, path = "Plots/Topic Model")
+  
+}
+
+visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
+  
+  data_prepared %>%
+    ggplot(aes(reorder_within(topic, 
+                              by = gamma,
+                              within = facet), 
+               y = gamma, 
+               fill = topic)) +
+    geom_col(show.legend = F) +
+    facet_wrap(~ facet, 
+               scales = "free") +
+    scale_x_reordered() +
+    coord_flip() +
+  #  labs(x = "Topics", y = "Gamma", title = "Main Topics of each Courses/Cluster") +
+    theme_light() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 0),
+          plot.title = element_text(hjust = 0.5))
+  
+  ggsave(paste(id_plot, "gamma2.jpeg"),
+         width = 16, height = 10, path = "Plots/Topic Model")
+    
+}
+```
+
+```{r LDA visualize all distrib, eval = F}
+visualize_LDA_all_distrib <- function(data, level = Course, id_plot = "test"){
+
+  # Beta distribution
+  data %>% 
+    prepare_data_LDA_beta %>%
+    visualize_LDA_beta(id_plot = id_plot)
+  
+  # Gamma 1 distribution
+  data %>% 
+    prepare_data_LDA_gamma(level = !!ensym(level)) %>%
+    visualize_LDA_gamma1(id_plot = id_plot)
+  
+  # Gamma 2 distribution
+  data %>% 
+    prepare_data_LDA_gamma(level = !!ensym(level)) %>%
+    visualize_LDA_gamma2(id_plot = id_plot)
+  
+}
+```
+
+```{r LDA visualize all level, eval = F}
+visualize_LDA_all_level <- function(data, id_plot = "test"){
+  
+  data %>% 
+    visualize_LDA_all_distrib(level = Course,
+                              id_plot = paste(id_plot, "_course"))
+  
+  data %>% 
+    visualize_LDA_all_distrib(level = Cluster,
+                              id_plot = paste(id_plot, "_cluster"))
+    
+  data %>% 
+    visualize_LDA_all_distrib(level = Concentration,
+                              id_plot = paste(id_plot, "_concentration"))
+  
+}
+```
+
+### Plots
+```{r LDA plot, cache = TRUE, eval = F}
+load("LDA.RDATA")
+
+LDA_description_5 %>% visualize_LDA_all_level(id_plot = "description_k5")
+
+LDA_overview_5 %>% visualize_LDA_all_level(id_plot = "overview_k5")
+
+LDA_manual_5 %>% visualize_LDA_all_level(id_plot = "manual_k5")
+```
+
+```{r label, eval = FALSE, eval = F}
+tidy(LDA_manual_10, "beta") %>%
+  filter(beta > 1e-3) %>%
+  bind_tf_idf(term = term, document = topic, n = beta) %>%
+  group_by(topic) %>%
+  top_n(10, tf_idf) %>%
+  arrange(topic, desc(tf_idf))
+
+
+  count(term, topic) %>%
+  arrange(desc(n)) %>%
+    
+  filter(beta > 1e-3) %>%
+  group_by(term) %>%
+    mutate(n_topic = n(),
+           beta = beta / n_topic) %>%
+  group_by(topic) %>%
+    top_n(10, beta)
+
+
+  count(topic, term, wt = beta) %>%
+  (term = term, document = topic, n = n) %>%
+  group_by(topic) %>%
+  top_n(10, tf_idf)
+
+
+  group_by(term) %>%
+  summarise(beta = sum(beta)) %>%
+  arrange(desc(beta))
+
+
+
+  
+
+
+labels <- list(
+  description_10 = "X"
+)
+```
+
+```{r label bis, eval = FALSE}
+visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10 with labelled topics", facet = T,
+              topic_names = c("Psychology & Information", "Economics and Development", "Biology", "Chemistry and Math",
+                              "Sociology", "Law", "Research", "International Politics",
+                              "Philosophy", "Humanities"))
+
+visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17 with labelled topics", facet = T,
+              topic_names = c("Science/Knowledge", "Psycho", "Biology", "Chemistry", "Culture",
+                              "Conflict", "Research", "Foreign Policy", "Arts", "Literature",
+                              "Communication Skills", "Law", "Humanities", "Computer", "Economics", 
+                              "Math", "Management and ?"))
+visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25 with labelled topics", facet = T,
+              topic_names = c(
+                "Information", "Psycho", "Bio", "Chem", "Sociology",
+                "History", "skills", "Europe", "Philosophy", "IR",
+                "Conference", "Law", "Media", "Philosophy", "Economics",
+                "Math", "Management and Literature", "Entrepreneurship", "Conflict", "Research",
+                "Arts", "Computer Science", "Policy?", "Physiology", "Qual. Res."))
+```
+
