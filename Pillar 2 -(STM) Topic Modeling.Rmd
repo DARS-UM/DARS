@@ -589,7 +589,8 @@ stm_eval_model <- tibble(
 ###Saving Results
 ```{r save}
 #saving
-save(list(use = stm_model, eval = stm_eval_model), file ="/Output/STM_models.RDATA")
+my_models <-  list(use = stm_model, eval = stm_eval_model)
+save(my_models , file="STM_models.RDATA")
 ```
 
 ```{r clean workspace}
