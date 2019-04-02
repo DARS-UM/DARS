@@ -70,7 +70,10 @@ load("Output/d_text.RDATA")
 # keep most recent year
 #d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
+###As corpus
+```{r}
 
+```
 # TF-IDF
 We will perform an initial (visual) exploratory analysis of our textual data using TF- IDF.
 
@@ -351,10 +354,20 @@ d_cast <- d_text %>% map(my_cast_dtm)
 rm(my_cast_dtm)
 ```
 
+```{r covariates}
+#get covariates
+covariates <- tribble(
+  ~Origin,    ~Data,
+  "catalogues", d_text$catalogues %>% distinct(`Course ID`, department),
+  "manuals", d_text$manuals %>% mutate(department = "UCM") %>% distinct(`Course ID`, department)
+)
+```
 ###STM Corpus
 We convert our DTMs into STM corpus to access to full functionality in STM package.
 ```{r as STM corpus, eval = TRUE}
+
 stm_corpus <- d_cast %>% map(asSTMCorpus)
+
 ```
 
 ##Fitting STM
@@ -364,7 +377,7 @@ Several functions are needed to work with tibble and tidyverse functionality:
 ####My_stm Function
 The function `my_LDA` fits an LDA model on the DTM using the previous controls.
 ```{r my_STM, eval= TRUE}
-my_stm <- function(n_topics, corpus){
+my_stm <- function(n_topics, corpus, data){
 
   STM_model <- stm(corpus$documents, corpus$vocab, K = n_topics, init.type = "Spectral")
 }
@@ -376,7 +389,6 @@ my_stm_eval <- function(heldout, n_topic){
   stm::stm(heldout$documents, heldout$vocab, n_topic, init.type = "Spectral")
 }
 ```
-
 
 ####Extraction Functions
 We will be working with many lists of lists. The following functions help us extract information from lower levels of the list (e.g. access element in second list).
@@ -474,59 +486,59 @@ get_kw <- function(d_beta){
 ```{r models in tibble}
 topic_numbers <- seq(from = 5, to = 10, by = 5) # seq(from = 5, to = 20, by = 5) #seq(from = 5, to = 150, by = 5)
 
-
 stm_model <- tibble(
   #repeat each topic number twice (once for overview and once for manual)
   n_topic = rep(topic_numbers, each = 2) ) %>%
-  
   mutate(
-    #Identification information
-    Origin     = rep(c("overview", "manuals"), length(topic_numbers)),         
-    `Topic ID` = paste(Origin, n_topic, sep = "_"),
-    
-    #DTM
-    DTM       = pmap(.l = list(Origin), .f = extract_dtm),
-    doc_names = map(DTM, rownames),
-    
-    #STM Corpus
-    Corpus           = pmap(.l = list(Origin), .f = extract_corpus), 
-    #Documents- STM corpus
-    Documents_stm     = pmap(.l=list(Corpus),    .f = extract_documents),
-    #Vocab- STM corpus
-    Vocab_stm         = pmap(.l=list(Corpus),    .f = extract_vocab),
-    #Data- STM corpus
-    Data_stm          = pmap(.l=list(Corpus),    .f = extract_data),
-    
-    #Fit Model 
-    Model  = pmap(.l = list(n_topic, Corpus), .f = my_stm),
-    
-    #Evaluation
-    Exclusivity        = map(Model, exclusivity),
-    semantic_coherence = pmap(.l = list(Model,DTM), semanticCoherence, M = 10), #M = num. of top words per topic
-    #Alretnative input to semantic_coherence = pmap(.l = list(Model, Documents_stm), semanticCoherence, M = 10),
-    
-    #
-    ##Inspection
-    
-    #Beta distribution
-    Beta = pmap(.l = list(Model),  .f = tidy),
-    #Gamma distribution
-    Gamma = pmap(.l = list(Model, DTM), .f = my_tidy_gamma), #fix this
-    
-    #top words per topic
-    top_terms_topic = map(Beta, .f = get_top_terms_topic),
-    
-    #top topics per course
-    top_topic_course = map(Gamma, .f = get_top_topics_course), 
-    
-    #Select keywords
-    kw = map(Beta, .f = get_kw)
-    
-    #END MUTATE PARENTHESIS
-         )
+  #Identification information
+  Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         
+  `Topic ID` = paste(Origin, n_topic, sep = "_"),
+  #DTM
+  
+  DTM       = pmap(.l = list(Origin), .f = extract_dtm),
+  
+  doc_names = map(DTM, rownames),
+  #STM Corpus
+  Corpus           = pmap(.l = list(Origin),   .f = extract_corpus), 
+  #Documents- STM corpus
+  Documents_stm     = pmap(.l=list(Corpus),    .f = extract_documents),
+  #Vocab- STM corpus
+  Vocab_stm         = pmap(.l=list(Corpus),    .f = extract_vocab),
+  #Data- STM corpus
+  Data_stm          = pmap(.l=list(Corpus),    .f = extract_data),
+  #Fit Model
+  Model  = pmap(.l = list(n_topic, Corpus), .f = my_stm),
+  
+  #Evaluation
+  Exclusivity        = map(Model, exclusivity),
+
+  semantic_coherence = pmap(.l = list(Model,DTM), semanticCoherence, M = 10), #M = num. of top words per topic
+  #Alretnative input to semantic_coherence = pmap(.l = list(Model, Documents_stm), semanticCoherence, M = 10),
+
+  #
+  ##Inspection
+  #Beta distribution
+  Beta = pmap(.l = list(Model),  .f = tidy),
+
+  #Gamma distribution
+  Gamma = pmap(.l = list(Model, DTM), .f = my_tidy_gamma), #fix this
+
+  #top words per topic
+  top_terms_topic = map(Beta, .f = get_top_terms_topic),
+
+  #top topics per course
+  top_topic_course = map(Gamma, .f = get_top_topics_course), 
+
+  #Select keywords
+  kw = map(Beta, .f = get_kw)
+
+)
 
 ```
-
+####TESTING AND INSPECTING MODELS
+```{r model inspection}
+my_test <-  stm_model %>% filter(n_topic == 10, Origin == "manuals")
+```
 ####For evaluation
 ```{r models in tibble}
 topic_numbers <-  seq(from = 5, to = 10, by = 5) #seq(from = 5, to = 150, by = 5)
@@ -654,14 +666,30 @@ stm_eval_model %>%
 plot_eval("manuals")
 plot_eval("overview")
 ```
+#Vizualization
+```{r extract topic model}
+select_topic_model <- function(origin, n_topic){
+  model <- stm_model %>% 
+    filter(Origin == origin & n_topic == n_topic) %>%
+    pull(Model)
+  
+  model <- model[[1]]
+  return(model)
+}
 
+test <- select_topic_model("catalogues", 10)
+
+plot.STM(test, "perspectives", topics = c(1,5))
+```
 #New Documents
 ##Align vocabulary
 ```{r align vocab}
-#single case: Fasos topics
-d_text1 <- d_text #backup current code
+#back up current code
+d_text1 <- d_text
 
-fasos_docs <- d_text$catalogues%>%filter(department == "European_studies") %>%
+#single case: Fasos topics
+fasos_docs <- d_text$catalogues %>%
+  filter(department == "European_studies") %>%
   select(-department)
 
 fasos_cast <- my_cast_dtm(fasos_docs)
@@ -669,11 +697,6 @@ fasos_cast <- my_cast_dtm(fasos_docs)
 ```
 ##Fit new docs
 ```{r}
-model <- stm_model %>% filter(`Topic ID`=="overview_10")%>%
-  pull(Model)
-model <- model[[1]]
-
-
 # fitting:
 out <- asSTMCorpus(fasos_cast)
 newdocs <- alignCorpus(new=out, old.vocab = model$vocab)
@@ -687,7 +710,14 @@ plot.STM(model, type ="summary")
 rownames(fasos_theta$theta) <- my_names
 
 new_courses_theta <- fasos_theta$theta
-set_names(fasos_theta$theta, old = colnames(fasos_theta$theta), new = paste0("Topic", 1:10))
-new_courses_theta %>%  mutate(Topic = paste("Topic_" rownames))
-```
 
+set_names(fasos_theta$theta, old = colnames(fasos_theta$theta), new = paste0("Topic", 1:10))
+
+new_courses_theta %>%  mutate(Topic = paste("Topic_", rownames))
+```
+#Experiment
+```{r experoment}
+estimateEffect(formula = 1:5 ~department, meta = test$meta)
+
+
+```
