@@ -1,0 +1,289 @@
+---
+title: "STM single case"
+author: "DARS"
+date: "4/2/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Setup
+##Libraries
+```{r library, message = FALSE, eval = TRUE}
+library(tidyverse)
+library(tidytext)
+
+#Topic Models
+library(stm)
+library(topicmodels)
+library(quanteda) #used for DTM implementation called dfm
+
+
+library(ggwordcloud) # Word Clouds
+
+
+library(lemon)
+library(ggthemes)
+library(rlang) #quote
+library(ldatuning) # ideal number of topics in LDA
+
+```
+
+##Loading data
+We load the environment `Output/d_text.RDATA`. It contains the data sets:
+`d_course`, `d_transcript`, and a list `d_text` with the textual data for catalogues and manuals (for $overview, $description, $manuals we have (`Course ID`, `year`, `word_original`, `word`) ).
+
+For `d_text` we keep only the most recent year.
+```{r import data, eval = TRUE}
+#load
+load("Output/d_text.RDATA")
+```
+
+# STM
+##Setup
+###Cast DTM
+The function `my_cast_dtm` casts our dataframes into a DTM (dfm from package quanteda)
+```{r my_cast_dtm, eval = TRUE}
+my_cast_dtm <- function(data) data %>%
+  count(`Course ID`, word) %>%
+  cast_dfm(`Course ID`, word, n)
+
+d_cast <- d_text %>% map(my_cast_dtm)
+
+rm(my_cast_dtm)
+```
+
+```{r covariates}
+#get covariates
+covariates <- tribble(
+  ~Origin,    ~Data,
+  "catalogues", d_text$catalogues %>% distinct(`Course ID`, department),
+  "manuals", d_text$manuals %>% mutate(department = "UCM") %>% distinct(`Course ID`, department)
+)
+```
+###STM Corpus
+We convert our DTMs into STM corpus to access to full functionality in STM package.
+```{r as STM corpus, eval = TRUE}
+
+stm_corpus <- d_cast %>% map(asSTMCorpus)
+
+```
+
+##Fitting STM
+We will to train several models to have some flexibility in the number of topics we select. For this purpose we want to create two tibbles. One that trains on the entire data (for use), and one that we divide on training set and test set. 
+###Functions
+Several functions are needed to work with tibble and tidyverse functionality:
+####My_stm Function
+The function `my_LDA` fits an LDA model on the DTM using the previous controls.
+```{r my_STM, eval= TRUE}
+my_stm <- function(n_topics, corpus, data){
+
+  STM_model <- stm(corpus$documents, corpus$vocab, K = n_topics, init.type = "Spectral")
+}
+```
+####My_stm_eval Function
+This function applied stm but with heldout vocab and documents. 
+```{r}
+my_stm_eval <- function(heldout, n_topic){
+  stm::stm(heldout$documents, heldout$vocab, n_topic, init.type = "Spectral")
+}
+```
+
+####Extraction Functions
+We will be working with many lists of lists. The following functions help us extract information from lower levels of the list (e.g. access element in second list).
+```{r getting gamma and beta, eval = TRUE}
+#
+##From external Lists:
+
+#Extract DTM
+extract_dtm <- function(origin) d_cast[[origin]]
+#Extract CORPUS
+extract_corpus <- function(origin) stm_corpus[[origin]]
+
+
+#
+## From STM_corpus class
+
+#Extract documents
+extract_documents <- function(corpus) corpus$documents
+#Extract vocab
+extract_vocab     <- function(corpus) corpus$vocab
+#Extract data
+extract_data     <- function(corpus) corpus$data
+
+
+#
+##From Partition
+
+#Extract heldout docs
+extract_held_doc <- function(heldout) heldout$documents#[[1]]
+#Extract herlout vocab
+extract_held_vocab <- function(heldout) heldout$vocab#[[1]]
+#Extract missing
+extract_helout_missing <- function(heldout) heldout$missing#[[1]]
+
+#
+## MODEL HELDOUT
+my_model <- function(heldout){
+  
+  docs <- heldout$documents[[1]]
+  voc  <- heldout$vocab
+  k    <- n_topics 
+  
+  Model <- stm(docs, voc, 5, init.type = "Spectral")
+  
+  return(Model)
+}
+
+#
+##From Model
+#tidy gamma
+my_tidy_gamma <- function(Gamma, DTM){
+  tidy(Gamma, matrix = "gamma", document_names = rownames(DTM))}
+
+#extract 
+
+#extract Distributions (Gamma/Beta)
+get_distributions <- function(model, distrib_str){ #input gamma or beta
+  tidy(model, matrix = distrib_str)        %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(!!sym(distrib_str)))}
+
+```
+####Inspection functions
+The following functions allow us to inspect the results from our models(inspect distributions and get kw):
+```{r}
+get_top_terms_topic <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(10, beta) %>%
+    select(topic, term) %>%
+    group_by(topic) %>%
+    summarise(top_words = list(term))
+  
+}
+
+get_top_topics_course <- function(d_gamma){
+  data.frame(d_gamma) %>%
+    group_by(document) %>%
+    top_n(5, gamma) %>%
+    select(document, topic) %>%
+    summarise(top_topic = list(topic))
+}
+
+get_kw <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(3, beta) %>%
+    ungroup()%>%
+    pull(term)%>%
+    unique()
+}
+```
+###Model Tibbles
+####For use:
+```{r models in tibble}
+topic_numbers <- seq(from = 5, to = 10, by = 5) # seq(from = 5, to = 20, by = 5) #seq(from = 5, to = 150, by = 5)
+
+stm_model <- tibble(
+  #repeat each topic number twice (once for overview and once for manual)
+  n_topic = rep(topic_numbers, each = 2) ) %>%
+  mutate(
+  #Identification information
+  Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         
+  `Topic ID` = paste(Origin, n_topic, sep = "_"),
+  #DTM
+  
+  DTM       = pmap(.l = list(Origin), .f = extract_dtm),
+  
+  doc_names = map(DTM, rownames),
+  #STM Corpus
+  Corpus           = pmap(.l = list(Origin),   .f = extract_corpus), 
+  #Documents- STM corpus
+  Documents_stm     = pmap(.l=list(Corpus),    .f = extract_documents),
+  #Vocab- STM corpus
+  Vocab_stm         = pmap(.l=list(Corpus),    .f = extract_vocab),
+  #Data- STM corpus
+  Data_stm          = pmap(.l=list(Corpus),    .f = extract_data),
+  #Fit Model
+  Model  = pmap(.l = list(n_topic, Corpus), .f = my_stm),
+  
+  #Evaluation
+  Exclusivity        = map(Model, exclusivity),
+
+  semantic_coherence = pmap(.l = list(Model,DTM), semanticCoherence, M = 10), #M = num. of top words per topic
+  #Alretnative input to semantic_coherence = pmap(.l = list(Model, Documents_stm), semanticCoherence, M = 10),
+
+  #
+  ##Inspection
+  #Beta distribution
+  Beta = pmap(.l = list(Model),  .f = tidy),
+
+  #Gamma distribution
+  Gamma = pmap(.l = list(Model, DTM), .f = my_tidy_gamma), #fix this
+
+  #top words per topic
+  top_terms_topic = map(Beta, .f = get_top_terms_topic),
+
+  #top topics per course
+  top_topic_course = map(Gamma, .f = get_top_topics_course), 
+
+  #Select keywords
+  kw = map(Beta, .f = get_kw)
+
+)
+
+```
+####TESTING AND INSPECTING MODELS
+```{r model inspection}
+my_test <-  stm_model %>% filter(n_topic == 10, Origin == "manuals")
+```
+####For evaluation
+```{r models in tibble}
+topic_numbers <-  seq(from = 5, to = 10, by = 5) #seq(from = 5, to = 150, by = 5)
+
+#
+##STM EVALUATION TIBBLE
+stm_eval_model <- tibble(
+  
+  #repeat each topic number twice (once for overview and once for manual)
+  n_topic = rep(topic_numbers, each = 2)
+  
+  ) %>%
+  mutate(
+    #Identification information
+    Origin     = rep(c("overview", "manuals"), length(topic_numbers)),         
+    `Topic ID` = paste(Origin, n_topic, sep = "_"),
+    
+    #DTM
+    DTM       = pmap(.l = list(Origin),  .f = extract_dtm),
+    Heldout   = pmap(.l = list(DTM),     .f = make.heldout, proportion = 0.5),
+
+    #Fitting Model
+    Model     = pmap(.l = list(Heldout, n_topic), .f = my_stm_eval),
+    
+    #Evaluation measures
+    Exclusivity        = map(Model, exclusivity),
+    
+    semantic_coherence = pmap(.l = list(Model, Heldout), 
+                              function(model,  heldout) semanticCoherence(model, heldout$documents)),
+    
+    eval_heldout       = pmap(.l = list(Model, Heldout), 
+                              function(model,  heldout) eval.heldout(model, heldout$missing)),
+    
+    residual           = pmap(.l = list(Model, Heldout), 
+                              function(model,  heldout) checkResiduals(model, heldout$documents, tol = 1/100)),
+    
+    bound              = pmap_dbl(.l = list(Model), 
+                                  function(model) max(model$convergence$bound)),
+    
+    lfact              = map_dbl(Model,       
+                                 function(model) lfactorial(model$settings$dim$K)),
+    
+    lbound             = bound + lfact,
+    iterations         = map_dbl(Model,       
+                                 function(model) length(model$convergence$bound))
+    ) 
+```
