@@ -52,15 +52,13 @@ scale_y_reordered <- function(..., sep = "___") {
 
 ##Loading data
 We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
-`d_course`, `d_transcript`, and a list `d_text` with the textual data for catalogues and manuals (for $overview, $description, $manuals we have (`Course ID`, `year`, `word_original`, `word`) ).
+`d_course`, `d_transcript`, and a list `d_text` with the textual data for catalogues and manuals (for $catalogues, $manuals we have (`Course ID`, `year`, `word_original`, `word`) ).
 
 For `d_text` we keep only the most recent year.
 ```{r import data, eval = TRUE}
 #load
-load("output/data_pillar_2.RDATA")
-
-# keep most recent year
-d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
+#load("output/data_pillar_2.RDATA")
+load("./Output/d_text.RDATA")
 ```
 
 # TF-IDF
@@ -351,8 +349,8 @@ my_control <- list(
   seed   = 1 : 20,
   best   = TRUE,
   
-  burnin = 1000,
-  iter   = 15000,
+  burnin = 100,
+  iter   = 2000,
   thin   = 100
   
 )
@@ -462,7 +460,7 @@ my_perplexity <- function(model, dtm){
 ```
 
 The following functions allow us to inspect the results from our models(inspect distributions and get kw):
-```{r}
+```{r inspection functions, eval = TRUE}
  # get_top_match <- function(d_distribution){
  # 
  #  #save user input as string
@@ -516,21 +514,22 @@ get_kw <- function(d_beta){
 ###Training Models
 We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models under `topic_model`, along with the DTM used to build the model, the corpus of origin (overview or manuals), the word and topic distributions results from that model, it's evaluation measures, and vectors of words and topics that allow us humans to get a feel of the model, along with some key words.
 ```{r LDA fit, cache = TRUE, eval = TRUE}
+topic_numbers <- seq(from = 4, to = 150, by = 2)
 
 test_topic_model <- tibble( #CHANGE NAME TO: topic_model
   
-  #repeat each topic number twice (once for overview and once for manual)
-  n_topic = rep(seq(from = 2, to = 4, by = 1), each = 2) # from = 5, to = 250, by = 5
+  #repeat each topic number twice (once for catalogues and once for manual)
+  n_topic = rep(topic_numbers, each = 2) # from = 5, to = 250, by = 5
   
   ) %>%
-  mutate(Origin     = rep(c("overview", "manuals"), 3),         # should be 50
+  mutate(Origin     = rep(c("catalogues", "manuals"), 74),         # should be 50
          `Topic ID` = paste(Origin, n_topic, sep = "_"),
          
          #Document Term Matrix
          DTM        = pmap(.l = list(Origin), .f = extract_dtm),
          
          #Fit Model
-         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control_fast), #my_control
+         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control), #my_control
          
          #Gamma distribution
          Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
@@ -563,7 +562,6 @@ test_topic_model <- tibble( #CHANGE NAME TO: topic_model
 # rm(extract_dtm, get_distributions, my_perplexity,
 #    get_top_terms_topic, get_top_topics_course, get_kw)
 
-# test_topic_model
 ```
 
 ##Plots - Model Evaluation
@@ -590,13 +588,14 @@ plot_evaluation <- function(origin){
 }
 
 #Plot
-plot_evaluation("overview")
+plot_evaluation("catalogues")
 plot_evaluation("manuals")
 ```
 
 ##Saving model_data:
 We save our tibble with all the information.
-```{r}
+```{r save, eval = T}
+save(test_topic_model, file = "Output/test_topic_model.RDATA" )
 # save(topic_model, file = "Output/topic_model.RDATA" ) #needs to be renamed to match what is currently test_topic_model
 ```
 
