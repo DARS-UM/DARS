@@ -57,10 +57,8 @@ We load the environment `output/data_pillar_2.RDATA`. It contains the data sets:
 For `d_text` we keep only the most recent year.
 ```{r import data, eval = TRUE}
 #load
-load("output/data_pillar_2.RDATA")
-
-# keep most recent year
-d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
+#load("output/data_pillar_2.RDATA")
+load("./Output/d_text.RDATA")
 ```
 
 # TF-IDF
@@ -590,7 +588,7 @@ plot_evaluation <- function(origin){
 }
 
 #Plot
-plot_evaluation("overview")
+plot_evaluation("catalogues")
 plot_evaluation("manuals")
 ```
 
