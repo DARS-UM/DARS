@@ -680,7 +680,7 @@ select_topic_model <- function(origin, n_topic){
 
 test <- select_topic_model("catalogues", 10)
 
-plot.STM(test, "perspectives", topics = c(1,5))
+plot.STM(test, "labels", topics = c(1:5))
 ```
 #New Documents
 ##Align vocabulary
