@@ -38,7 +38,7 @@ We load the environment `Output/d_text.RDATA`. It contains the data sets:
 For `d_text` we keep only the most recent year.
 ```{r import data, eval = TRUE}
 #load
-load("Output/d_text.RDATA")
+load("/Users/sofia/Documents/DARS/GitDARS/Output/d_text.RDATA")
 ```
 
 # STM
@@ -54,20 +54,16 @@ d_cast <- d_text %>% map(my_cast_dtm)
 
 rm(my_cast_dtm)
 ```
-
+###covariates
 ```{r covariates}
-#get covariates
-covariates <- tribble(
-  ~Origin,    ~Data,
-  "catalogues", d_text$catalogues %>% distinct(`Course ID`, department),
-  "manuals", d_text$manuals %>% mutate(department = "UCM") %>% distinct(`Course ID`, department)
-)
+catalogues_covariates <- d_text$catalogues %>% distinct(`Course ID`, department)
+manuals_covariates    <- d_text$manuals %>% mutate(department = "UCM") %>% distinct(`Course ID`, department)
 ```
 ###STM Corpus
 We convert our DTMs into STM corpus to access to full functionality in STM package.
 ```{r as STM corpus, eval = TRUE}
-
-stm_corpus <- d_cast %>% map(asSTMCorpus)
+catalogues_corpus <- asSTMCorpus(d_cast$catalogues)
+manuals_corpus    <- asSTMCorpus(d_cast$manuals)
 
 ```
 
@@ -80,7 +76,7 @@ The function `my_LDA` fits an LDA model on the DTM using the previous controls.
 ```{r my_STM, eval= TRUE}
 my_stm <- function(n_topics, corpus, data){
 
-  STM_model <- stm(corpus$documents, corpus$vocab, K = n_topics, init.type = "Spectral")
+  STM_model <- stm(corpus$documents, corpus$vocab, data= data, prevalence = ~department, K = n_topics, init.type = "Spectral")
 }
 ```
 ####My_stm_eval Function
@@ -184,31 +180,19 @@ get_kw <- function(d_beta){
 ```
 ###Model Tibbles
 ####For use:
-```{r models in tibble}
+Catalogues:
+```{r models_catalogues in tibble}
 topic_numbers <- seq(from = 5, to = 10, by = 5) # seq(from = 5, to = 20, by = 5) #seq(from = 5, to = 150, by = 5)
 
 stm_model <- tibble(
   #repeat each topic number twice (once for overview and once for manual)
-  n_topic = rep(topic_numbers, each = 2) ) %>%
+  n_topic = rep(topic_numbers, each = 1) ) %>%
   mutate(
   #Identification information
-  Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         
+  Origin     = rep(c("catalogues"), length(topic_numbers)),         
   `Topic ID` = paste(Origin, n_topic, sep = "_"),
-  #DTM
-  
-  DTM       = pmap(.l = list(Origin), .f = extract_dtm),
-  
-  doc_names = map(DTM, rownames),
-  #STM Corpus
-  Corpus           = pmap(.l = list(Origin),   .f = extract_corpus), 
-  #Documents- STM corpus
-  Documents_stm     = pmap(.l=list(Corpus),    .f = extract_documents),
-  #Vocab- STM corpus
-  Vocab_stm         = pmap(.l=list(Corpus),    .f = extract_vocab),
-  #Data- STM corpus
-  Data_stm          = pmap(.l=list(Corpus),    .f = extract_data),
-  #Fit Model
-  Model  = pmap(.l = list(n_topic, Corpus), .f = my_stm),
+  DTM        = pmap(.l = list(Origin), .f = extract_dtm),
+  Model      = map(n_topic, .f = my_stm, catalogues_corpus, catalogues_covariates),
   
   #Evaluation
   Exclusivity        = map(Model, exclusivity),
@@ -236,10 +220,67 @@ stm_model <- tibble(
 )
 
 ```
-####TESTING AND INSPECTING MODELS
-```{r model inspection}
-my_test <-  stm_model %>% filter(n_topic == 10, Origin == "manuals")
+
+Manuals_ models do not work:
+```{r models_manuals in tibble}
+topic_numbers <- seq(from = 5, to = 5, by = 5) # seq(from = 5, to = 20, by = 5) #seq(from = 5, to = 150, by = 5)
+
+stm_model_manuals <- tibble(
+  #repeat each topic number twice (once for overview and once for manual)
+  n_topic = rep(topic_numbers, each = 1) ) %>%
+  mutate(
+  #Identification information
+  Origin     = rep(c("manuals"), length(topic_numbers)),         
+  `Topic ID` = paste(Origin, n_topic, sep = "_"),
+  DTM        = pmap(.l = list(Origin), .f = extract_dtm),
+  Model      = map(n_topic, .f = my_stm, manuals_corpus, manuals_covariates),
+  
+  #Evaluation
+  Exclusivity        = map(Model, exclusivity),
+
+  semantic_coherence = pmap(.l = list(Model,DTM), semanticCoherence, M = 10), #M = num. of top words per topic
+  #Alretnative input to semantic_coherence = pmap(.l = list(Model, Documents_stm), semanticCoherence, M = 10),
+
+  #
+  ##Inspection
+  #Beta distribution
+  Beta = pmap(.l = list(Model),  .f = tidy),
+
+  #Gamma distribution
+  Gamma = pmap(.l = list(Model, DTM), .f = my_tidy_gamma), #fix this
+
+  #top words per topic
+  top_terms_topic = map(Beta, .f = get_top_terms_topic),
+
+  #top topics per course
+  top_topic_course = map(Gamma, .f = get_top_topics_course), 
+
+  #Select keywords
+  kw = map(Beta, .f = get_kw)
+
+)
 ```
+
+```{r}
+topic_model_manual <- 
+```
+Inspection plots:
+```{r plot STM}
+select_topic_model <- function(origin, K){
+  model <- stm_model %>% 
+    filter(Origin == origin, n_topic == K) %>%
+    pull(Model)
+   
+   model <- model[[1]]
+}
+
+test <- select_topic_model("catalogues", 10)
+
+plot.STM(test, "labels", topics = c(6:10))
+
+```
+
+
 ####For evaluation
 ```{r models in tibble}
 topic_numbers <-  seq(from = 5, to = 10, by = 5) #seq(from = 5, to = 150, by = 5)
@@ -287,3 +328,13 @@ stm_eval_model <- tibble(
                                  function(model) length(model$convergence$bound))
     ) 
 ```
+
+```{r}
+prep <- estimateEffect(1:10 ~ department, test, meta=catalogues_covariates, 
+                       uncertainty="Global")
+plot(prep, covariate="department", topics=c(3, 5, 10), model=test, 
+     method="difference", cov.value1="UCV", cov.value2="UCM",
+     main="Effect of UCV vs. UCM")
+```
+
+
