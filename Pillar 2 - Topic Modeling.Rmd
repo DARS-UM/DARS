@@ -529,7 +529,7 @@ test_topic_model <- tibble( #CHANGE NAME TO: topic_model
          DTM        = pmap(.l = list(Origin), .f = extract_dtm),
          
          #Fit Model
-         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control_fast), #my_control
+         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control), #my_control
          
          #Gamma distribution
          Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
