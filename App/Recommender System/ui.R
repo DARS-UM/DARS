@@ -14,11 +14,7 @@ load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
 load("rules_clean.RDATA")
 
-# stopwords <- c("2016", "academic", "account", "age", "analysis","apply", "approach")
-# kw_clean <- kw$overview %>% setdiff(stopwords)
-# kw_clean <- sort(kw_clean)
-
-
+load("app_model.RDATA")
 
 #
 # ui
@@ -91,7 +87,7 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = sort(kw$overview),      #***********************************************SELECT: overview/manual
+          choices  = sort(app_model$kw[[1]]),      #***********************************************SELECT: overview/manual
           #selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),
