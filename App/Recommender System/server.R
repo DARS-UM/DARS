@@ -6,6 +6,7 @@ library(hunspell)
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
+load("app_model.RDATA")
 
 
 
@@ -383,8 +384,8 @@ function(input, output, session) {
   ###Set up
   recommendations_data <- reactive({
     
-    beta_distribution <- distribution$beta$overview     #***********************************************SELECT: overview/manual
-    gamma_distribution <- distribution$gamma$overview   #***********************************************SELECT: overview/manual
+    beta_distribution <- app_model$Beta[[1]]   # <-  #10, 25, 30, 35, 40, 45, 50, 55, 60 #distribution$beta$overview     #***********************************************SELECT: overview/manual
+    gamma_distribution <- app_model$Gamma[[1]] # <-  #10, 25, 30, 35, 40, 45, 50, 55, 60 #distribution$gamma$overview   #***********************************************SELECT: overview/manual
     
     # Key words
     key_words_additional <- c(
