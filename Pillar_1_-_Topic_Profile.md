@@ -1,32 +1,29 @@
----
-title: "Pillar 1 - Student Topic Profile"
-author: "DARS"
-date: "`r Sys.Date()`"
-output: 
-  github_document:
-    toc: TRUE
-editor_options: 
-  chunk_output_type: console
----
+Pillar 1 - Student Topic Profile
+================
+DARS
+2019-04-12
 
-__Considerations__:
+-   [Course topic profile](#course-topic-profile)
+-   [Student topic profile](#student-topic-profile)
+-   [Student GPA](#student-gpa)
+-   [Join student TP and GPA](#join-student-tp-and-gpa)
+-   [Regressing grade on TP and GPA](#regressing-grade-on-tp-and-gpa)
+    -   [Lasso](#lasso)
+    -   [find alpha](#find-alpha)
+-   [Green flag](#green-flag)
+-   [old code](#old-code)
+    -   [CV](#cv)
+    -   [BSS](#bss)
 
-* extract course descriptions from courses not offer in 2018-2019 e.g. SCI2012.
-* give more weight to 3000-level courses
+**Considerations**:
 
-* consider following predictors:
-     * GPA (per concentration)
+-   extract course descriptions from courses not offer in 2018-2019 e.g. SCI2012.
+-   give more weight to 3000-level courses
 
-```{r setup, include = FALSE}
-knitr::opts_chunk$set(cache.path = "Cache/Pillar 1/")
+-   consider following predictors:
+    -   GPA (per concentration)
 
-library(magrittr)
-library(glmnet)
-library(leaps)
-library(tidyverse)
-```
-
-```{r load, cache.lazy = TRUE}
+``` r
 load("App/Recommender System/topic_model_gb.RDATA")
 load("Output/data_pillar_1.RDATA")
 load("Output/course_current.RDATA")
@@ -36,16 +33,20 @@ course_target <- setdiff(course_target, "CAP3000") # exclude capstone
 course_target <- union(course_target, str_subset(course_current, "COR"))# include core courses
 ```
 
-# Course topic profile
-```{r gamma_spread}
+Course topic profile
+====================
+
+``` r
 gamma        <- topic_model_gb$g_overview[[15]] %>% mutate(topic = topic %>% str_replace(" ", "_"))
 gamma_spread <- gamma %>% spread(topic, gamma)
 
 beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
 ```
 
-# Student topic profile
-```{r student_TP}
+Student topic profile
+=====================
+
+``` r
 student_TP <- d_transcript_augmented %>% 
   
   left_join(gamma_spread, by = c("Course ID" = "document")) %>%
@@ -69,9 +70,10 @@ student_TP <- d_transcript_augmented %>%
 
 Raphael's topic profile is coherent: topics with a high value correspond to my academic focus and topics with a low score to themes I never covered (i.e. law, literature).
 
-# Student GPA
+Student GPA
+===========
 
-```{r grade_ECTS}
+``` r
 d_transcript_augmented <- d_transcript_augmented %>%
   
   mutate(is_HUM = `Course ID` %>% str_detect("HUM|SAH"),
@@ -111,7 +113,7 @@ d_transcript_augmented <- d_transcript_augmented %>%
          grade_ECTS_PRO = grade_PRO * ECTS_PRO)
 ```
 
-```{r student_GPA, cache = T}
+``` r
 student_GPA <- d_transcript_augmented %>%
   
   group_by(`Student ID`, time) %>%
@@ -139,8 +141,10 @@ student_GPA <- d_transcript_augmented %>%
   arrange(`Student ID`) 
 ```
 
-# Join student TP and GPA
-```{r student_profile}
+Join student TP and GPA
+=======================
+
+``` r
 student_profile <- d_transcript_augmented %>%
   
   left_join(student_GPA, by = c("Student ID", "time")) %>%
@@ -148,14 +152,17 @@ student_profile <- d_transcript_augmented %>%
   left_join(student_TP , by = c("Student ID", "time"))
 ```
 
-# Regressing grade on TP and GPA
+Regressing grade on TP and GPA
+==============================
 
-```{r find_df}
+``` r
 find_df <- function(course)  student_profile %>% filter(`Course ID` == course)
 ```
 
-## Lasso
-```{r my_cv.glmnet}
+Lasso
+-----
+
+``` r
 my_cv.glmnet <- function(df, alpha = 1, predictors){
   
   df <- df %>% select(Grade, matches(predictors))
@@ -170,7 +177,7 @@ my_cv.glmnet <- function(df, alpha = 1, predictors){
 }
 ```
 
-```{r fit_lasso, cache = TRUE}
+``` r
 fit_lasso <- tibble(target = course_target) %>%
   
   mutate(d = target %>% map(find_df),
@@ -183,7 +190,7 @@ fit_lasso <- tibble(target = course_target) %>%
   select(-d)
 ```
 
-```{r fit_lasso extract}
+``` r
 fit_lasso <- fit_lasso %>%
   
   # Results from CV
@@ -216,21 +223,167 @@ fit_lasso <- fit_lasso %>%
   arrange(cv_error)
 ```
 
-```{r}
+``` r
 hist(fit_lasso$cv_error)
+```
+
+![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-1-1.png)
+
+``` r
 mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
 ```
 
+    ## [1] 0.8052675
+
+    ## [1] 0.7823819
+
 Topic chosen by model are related to the course.
-```{r}
+
+``` r
 i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ law, foreign policy, culture
+```
+
+    ## 38 x 1 sparse Matrix of class "dgCMatrix"
+    ##                        1
+    ## (Intercept)  3.623075583
+    ## GPA          0.278878194
+    ## GPA_HUM      .          
+    ## GPA_SCI      0.024351817
+    ## GPA_SSC      0.006535114
+    ## GPA_COR      .          
+    ## GPA_SKI      0.231453495
+    ## GPA_PRO      .          
+    ## Topic_1      .          
+    ## Topic_10     .          
+    ## Topic_11     .          
+    ## Topic_12     .          
+    ## Topic_13     .          
+    ## Topic_14     .          
+    ## Topic_15     .          
+    ## Topic_16     .          
+    ## Topic_17     0.048710957
+    ## Topic_18     0.103270722
+    ## Topic_19     .          
+    ## Topic_2      .          
+    ## Topic_20     .          
+    ## Topic_21     .          
+    ## Topic_22     .          
+    ## Topic_23     .          
+    ## Topic_24     .          
+    ## Topic_25    -0.199076567
+    ## Topic_26     .          
+    ## Topic_27     .          
+    ## Topic_28     .          
+    ## Topic_29     .          
+    ## Topic_3      .          
+    ## Topic_30     .          
+    ## Topic_4      .          
+    ## Topic_5      .          
+    ## Topic_6      .          
+    ## Topic_7      .          
+    ## Topic_8      0.136020985
+    ## Topic_9      .
+
+    ## [1] "SSC3038"
+
+``` r
 i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of western pol. thought predicted by HUM
+```
+
+    ## 38 x 1 sparse Matrix of class "dgCMatrix"
+    ##                      1
+    ## (Intercept)  7.3435912
+    ## GPA          .        
+    ## GPA_HUM      .        
+    ## GPA_SCI      .        
+    ## GPA_SSC      0.1087329
+    ## GPA_COR      .        
+    ## GPA_SKI      .        
+    ## GPA_PRO      .        
+    ## Topic_1      .        
+    ## Topic_10     .        
+    ## Topic_11     .        
+    ## Topic_12     .        
+    ## Topic_13     .        
+    ## Topic_14     .        
+    ## Topic_15     .        
+    ## Topic_16     .        
+    ## Topic_17    -0.4818858
+    ## Topic_18     .        
+    ## Topic_19     .        
+    ## Topic_2      .        
+    ## Topic_20     .        
+    ## Topic_21     .        
+    ## Topic_22     .        
+    ## Topic_23     .        
+    ## Topic_24     .        
+    ## Topic_25     .        
+    ## Topic_26     .        
+    ## Topic_27     .        
+    ## Topic_28     .        
+    ## Topic_29     .        
+    ## Topic_3      .        
+    ## Topic_30     .        
+    ## Topic_4      .        
+    ## Topic_5      .        
+    ## Topic_6      .        
+    ## Topic_7      .        
+    ## Topic_8      .        
+    ## Topic_9      .
+
+    ## [1] "UGR3003"
+
+``` r
 i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, culture
 ```
 
-## find alpha
+    ## 38 x 1 sparse Matrix of class "dgCMatrix"
+    ##                       1
+    ## (Intercept)  4.56120708
+    ## GPA          0.04590077
+    ## GPA_HUM      .         
+    ## GPA_SCI      .         
+    ## GPA_SSC      0.24487218
+    ## GPA_COR      0.02433523
+    ## GPA_SKI      0.12389364
+    ## GPA_PRO      .         
+    ## Topic_1      .         
+    ## Topic_10     .         
+    ## Topic_11     .         
+    ## Topic_12     .         
+    ## Topic_13     .         
+    ## Topic_14     .         
+    ## Topic_15     .         
+    ## Topic_16     .         
+    ## Topic_17     .         
+    ## Topic_18     .         
+    ## Topic_19     .         
+    ## Topic_2      0.04094893
+    ## Topic_20     .         
+    ## Topic_21     0.17917753
+    ## Topic_22     .         
+    ## Topic_23     0.34315347
+    ## Topic_24     .         
+    ## Topic_25     .         
+    ## Topic_26    -0.17314549
+    ## Topic_27     .         
+    ## Topic_28     .         
+    ## Topic_29     .         
+    ## Topic_3      .         
+    ## Topic_30     .         
+    ## Topic_4      .         
+    ## Topic_5      .         
+    ## Topic_6      .         
+    ## Topic_7      .         
+    ## Topic_8      .         
+    ## Topic_9      .
 
-```{r, cache = T}
+    ## [1] "SSC3044"
+
+find alpha
+----------
+
+``` r
 n_alpha <- 101
 mae   <- numeric(n_alpha)
 alphas <- seq(0, 1, length.out = n_alpha)
@@ -257,12 +410,37 @@ for(i in 1 : n_alpha){
 m <- lm(mae ~ alphas)
 plot(alphas, mae)
 abline(m, col = "red")
+```
+
+![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-3-1.png)
+
+``` r
 m %>% summary
 ```
 
-# Green flag
+    ## 
+    ## Call:
+    ## lm(formula = mae ~ alphas)
+    ## 
+    ## Residuals:
+    ##        Min         1Q     Median         3Q        Max 
+    ## -9.940e-04 -2.674e-04 -2.928e-05  3.161e-04  1.519e-03 
+    ## 
+    ## Coefficients:
+    ##               Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)  7.835e-01  8.961e-05  8743.3   <2e-16 ***
+    ## alphas      -2.167e-04  1.548e-04    -1.4    0.165    
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.0004536 on 99 degrees of freedom
+    ## Multiple R-squared:  0.01941,    Adjusted R-squared:  0.009506 
+    ## F-statistic:  1.96 on 1 and 99 DF,  p-value: 0.1647
 
-```{r}
+Green flag
+==========
+
+``` r
 fit_lasso_topic <- tibble(target = course_target) %>%
   
   mutate(d = target %>% map(find_df),
@@ -275,7 +453,7 @@ fit_lasso_topic <- tibble(target = course_target) %>%
   select(-d)
 ```
 
-```{r}
+``` r
 fit_lasso_topic <- fit_lasso_topic %>%
   
   # Results from CV
@@ -299,7 +477,7 @@ fit_lasso_topic <- fit_lasso_topic %>%
 View(fit_lasso_topic)
 ```
 
-```{r}
+``` r
 d_prep <- fit_lasso_topic %>% 
   
   left_join(gamma, by = "topic") %>%
@@ -328,10 +506,13 @@ d_prep <- fit_lasso_topic %>%
 View(d_prep)  
 ```
 
-# old code
-## CV
+old code
+========
 
-```{r my_predict, eval = F}
+CV
+--
+
+``` r
 my_predict <- function(model, newdata, id){
   
   df    <- as.matrix(newdata)
@@ -343,7 +524,7 @@ my_predict <- function(model, newdata, id){
 }
 ```
 
-```{r my_CV, eval = F}
+``` r
 my_CV <- function(df){
   
   k <- 10
@@ -376,16 +557,18 @@ my_CV <- function(df){
 }
 ```
 
-## BSS
-```{r my_BSS, eval = F}
+BSS
+---
+
+``` r
 my_BSS <- function(df) regsubsets(Grade ~ ., data = df, nvmax = 7)
 ```
 
-```{r extract_coef, eval = F}
+``` r
 extract_coef <- function(BSS, BS) names(coef(BSS, BS))[-1]
 ```
 
-```{r my_lm, eval = F}
+``` r
 my_lm <- function(df, best_coef){
   
   best_coef %>%
@@ -399,7 +582,7 @@ my_lm <- function(df, best_coef){
 }
 ```
 
-```{r model fitting, eval = F}
+``` r
 BSS <- tibble(target = course_obj) %>%
   
   mutate(df = target %>% map(find_df),
@@ -423,7 +606,7 @@ BSS <- tibble(target = course_obj) %>%
   select(target, n, tidied, glanced, augmented)
 ```
 
-```{r, eval = F}
+``` r
 BSS_glance <- BSS %>% unnest(glanced) %>% select(-c(tidied, augmented)) %>%
   
   mutate(MSE = deviance / df.residual )
@@ -431,7 +614,7 @@ BSS_glance <- BSS %>% unnest(glanced) %>% select(-c(tidied, augmented)) %>%
 View(BSS_glance)
 ```
 
-```{r, eval = F}
+``` r
 course <- "HUM2021"
 
 BSS_tidy_temp <- BSS %>% filter(target == course) %>% unnest(tidied, .drop = F) %>% select(-c(glanced, augmented))
