@@ -38,7 +38,7 @@ We load the environment `Output/d_text.RDATA`. It contains the data sets:
 For `d_text` we keep only the most recent year.
 ```{r import data, eval = TRUE}
 #load
-load("/Users/sofia/Documents/DARS/GitDARS/Output/d_text.RDATA")
+load("./Output/d_text.RDATA")
 ```
 
 # STM
@@ -77,6 +77,13 @@ The function `my_LDA` fits an LDA model on the DTM using the previous controls.
 my_stm <- function(n_topics, corpus, data){
 
   STM_model <- stm(corpus$documents, corpus$vocab, data= data, prevalence = ~department, K = n_topics, init.type = "Spectral")
+}
+```
+###mystm_manuals
+```{r my_STM, eval= TRUE}
+my_stm_manuals <- function(n_topics){
+
+  STM_model <- stm(manuals_corpus$documents, manuals_corpus$vocab, data = manuals_covariates, prevalence = ~department, K = n_topics, init.type = "Spectral")
 }
 ```
 ####My_stm_eval Function
@@ -222,43 +229,30 @@ stm_model <- tibble(
 ```
 
 Manuals_ models do not work:
-```{r models_manuals in tibble}
-topic_numbers <- seq(from = 5, to = 5, by = 5) # seq(from = 5, to = 20, by = 5) #seq(from = 5, to = 150, by = 5)
+```{r models_manuals in tibble, error=TRUE}
+topic_numbers <- seq(from = 5, to = 10, by = 5) # seq(from = 5, to = 20, by = 5) #seq(from = 5, to = 150, by = 5)
 
-stm_model_manuals <- tibble(
-  #repeat each topic number twice (once for overview and once for manual)
-  n_topic = rep(topic_numbers, each = 1) ) %>%
-  mutate(
-  #Identification information
-  Origin     = rep(c("manuals"), length(topic_numbers)),         
-  `Topic ID` = paste(Origin, n_topic, sep = "_"),
-  DTM        = pmap(.l = list(Origin), .f = extract_dtm),
-  Model      = map(n_topic, .f = my_stm, manuals_corpus, manuals_covariates),
-  
-  #Evaluation
-  Exclusivity        = map(Model, exclusivity),
+model_tmp_result <- vector("list", length(topic_numbers))
 
-  semantic_coherence = pmap(.l = list(Model,DTM), semanticCoherence, M = 10), #M = num. of top words per topic
-  #Alretnative input to semantic_coherence = pmap(.l = list(Model, Documents_stm), semanticCoherence, M = 10),
-
-  #
-  ##Inspection
-  #Beta distribution
-  Beta = pmap(.l = list(Model),  .f = tidy),
-
-  #Gamma distribution
-  Gamma = pmap(.l = list(Model, DTM), .f = my_tidy_gamma), #fix this
-
-  #top words per topic
-  top_terms_topic = map(Beta, .f = get_top_terms_topic),
-
-  #top topics per course
-  top_topic_course = map(Gamma, .f = get_top_topics_course), 
-
-  #Select keywords
-  kw = map(Beta, .f = get_kw)
-
+for(i in seq_along(topic_numbers)){
+  k <- topic_numbers[[i]]
+  model_tmp_result[[i]] <- stm(documents = manuals_corpus$documents, 
+                               vocab = manuals_corpus$vocab, 
+                               K = k, 
+                               #data = manuals_covariates, 
+                               #prevalence = ~department, 
+                               init.type = "Spectral"
+                               )
+}
+stm_model_manuals <- many_models(
+  K = 5:10,
+  documents = manuals_corpus$documents,
+  vocab= manuals_corpus$vocab,
+  prevalence = ~ department, 
+  data = manuals_covariates,
+  runs = 5
 )
+
 ```
 
 ```{r}
@@ -269,9 +263,8 @@ Inspection plots:
 select_topic_model <- function(origin, K){
   model <- stm_model %>% 
     filter(Origin == origin, n_topic == K) %>%
-    pull(Model)
-   
-   model <- model[[1]]
+    pull(Model) %>%
+    .[[1]]
 }
 
 test <- select_topic_model("catalogues", 10)
