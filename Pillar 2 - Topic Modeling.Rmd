@@ -345,8 +345,8 @@ The control parameters we use are:
 ```{r controls, eval = TRUE}
 my_control <- list(
   
-  nstart = 10,
-  seed   = 1 : 10,
+  nstart = 20,
+  seed   = 1 : 20,
   best   = TRUE,
   
   burnin = 100,
