@@ -32,10 +32,10 @@ collapse_space    <- function(string) string %>% str_c(collapse = " ")
 symbol_to_line    <- c("\r\n", "\n") %>% collapse_or
 split             <- function(string) string %>% str_split(pattern = symbol_to_line) %>% .[[1]]
 
-remove_header_UCV <- function(string) string %>% str_sub(29, -1)
+remove_header_UCV <- function(string) string %>% str_sub(28, -1)
 
 overview_section_start <- function(string) string %>% str_detect(pattern = "^ *Core Courses")
-overview_section_end   <- function(string) string %>% str_detect(pattern = "Appendix|^ *Courses at\r\n *Maastricht Science Programme")
+overview_section_end   <- function(string) string %>% str_detect(pattern = "Appendix|^ *Courses at\n *Maastricht Science Programme")
 
 headers_UCM_UCV <- c("^ *Core Courses",
                      "^Humanities \\(HUM\\)",
@@ -177,7 +177,7 @@ overview_UCM_UCV <- function(catalogue, ID){
   
   # paste current page and following page (`lead(page)`) if overview is two page long
   transmute(text        = list(page, lead(page)) %>% pmap_chr(paste_if_2_page_overview),
-            `Course ID` = text %>% extract_id_course) %>%
+         `Course ID` = text %>% extract_id_course) %>%
     mutate(department  = ID) %>%
     filter(!is.na(text))
     
