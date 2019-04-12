@@ -310,8 +310,15 @@ d_text <- d_text %>% map(remove_sw) %T>% print
 rm(sw_own, remove_sw)
 ```
 
+# Current course
+```{r}
+course_current <- d_text$catalogues %>% filter(department == "UCM") %>% distinct(`Course ID`) %>% pull
+```
+
+
 # Save data
 
 ```{r}
-save(d_text, file = "Output/d_text.RDATA")
+save(course_current, file = "Output/course_current.RDATA")
+save(d_text        , file = "Output/d_text.RDATA")
 ```
