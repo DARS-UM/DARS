@@ -1,0 +1,486 @@
+---
+title: "Pillar 2- Quick Topic Models"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache.path = "Cache/Pillar 2/",
+                      eval = FALSE)
+```
+
+#Setup
+##Libraries
+```{r library, message = FALSE, eval = TRUE}
+library(tidyverse)
+library(tidytext)
+
+library(topicmodels)
+library(lemon)
+library(ggthemes)
+library(rlang) #quote
+library(ldatuning) # ideal number of topics in LDA
+
+```
+##Loading data
+We load a list `d_text` with two tibbles of textual data for catalogues and manuals. That is, for $catalogues and $manuals we have a tibble with the following columns: `Course ID`, `year`, `word_original`, `word`.
+
+We also load the environment `Output/data_pillar_2.RDATA` containing the data sets`d_course` and `d_transcript` that we will need to prepare some imputs for our App.
+
+```{r import data, eval = TRUE}
+#load
+load("./Output/d_text.RDATA")
+load("./Output/data_pillar_2.RDATA") #used for app
+
+```
+
+###Functions for internal faceting
+We create the functions for internal faceting taken from https://github.com/dgrtwo/drlib/blob/master/R/reorder_within.R
+```{r function reorder_within & co., echo = FALSE, eval = TRUE}
+
+# Function for ordering within facet:
+# https://github.com/dgrtwo/drlib/blob/master/R/reorder_within.R
+
+reorder_within <- function(x, by, within, fun = mean, sep = "___", ...) {
+  new_x <- paste(x, within, sep = sep)
+  stats::reorder(new_x, by, FUN = fun)
+}
+
+scale_x_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_x_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+
+scale_y_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_y_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+```
+
+# LDA
+In this section, we train several LDA models on our data and evaluate these to keep the best topic model for the course content data we have. We will do the model training and evaluation measures in one go using mapping functions on a tibble containing all pertinent data. In this way we ensure that we maintain the order of all the information we gather on our models. 
+
+In order to do this, we have to create all our functions before hand, to apply them in a chain later. Moreover, we will need to create a document-term matrix (DTM) for the catalogues and manuals which we will use in several steps to create and evaluate the model. Thus, we will create the DTM in a separate step as part of the set up.
+
+###Cast DTM
+The function `my_cast_dtm` casts each of our dataframes (catalogues and manuals) into a DTM.
+```{r my_cast_dtm, eval = TRUE}
+#
+##Function-----------------------------------------------
+my_cast_dtm <- function(data) data %>%
+  count(`Course ID`, word) %>%
+  cast_dtm(`Course ID`, word, n)
+
+#
+##Application-----------------------------------------------
+d_cast <- d_text %>% map(my_cast_dtm)
+
+#
+##Clean workspace-----------------------------------------------
+rm(my_cast_dtm)
+
+```
+###Controls
+The control parameters we will use to train our LDA model are:
+```{r controls, eval = TRUE}
+my_control <- list(
+  
+  nstart = 10,
+  seed   = 1 : 10, #must have length nstart
+  best   = TRUE,
+  
+  burnin = 100,
+  iter   = 2000,
+  thin   = 2000
+  
+)
+```
+We create a helping control that we can use when we need fast convergence for testing new code. Thus, the control parameters we use for fast testing are:
+```{r fast control}
+my_control_fast <- list(
+  
+  nstart = 1,
+  seed   = 1,
+  best   = TRUE,
+  
+  burnin = 5,
+  iter   = 10,
+  thin   = 2
+  
+)
+```
+
+## Fitting Model
+The function `my_LDA` fits an LDA model on the DTM using the previous controls.
+```{r my_LDA, eval= TRUE}
+my_LDA <- function(n_topics, corpus, control = my_control){
+
+  LDA_model <- LDA(
+    x       = corpus,
+    k       = n_topics,
+    method  = "Gibbs",
+    control = control
+    )
+}
+
+```
+
+###Extracting functions
+The following functions are used as input in a map to compute and evaluate topic models. 
+```{r getting gamma and beta, eval = TRUE}
+#Extract DTM-----------------------------------------------
+extract_dtm <- function(origin) d_cast[[origin]]
+
+#Extract Distributions (Gamma/Beta)-----------------------------------------------
+get_distributions <- function(model, distrib_str){ #input gamma or beta
+  tidy(model, matrix = distrib_str)        %>%
+    mutate(topic = paste("Topic", topic) ) %>%
+      arrange(topic, desc(!!sym(distrib_str)))
+}
+
+#perplexity Function-----------------------------------------------
+my_perplexity <- function(model, dtm){
+  perplexity(model, dtm, estimate_theta = FALSE)
+}
+
+```
+
+###Inspection functions
+The following functions allow us to inspect the results from our models(inspect distributions and get kw):
+```{r inspection functions, eval = TRUE}
+ 
+get_top_terms_topic <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(10, beta) %>%
+    select(topic, term) %>%
+    group_by(topic) %>%
+    summarise(top_words = list(term))
+  
+}
+
+get_top_topics_course <- function(d_gamma){
+  data.frame(d_gamma) %>%
+    group_by(document) %>%
+    top_n(5, gamma) %>%
+    select(document, topic) %>%
+    summarise(top_topic = list(topic))
+}
+
+get_kw <- function(d_beta){
+  data.frame(d_beta) %>%
+    group_by(topic) %>%
+    top_n(3, beta) %>%
+    ungroup()%>%
+    pull(term)%>%
+    unique()
+}
+
+```
+###Training Models
+We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models in a tibble under the name `tb_topic_model`, along with the DTM used to build the model, the corpus of origin (catalogue or manuals), the word and topic distributions results from that model, it's evaluation measures, and vectors of words and topics that allow us humans to get a feel of the model, along with some key words we will use in the app.
+This step takes some time, thus we also measure how long it takes to train the model.
+```{r LDA fit, cache = TRUE, eval = FALSE}
+#Timing_____________________________________________________________________
+initial_time <- Sys.time()
+
+#Training model______________________________________________________________
+topic_numbers <-c(10, 25, 30, 35, 40, 45, 50, 55, 60) #seq(from = 5, to = 10, by = 2) #5 to 150 by 50
+
+tb_topic_model <- tibble( 
+  
+  #repeat each topic number twice (once for catalogues and once for manual)
+  n_topic = rep(topic_numbers, each = length(d_text)) 
+  
+  ) %>%
+  mutate(Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         # should be 50
+         `Topic ID` = paste(Origin, n_topic, sep = "_"),
+         
+         #Document Term Matrix
+         DTM        = pmap(.l = list(Origin), .f = extract_dtm),
+         
+         #Fit Model
+         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control), #my_control
+         
+         #Gamma distribution
+         Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
+
+         #Beta distribution
+         Beta = pmap(.l = list(Model),  .f = get_distributions, distrib_str = "beta"),
+
+         #Perplexity
+         Perplexity = pmap_dbl(.l = list(Model, DTM), .f = my_perplexity),
+
+         #Loglikelihood
+         LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik), #this removes the degrees of freedom data
+
+
+         #
+         ##Inspect
+
+         #top words per topic
+         top_terms_topic = map(Beta, .f = get_top_terms_topic),
+
+         #top topics per course
+         top_topic_course = map(Gamma, .f = get_top_topics_course),
+
+         #Select keywords
+         kw = map(Beta, .f = get_kw)
+         )
+
+#Timing______________________________________________________________
+final_time <- Sys.time()
+took_how_long <- final_time - initial_time
+
+#View tibble______________________________________________________________
+tb_topic_model
+
+#Saving______________________________________________________________
+#save(tb_topic_model, "tmp_topic_model_tibble.RDATA")#DOESNT WORK
+
+# Clean workspace
+# rm(extract_dtm, get_distributions, my_perplexity,
+#    get_top_terms_topic, get_top_topics_course, get_kw)
+
+```
+###Training Models separately
+For time constrains, we sometimes need to train the model only on the manuals or the catalogues, for this we add an extra filtering step in the code that filters on `which_texts`.
+```{r LDA fit, cache = TRUE, eval = TRUE}
+#Timing
+initial_time <- Sys.time()
+
+#Training
+topic_numbers <-c(10, 25, 30, 35, 40, 45, 50, 55, 60) #seq(from = 5, to = 10, by = 2) #5 to 150 by 50
+which_texts <- "catalogues"
+
+
+
+tb_topic_model <- tibble( 
+  
+  #repeat each topic number twice (once for catalogues and once for manual)
+  n_topic = rep(topic_numbers, each = length(d_text)) 
+  
+  ) %>%
+  mutate(Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         # should be 50
+         `Topic ID` = paste(Origin, n_topic, sep = "_"),
+         
+         #Document Term Matrix
+         DTM        = pmap(.l = list(Origin), .f = extract_dtm)) %>%
+  filter(Origin == which_texts) %>%
+  mutate(
+         #Fit Model
+         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control), #my_control
+         
+         #Gamma distribution
+         Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
+
+         #Beta distribution
+         Beta = pmap(.l = list(Model),  .f = get_distributions, distrib_str = "beta"),
+
+         #Perplexity
+         Perplexity = pmap_dbl(.l = list(Model, DTM), .f = my_perplexity),
+
+         #Loglikelihood
+         LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik), #this removes the degrees of freedom data
+
+
+         #
+         ##Inspect
+
+         #top words per topic
+         top_terms_topic = map(Beta, .f = get_top_terms_topic),
+
+         #top topics per course
+         top_topic_course = map(Gamma, .f = get_top_topics_course),
+
+         #Select keywords
+         kw = map(Beta, .f = get_kw)
+         )
+
+
+
+#Timing
+final_time <- Sys.time()
+took_how_long <- final_time - initial_time
+
+
+#View
+#tb_topic_model
+
+#Save
+save(tb_topic_model, file = paste("./Output/", which_texts, "tmp_topic_model_tibble.RDATA", sep = "_"))
+
+```
+
+##Plots - Model Evaluation
+To evaluate how many topics are optimal, we graph the perplexity and log Likelihood of models against the number of topics.
+```{r perplexity plots, eval = TRUE}
+#Function
+plot_evaluation <- function(origin){
+  
+  #data
+  tb_topic_model %>%
+    
+    #Wrangling
+    select(n_topic, Origin, Perplexity, LogLikelihood) %>%
+    gather(key = "Eval Type", value = "Eval Value", c(Perplexity, LogLikelihood)) %>%
+    filter(Origin == origin) %>%
+    
+    #Graphics
+    ggplot(mapping = aes(x = n_topic, y = `Eval Value`)) +
+    geom_point() +
+    geom_line() +
+    facet_grid(rows = vars(`Eval Type`), scales = "free") +
+    theme_minimal()
+    
+}
+
+#Plot
+plot_evaluation("catalogues")
+plot_evaluation("manuals")
+```
+##Different alphas and delta (prior of term distributions over topics)
+To evaluate the impact of the initial alpha and beta on our model, we train the model using different inizialization values for alpha and delta. Note that this is only an inizialisation and the algorithm will try to extimate alpha and beta.
+###Alpha
+```{r alpha and beta}
+sample_dtm <- tb_topic_model$DTM[[1]] #1 CATALOGUES, 2 MANUALS
+
+fit_lda_alpha <-  function(alpha) {
+  control = list(
+        nstart = 10,
+        seed   = 1:10,
+        best   = TRUE,
+        burnin = 5,
+        iter   = 200, #2000
+        thin   = 200, #2000
+       alpha = alpha)
+  
+  topicmodels::LDA(x = sample_dtm, k = 50, method = "Gibbs", control = control)
+  
+}
+# test
+fit_lda(0.1)
+#Evaluation
+tm_eval_alpha <- tibble( alpha = seq(from = 0.001, to = 2, length = 20)) %>%
+  mutate(Model = map(alpha, .f =fit_lda_alpha),
+         DTM = list((testing_dtm)),
+         Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
+
+         #Beta distribution
+         Beta = pmap(.l = list(Model),  .f = get_distributions, distrib_str = "beta"),
+         #Perplexity
+         Perplexity = pmap_dbl(.l = list(Model, DTM), .f = my_perplexity),
+
+         #Loglikelihood
+         LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik))
+```
+#Beta
+```{r alpha and beta}
+
+fit_lda_delta <-  function(delta) {
+  control = list(
+        nstart = 10,
+        seed   = 1:10,
+        best   = TRUE,
+        burnin = 5,
+        iter   = 200, #2000
+        thin   = 200, #2000
+        delta  = delta)
+  
+  topicmodels::LDA(x = sample_dtm, k = 50, method = "Gibbs", control = control)
+  
+}
+# test
+fit_lda_delta(0.1)
+
+#Evaluation
+tm_eval_delta <- tibble( delta = seq(from = 0.001, to = 2, length = 20)) %>%
+  mutate(Model = map(delta, .f =fit_lda_delta),
+         DTM = list((testing_dtm)),
+         Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
+
+         #Beta distribution
+         Beta = pmap(.l = list(Model),  .f = get_distributions, distrib_str = "beta"),
+         #Perplexity
+         Perplexity = pmap_dbl(.l = list(Model, DTM), .f = my_perplexity),
+
+         #Loglikelihood
+         LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik))
+```
+
+##Saving model_data:
+We save the data from our intermediate step in case further analysis is needed.
+```{r save, eval = T}
+#save(tb_topic_model, file = "Output/tb_topic_model.RDATA" )
+```
+
+#App
+For our Recommender System, we need to pass the distributions, number of topics, origin, and key words to the app.
+##Distributions and Key words
+The function `clean_kw` removes stopwords from our key words.
+```{r function clean key words}
+clean_kw <- function(kw_list){
+
+  #stopwords
+  kw_stopwords <- c("source", "primary", "type", "assess", "involve", "e.g", "discussion", "institute", "ha", "introduce",
+                 "role","address", "student", "examination","coordinator", "maastrichtuniversity.nl", "identify", "manner", "mechanism", "concept", "hour",
+                 "teach",  "depth","question", "specific", "busy","academic", "semester", "week", "test", "session", "team", "communicate", "theory", "text",
+                 "library", "article", "examine", "current", "routledge", "temporary", "flow", "level", "study", "task")
+  
+  #remove stopwords
+  kw <- setdiff(kw_list, kw_stopwords)
+  #return
+  return(kw[!is.na(kw)])
+  
+}
+
+```
+On our `topic_model` tibble we filter only information relevant for the app, and apply `clean_kw` on our `kw` column
+```{r crop and clean TM for App}
+app_topic_model <- tb_topic_model %>% select(`Topic ID`, n_topic, Origin, Gamma, Beta, kw) %>%
+  mutate(kw = map(kw, .f = clean_kw))
+```
+
+##Convenience Vectors
+For the app we also need to have a list of all courses and an example of a prospective semester
+```{r for convenience}
+# set seed
+set.seed(1)
+
+#
+## All courses
+course_all <- d_course %>%
+  inner_join(
+    d_transcript,
+    by = "Course ID"
+  ) %>%
+  distinct(
+    `Course ID`
+  ) %>%
+  # remove semester abroad, skills and projects
+  filter(
+    ! str_detect(`Course ID`, pattern = "SA|SKI|PRO")
+  ) %>%
+  pull
+
+#
+##courses following_semester
+course_following_semester <- sample(
+  x       = course_all,
+  size    = 60,
+  replace = FALSE
+  ) %>% sort
+
+```
+
+```{r adding convenience vectors}
+app_topic_model <- app_topic_model %>%
+  mutate(`All Courses`     = list(course_all),
+         `Sample semester` = list(course_following_semester))
+
+#rm(course_all, course_following_semester)
+```
+## Saving files for APP
+We save all requirements for the app.
+```{r app files}
+# save(app_topic_model, file = "App/Recommender System/data_topic_models.RDATA")
+```

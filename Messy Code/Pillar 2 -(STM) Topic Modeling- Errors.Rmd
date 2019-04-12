@@ -70,10 +70,7 @@ load("Output/d_text.RDATA")
 # keep most recent year
 #d_text <- d_text %>% map(function(tb, y) tb %>% filter(year == max(year)))
 ```
-###As corpus
-```{r}
 
-```
 # TF-IDF
 We will perform an initial (visual) exploratory analysis of our textual data using TF- IDF.
 
@@ -359,7 +356,7 @@ rm(my_cast_dtm)
 covariates <- tribble(
   ~Origin,    ~Data,
   "catalogues", d_text$catalogues %>% distinct(`Course ID`, department),
-  "manuals", d_text$manuals %>% mutate(department = "UCM") %>% distinct(`Course ID`, department)
+  "manuals",    d_text$manuals %>% mutate(department = "UCM") %>% distinct(`Course ID`, department)
 )
 ```
 ###STM Corpus
@@ -379,7 +376,8 @@ The function `my_LDA` fits an LDA model on the DTM using the previous controls.
 ```{r my_STM, eval= TRUE}
 my_stm <- function(n_topics, corpus, data){
 
-  STM_model <- stm(corpus$documents, corpus$vocab, K = n_topics, init.type = "Spectral")
+  STM_model <- stm(corpus$documents, corpus$vocab, data = data, prevalence = ~department, ### ~department
+                   K = n_topics, init.type = "Spectral")
 }
 ```
 ####My_stm_eval Function
@@ -411,6 +409,9 @@ extract_documents <- function(corpus) corpus$documents
 extract_vocab     <- function(corpus) corpus$vocab
 #Extract data
 extract_data     <- function(corpus) corpus$data
+
+#Extract covariates
+extract_covariates <- function(origin) covariates %>% filter(Origin == origin) %>% pull(Data)
 
 
 #
@@ -486,59 +487,79 @@ get_kw <- function(d_beta){
 ```{r models in tibble}
 topic_numbers <- seq(from = 5, to = 10, by = 5) # seq(from = 5, to = 20, by = 5) #seq(from = 5, to = 150, by = 5)
 
-stm_model <- tibble(
+
+stm_model 
+preparation_for_model <- tibble(
   #repeat each topic number twice (once for overview and once for manual)
   n_topic = rep(topic_numbers, each = 2) ) %>%
+  
   mutate(
-  #Identification information
-  Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         
-  `Topic ID` = paste(Origin, n_topic, sep = "_"),
-  #DTM
+    #Identification information
+    Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         
+    `Topic ID` = paste(Origin, n_topic, sep = "_")) %>%
   
-  DTM       = pmap(.l = list(Origin), .f = extract_dtm),
+  #left_join(covariates, by = "Origin") %>%
   
-  doc_names = map(DTM, rownames),
-  #STM Corpus
-  Corpus           = pmap(.l = list(Origin),   .f = extract_corpus), 
-  #Documents- STM corpus
-  Documents_stm     = pmap(.l=list(Corpus),    .f = extract_documents),
-  #Vocab- STM corpus
-  Vocab_stm         = pmap(.l=list(Corpus),    .f = extract_vocab),
-  #Data- STM corpus
-  Data_stm          = pmap(.l=list(Corpus),    .f = extract_data),
-  #Fit Model
-  Model  = pmap(.l = list(n_topic, Corpus), .f = my_stm),
+  mutate(
+    #DTM
+    DTM       = pmap(.l = list(Origin), .f = extract_dtm),
+    doc_names = map(DTM, rownames),
+    
+    #STM Corpus
+    Corpus           = pmap(.l = list(Origin),   .f = extract_corpus), 
+    #Documents- STM corpus
+    #Documents_stm     = pmap(.l=list(Corpus),    .f = extract_documents),
+    #Vocab- STM corpus
+    #Vocab_stm         = pmap(.l=list(Corpus),    .f = extract_vocab),
+    #Data- STM corpus
+    #Data_stm          = pmap(.l=list(Corpus),    .f = extract_data),
+    #Covariates
+    Covariates        = pmap(.l = list(Origin),  .f = extract_covariates), # testing_model$Covariates[4][[1]][[1]]
+    
+    #clean_covariates
+    clean_covariates = map(Covariates, .f = function(Covariates) Covariates[[1]]))
+
+
+#iteration
+this_model <- preparation_for_model %>% filter(n_topic==5, Origin=="manuals")
+
+this_n_topic <- this_model$n_topic[[1]]
+this_corpus <- this_model$Corpus[[1]]
+this_clean_covariates <- this_model$clean_covariates[[1]]
+
+this_model <- my_stm(this_n_topic, this_corpus, this_clean_covariates)
   
-  #Evaluation
-  Exclusivity        = map(Model, exclusivity),
-
-  semantic_coherence = pmap(.l = list(Model,DTM), semanticCoherence, M = 10), #M = num. of top words per topic
-  #Alretnative input to semantic_coherence = pmap(.l = list(Model, Documents_stm), semanticCoherence, M = 10),
-
-  #
-  ##Inspection
-  #Beta distribution
-  Beta = pmap(.l = list(Model),  .f = tidy),
-
-  #Gamma distribution
-  Gamma = pmap(.l = list(Model, DTM), .f = my_tidy_gamma), #fix this
-
-  #top words per topic
-  top_terms_topic = map(Beta, .f = get_top_terms_topic),
-
-  #top topics per course
-  top_topic_course = map(Gamma, .f = get_top_topics_course), 
-
-  #Select keywords
-  kw = map(Beta, .f = get_kw)
-
-)
+    #Fit Model  n_topics, corpus, data
+    Model  = pmap(.l = list(n_topics = n_topic, corpus = Corpus, data = clean_covariates), 
+                  .f = my_stm))
+    
+    #Evaluation
+    Exclusivity        = map(Model, exclusivity),
+    semantic_coherence = pmap(.l = list(Model,DTM), semanticCoherence, M = 10), #M = num. of top words per topic
+    #Alretnative input to semantic_coherence = pmap(.l = list(Model, Documents_stm), semanticCoherence, M = 10),
+    
+    #
+    ##Inspection
+    
+    #Beta distribution
+    Beta = pmap(.l = list(Model),  .f = tidy),
+    #Gamma distribution
+    Gamma = pmap(.l = list(Model, DTM), .f = my_tidy_gamma), #fix this
+    
+    #top words per topic
+    top_terms_topic = map(Beta, .f = get_top_terms_topic),
+    
+    #top topics per course
+    top_topic_course = map(Gamma, .f = get_top_topics_course), 
+    
+    #Select keywords
+    kw = map(Beta, .f = get_kw)
+    
+    #END MUTATE PARENTHESIS
+         )
 
 ```
-####TESTING AND INSPECTING MODELS
-```{r model inspection}
-my_test <-  stm_model %>% filter(n_topic == 10, Origin == "manuals")
-```
+
 ####For evaluation
 ```{r models in tibble}
 topic_numbers <-  seq(from = 5, to = 10, by = 5) #seq(from = 5, to = 150, by = 5)
@@ -589,8 +610,7 @@ stm_eval_model <- tibble(
 ###Saving Results
 ```{r save}
 #saving
-my_models <-  list(use = stm_model, eval = stm_eval_model)
-save(my_models , file="STM_models.RDATA")
+save(list(use = stm_model, eval = stm_eval_model), file ="/Output/STM_models.RDATA")
 ```
 
 ```{r clean workspace}
@@ -680,7 +700,7 @@ select_topic_model <- function(origin, n_topic){
 
 test <- select_topic_model("catalogues", 10)
 
-plot.STM(test, "labels", topics = c(1:5))
+plot.STM(test, "perspectives", topics = c(1,5))
 ```
 #New Documents
 ##Align vocabulary
