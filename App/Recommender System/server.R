@@ -98,7 +98,7 @@ function(input, output, session) {
   
   #
   ##Red Flags
-  output$red_flags <- renderUI({
+  output$red_flags <- renderTable({
     #student
     student <- current_student()
     
@@ -115,27 +115,46 @@ function(input, output, session) {
         ) %>%
       
       # provide explanation
-      mutate(
-        explanation = paste(
-          "Red flag for ",
-          rhs_course,
-          ":<br/>",
-          "You have not taken ",
-          lhs_course,
-          " and ",
-          round(confidence * 100, digits = 1),
-          "% of the ",
-          lhs.rhsTake.count,
-          " students who have taken ", 
-          rhs_course,
-          " without first taking ",
-          lhs_course,
-          " obtained less than 6.5/10 in  ",
-          rhs_course,
-          ".",
-          sep = ""
-        )
+      # mutate(
+      #   explanation = paste(
+      #     "Red flag for ",
+      #     rhs_course,
+      #     ":<br/>",
+      #     "You have not taken ",
+      #     lhs_course,
+      #     " and ",
+      #     round(confidence * 100, digits = 1),
+      #     "% of the ",
+      #     lhs.rhsTake.count,
+      #     " students who have taken ", 
+      #     rhs_course,
+      #     " without first taking ",
+      #     lhs_course,
+      #     " obtained less than 6.5/10 in  ",
+      #     rhs_course,
+      #     ".",
+      #     sep = ""
+      #   )
+      # )
+    mutate(
+      `Red Flag` = rhs_course,
+      Reason = paste(
+        "You have not taken ",
+        lhs_course,
+        " and ",
+        round(confidence * 100, digits = 1),
+        "% of the ",
+        lhs.rhsTake.count,
+        " students who have taken ", 
+        rhs_course,
+        " without first taking ",
+        lhs_course,
+        " obtained less than 6.5/10 in  ",
+        rhs_course,
+        ".",
+        sep = ""
       )
+    )
     
     
     # rules low
@@ -146,27 +165,46 @@ function(input, output, session) {
         rhs_course %in% input$course_chosen
         ) %>%
       
-      mutate(
-        explanation = paste(
-          "Red flag for ",
-          rhs_course,
-          ":<br/>",
-          "You obtained less than 6.5/10 in ",
-          lhs_course,
-          " and ",
-          round(confidence * 100, digits = 1),
-          "% of the ",
-          lhs.rhsTake.count,
-          " students who have taken ", 
-          rhs_course,
-          " after obtaining less than 6.5/10 in ",
-          lhs_course,
-          " obtained less than 6.5/10 in  ",
-          rhs_course,
-          ".",
-          sep = ""
-          )
-        )
+      # mutate(
+      #   explanation = paste(
+      #     "Red flag for ",
+      #     rhs_course,
+      #     ":<br/>",
+      #     "You obtained less than 6.5/10 in ",
+      #     lhs_course,
+      #     " and ",
+      #     round(confidence * 100, digits = 1),
+      #     "% of the ",
+      #     lhs.rhsTake.count,
+      #     " students who have taken ", 
+      #     rhs_course,
+      #     " after obtaining less than 6.5/10 in ",
+      #     lhs_course,
+      #     " obtained less than 6.5/10 in  ",
+      #     rhs_course,
+      #     ".",
+      #     sep = ""
+      #     )
+      #   )
+    mutate(
+      `Red Flag` = rhs_course,
+      Reason = paste(
+        "You obtained less than 6.5/10 in ",
+            lhs_course,
+            " and ",
+            round(confidence * 100, digits = 1),
+            "% of the ",
+            lhs.rhsTake.count,
+            " students who have taken ",
+            rhs_course,
+            " after obtaining less than 6.5/10 in ",
+            lhs_course,
+            " obtained less than 6.5/10 in  ",
+            rhs_course,
+            ".",
+            sep = ""
+            )
+    )
     
     
     # rules fail
@@ -177,27 +215,47 @@ function(input, output, session) {
         rhs_course %in% input$course_chosen
         ) %>%
       
-      mutate(
-        explanation = paste(
-          "Red flag for ",
-          rhs_course,
-          ":<br/>",
-          "You have failed ",
-          lhs_course,
-          " and ",
-          round(confidence * 100, digits = 1),
-          "% of the ",
-          lhs.rhsTake.count,
-          " students who have taken ", 
-          rhs_course,
-          " after failing ",
-          lhs_course,
-          " also failed ",
-          rhs_course,
-          ".",
-          sep = ""
-        )
+      # mutate(
+      #   explanation = paste(
+      #     "Red flag for ",
+      #     rhs_course,
+      #     ":<br/>",
+      #     "You have failed ",
+      #     lhs_course,
+      #     " and ",
+      #     round(confidence * 100, digits = 1),
+      #     "% of the ",
+      #     lhs.rhsTake.count,
+      #     " students who have taken ", 
+      #     rhs_course,
+      #     " after failing ",
+      #     lhs_course,
+      #     " also failed ",
+      #     rhs_course,
+      #     ".",
+      #     sep = ""
+      #   )
+      # )
+    mutate(
+      `Red Flag` = rhs_course,
+      Reason = paste(
+        "You have failed ",
+        lhs_course,
+        " and ",
+        round(confidence * 100, digits = 1),
+        "% of the ",
+        lhs.rhsTake.count,
+        " students who have taken ", 
+        rhs_course,
+        " after failing ",
+        lhs_course,
+        " also failed ",
+        rhs_course,
+        ".",
+        sep = ""
       )
+        
+    )
     
     
     # rules grade
@@ -214,33 +272,59 @@ function(input, output, session) {
         rhs_course %in% input$course_chosen
       ) %>%
       
-      mutate(
-        explanation = paste(
-          "Red flag for ",
-          rhs_course,
-          ":<br/>",
-          "You have obtained less than ",
-          lhs_outcome,
-          "/10 in ",
-          lhs_course,
-          " and ",
-          round(confidence * 100, digits = 1),
-          "% of the ",
-          lhs.rhsTake.count,
-          " students who have taken ", 
-          rhs_course,
-          " after obtaining less than ",
-          lhs_outcome,
-          "/10 in ",
-          lhs_course,
-          " obtained less than ",
-          rhs_outcome,
-          "/10 in ",
-          rhs_course,
-          ".",
-          sep = ""
-        )
-      )
+      # mutate(
+      #   explanation = paste(
+      #     "Red flag for ",
+      #     rhs_course,
+      #     ":<br/>",
+      #     "You have obtained less than ",
+      #     lhs_outcome,
+      #     "/10 in ",
+      #     lhs_course,
+      #     " and ",
+      #     round(confidence * 100, digits = 1),
+      #     "% of the ",
+      #     lhs.rhsTake.count,
+      #     " students who have taken ", 
+      #     rhs_course,
+      #     " after obtaining less than ",
+      #     lhs_outcome,
+      #     "/10 in ",
+      #     lhs_course,
+      #     " obtained less than ",
+      #     rhs_outcome,
+      #     "/10 in ",
+      #     rhs_course,
+      #     ".",
+      #     sep = ""
+      #   )
+      # )
+    mutate(
+      `Red Flag` = rhs_course,
+      Reason = paste(
+        "You have obtained less than ",
+            lhs_outcome,
+            "/10 in ",
+            lhs_course,
+            " and ",
+            round(confidence * 100, digits = 1),
+            "% of the ",
+            lhs.rhsTake.count,
+            " students who have taken ",
+            rhs_course,
+            " after obtaining less than ",
+            lhs_outcome,
+            "/10 in ",
+            lhs_course,
+            " obtained less than ",
+            rhs_outcome,
+            "/10 in ",
+            rhs_course,
+            ".",
+            sep = ""
+          )
+    )
+      
     
     
     rules <- rules %>%
@@ -251,7 +335,8 @@ function(input, output, session) {
           rules %>% select(
             rhs_course,
             confidence,
-            explanation
+            `Red Flag`,
+            Reason
             )      
           }
         ) %>%
@@ -269,24 +354,24 @@ function(input, output, session) {
     
     if(nrow(student$transcript)==0){
       #"ERROR: id not found- we need new students ID's before running this"
-      "ERROR: Student ID not found"
+      tibble(ERROR = "Student ID not found")
     }else if(nrow(rules) == 0){
       
-      "No red flag"
+      tibble(`Red Flag` = "No red flag")
       
     }else{
       
       rules  %>%
         
-        pull(explanation) %>%
+        select(`Red Flag`, Reason) #%>%
         
-        sort %>% 
-        
-        paste0(
-          collapse = "<br/><br/>" # skip a line between individual red flags
-        ) %>% 
-        
-        HTML
+        #sort %>% 
+        # 
+        # paste0(
+        #   collapse = "<br/><br/>" # skip a line between individual red flags
+        # ) %>% 
+        # 
+        # HTML
       
     }
     
@@ -294,12 +379,9 @@ function(input, output, session) {
   })
   
   #
-  ##Course Recommendation
-  output$course_recommendation <- renderUI({
-    
-    
-    #
-    # Set up
+  ##COURSE RECOMMENDATION
+  ###Set up
+  recommendations_data <- reactive({
     
     beta_distribution <- distribution$beta$overview     #***********************************************SELECT: overview/manual
     gamma_distribution <- distribution$gamma$overview   #***********************************************SELECT: overview/manual
@@ -311,7 +393,7 @@ function(input, output, session) {
       input$key_word_3,
       input$key_word_4,
       input$key_word_5
-      )
+    )
     
     
     stem_hunspell <- function(term) {
@@ -325,42 +407,40 @@ function(input, output, session) {
     
     key_words <- c(input$key_words, key_words_additional)
     
-    #
-    # Course recommendation
+    #Student profiles
     student <- list()
-    
     student$topic_score <- beta_distribution %>%
       
       # Topic score
       filter(
         term %in% key_words
-        ) %>%
+      ) %>%
       group_by(
         topic
-        ) %>%
+      ) %>%
       summarize(
         topic_score = sum(beta)
-        ) %>%
+      ) %>%
       ungroup %>%
       
       # Course score
       full_join(
         gamma_distribution,
         by = "topic"
-        ) %>%
+      ) %>%
       group_by(
         document
-        ) %>%
+      ) %>%
       summarise(
         course_score = sum(gamma * topic_score)
-        ) %>%
+      ) %>%
       ungroup %>%
       
       # Recommendations
       top_n(
         n  = 20,
         wt = course_score
-        ) %>%
+      ) %>%
       
       arrange(desc(course_score)) %>%
       
@@ -373,59 +453,56 @@ function(input, output, session) {
       left_join(
         beta_distribution,
         by = "topic"
-        ) %>%
-     
+      ) %>%
+      
       filter(
         term %in% key_words
-        ) %>%
+      ) %>%
       
       group_by(
         term,
         document
-        ) %>%
+      ) %>%
       summarize(
         word_contribution_to_document = sum(gamma * beta)
-        ) %>%
+      ) %>%
       
       group_by(
         document
-        ) %>%
+      ) %>%
       top_n(
         n  = 3,
         wt = word_contribution_to_document
-        ) %>%
+      ) %>%
+      arrange(desc(word_contribution_to_document)) %>% 
+      group_by(document) %>% 
       summarize(
         key_words = paste(term, collapse = ", "),
         doc_score = sum(word_contribution_to_document)
-        ) %>%
+      ) %>%
       ungroup %>%
-
+      
       # Editing
       left_join(
         select(d_course, `Course ID`, `Course Title`),
         by = c("document" = "Course ID")
       ) %>%
-      arrange(desc(doc_score)) %>%
+      arrange(desc(doc_score))})
+  
+  ##OUTPUTS
+  ###Table
+  output$course_recommendation <- renderTable({
+    
+    recommendations_data() %>%
 
       transmute(
-        recommendation = paste(
-          "Course Recommendation", "<em>","<b>",
-          document, `Course Title`,"</b>","</em>",
-          "because you selected the key words:" ,"<b>", key_words,"</b>"
-          )
-        ) %>%
-      
-      pull %>%
-      
-      #sort %>% 
-      
-      paste0(
-        collapse = "<br/><br/>"
-      ) %>% 
-      
-      HTML
+        Code = document,
+        Course = `Course Title`,
+        `because you selected` = key_words
+        )
     
     
   })
   
+
 }

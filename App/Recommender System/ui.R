@@ -5,7 +5,9 @@
 # libraries
 library(tidyverse)
 library(tidytext)
+
 library(shiny)
+library(shinythemes)
 
 #load("rules.RDATA")
 load("data_pillar_1.RDATA")
@@ -21,6 +23,7 @@ load("rules_clean.RDATA")
 #
 # ui
 navbarPage(
+  theme = shinytheme("united"),
   
   # App title
   title = "Recommender System",
@@ -62,7 +65,7 @@ navbarPage(
       mainPanel(
         
         # Output: dataset
-        htmlOutput(
+        tableOutput(
           outputId = "red_flags"
           )
         
@@ -76,6 +79,7 @@ navbarPage(
     
     # Panel Title
     title = "Course Recommender",
+    
     
     # Sidebar layout
     sidebarLayout(
@@ -119,17 +123,13 @@ navbarPage(
       
       # Main panel for displaying outputs
       mainPanel(
-        
-        # Output: dataset
-        htmlOutput(
-          outputId = "course_recommendation"
-          ),
-        tags$head(tags$style("#course_recommendation{color: black;
-                                 font-size: 20px;
-                                 }"
-        )
-        )
-        
+        h3("Course Recommendations"),
+        mainPanel( width = 12,
+          tableOutput(outputId = "course_recommendation"), 
+          tags$head(tags$style("#course_recommendation{color: black; font-size: 20px;}")
+                    )
+                  )
+      
         )
       
       )
