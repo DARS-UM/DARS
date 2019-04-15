@@ -13,3 +13,6 @@ arules
 arulesSequences
 magrittr
 bindrcpp
+foreach
+glmnet
+leaps
