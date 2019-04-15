@@ -141,11 +141,15 @@ student_GPA <- d_transcript_augmented %>%
 
 # Join student TP and GPA
 ```{r student_profile}
-student_profile <- d_transcript_augmented %>%
+d_transcript_augmented <- d_transcript_augmented %>%
   
   left_join(student_GPA, by = c("Student ID", "time")) %>%
   
-  left_join(student_TP , by = c("Student ID", "time"))
+  left_join(student_TP , by = c("Student ID", "time")) %>%
+  
+  nest(.key = profile, matches("GPA|Topic")) %>%
+  
+  mutate(profile = profile %>% map(as.matrix))
 ```
 
 # Regressing grade on TP and GPA
@@ -195,8 +199,6 @@ fit_lasso <- fit_lasso %>%
          cv_error_sd  = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvsd"]][..2])
          ) %>%
   
-  select(- cv) %>%
-  
   # Best model
   mutate(
     
@@ -227,6 +229,8 @@ i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ law, foreign polic
 i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of western pol. thought predicted by HUM
 i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, culture
 ```
+
+
 
 ## find alpha
 
@@ -260,7 +264,7 @@ abline(m, col = "red")
 m %>% summary
 ```
 
-# Green flag
+# Preparation
 
 ```{r}
 fit_lasso_topic <- tibble(target = course_target) %>%
@@ -292,7 +296,7 @@ fit_lasso_topic <- fit_lasso_topic %>%
          coefi_m = list(m_lasso, lambda_min) %>% pmap(coef)) %>% 
   
   # extract coefficients
-  unnest(coefi_v)%>%
+  unnest(coefi_v) %>%
   
   select(target, topic, weight)
 
@@ -326,6 +330,56 @@ d_prep <- fit_lasso_topic %>%
   arrange(target, desc(prep_score))
 
 View(d_prep)  
+```
+
+# Save
+
+```{r}
+fit_lasso_app <- fit_lasso %>% select(target, cv)
+
+d_transcript_augmented_app <- d_transcript_augmented %>%
+  
+  group_by(`Student ID`) %>% # only keep most recent profile of each student
+  arrange(desc(time)) %>%
+  slice(1) %>%
+  
+  select(`Student ID`, profile)
+  
+
+save(fit_lasso_app, d_transcript_augmented_app, file = "APP/Recommender System/grade_prediction.RDATA")
+```
+
+# Predict
+
+```{r my_predict}
+my_predict <- function(model, profile){
+  
+  predict.cv.glmnet(object = model, newx = profile, s = "lambda.min")
+  
+}
+```
+
+```{r}
+course_ID <- c("COR1005", "HUM2005") # input$course
+student_ID <- "6087587" # input$student
+
+
+student_profile <- d_transcript_augmented_app %>% 
+  
+  filter(`Student ID` == student_ID) %>%
+  
+  pull(profile) %>% .[[1]]
+
+
+fit_lasso_app %>%
+  
+  filter(target %in% course_ID) %>%
+  
+  mutate(prediction = cv %>% map_dbl(my_predict, student_profile)) %>%
+  
+  mutate(flag_red    = prediction < 5.5,
+         flag_orange = prediction %>% between(5.5, 7),
+         flag_green  = prediction > 7)
 ```
 
 # old code
