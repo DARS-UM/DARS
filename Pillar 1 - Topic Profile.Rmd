@@ -346,7 +346,7 @@ d_transcript_augmented_app <- d_transcript_augmented %>%
   select(`Student ID`, profile)
   
 
-save(fit_lasso_app, d_transcript_augmented_app, file = "APP/Recommender System/grade_prediction.RDATA")
+save(fit_lasso_app, d_transcript_augmented_app, d_prep, file = "APP/Recommender System/grade_prediction.RDATA")
 ```
 
 # Predict
