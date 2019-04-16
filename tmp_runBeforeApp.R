@@ -16,8 +16,10 @@ ggplot(tb_topic_model, aes(n_topic, LogLikelihood))+
 app_model <- app_topic_model %>%
   filter(n_topic == 55)
 
+course_all <- app_model$`All Courses`[[1]]
+
 #pass model to app
-save(app_model, file = "./App/Recommender System/app_model.RDATA" )
+save(app_model,course_all, file = "./App/Recommender System/app_model.RDATA" )
 
 
 
