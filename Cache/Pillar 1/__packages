@@ -1,4 +1,9 @@
 base
+magrittr
+Matrix
+foreach
+glmnet
+leaps
 tidyverse
 ggplot2
 tibble
@@ -8,11 +13,4 @@ purrr
 dplyr
 stringr
 forcats
-Matrix
-arules
-arulesSequences
-magrittr
 bindrcpp
-foreach
-glmnet
-leaps
