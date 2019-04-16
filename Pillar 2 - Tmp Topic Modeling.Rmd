@@ -188,7 +188,7 @@ get_kw <- function(d_beta){
 ###Training Models
 We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models in a tibble under the name `tb_topic_model`, along with the DTM used to build the model, the corpus of origin (catalogue or manuals), the word and topic distributions results from that model, it's evaluation measures, and vectors of words and topics that allow us humans to get a feel of the model, along with some key words we will use in the app.
 This step takes some time, thus we also measure how long it takes to train the model.
-```{r LDA fit, cache = TRUE, eval = FALSE}
+```{r LDA fit full, cache = TRUE, eval = FALSE}
 #Timing_____________________________________________________________________
 initial_time <- Sys.time()
 
@@ -253,12 +253,12 @@ tb_topic_model
 ```
 ###Training Models separately
 For time constrains, we sometimes need to train the model only on the manuals or the catalogues, for this we add an extra filtering step in the code that filters on `which_texts`.
-```{r LDA fit, cache = TRUE, eval = TRUE}
+```{r LDA fit separate, cache = TRUE, eval = TRUE}
 #Timing
 initial_time <- Sys.time()
 
 #Training
-topic_numbers <-c(10, 25, 30, 35, 40, 45, 50, 55, 60) #seq(from = 5, to = 10, by = 2) #5 to 150 by 50
+topic_numbers <-c(50, 55, 60, 65, 70) #seq(from = 5, to = 10, by = 2) #5 to 150 by 50
 which_texts <- "catalogues"
 
 
@@ -350,7 +350,7 @@ plot_evaluation("manuals")
 ##Different alphas and delta (prior of term distributions over topics)
 To evaluate the impact of the initial alpha and beta on our model, we train the model using different inizialization values for alpha and delta. Note that this is only an inizialisation and the algorithm will try to extimate alpha and beta.
 ###Alpha
-```{r alpha and beta, eval = FALSE}
+```{r alpha, eval = FALSE}
 sample_dtm <- tb_topic_model$DTM[[1]] #1 CATALOGUES, 2 MANUALS
 
 fit_lda_alpha <-  function(alpha) {
@@ -383,7 +383,7 @@ tm_eval_alpha <- tibble( alpha = seq(from = 0.001, to = 2, length = 20)) %>%
          LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik))
 ```
 #Beta
-```{r alpha and beta, eval = FALSE}
+```{r beta, eval = FALSE}
 
 fit_lda_delta <-  function(delta) {
   control = list(
