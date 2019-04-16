@@ -54,6 +54,14 @@ course_code_UCM_UCV_MSP <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "C
                          "BIO", "CHE", "MAT", "PHY", "NEU", "INT", "PRA" #MSP
                          ) %>% collapse_or
 overview_start  <- function(string) string %>% extract_id_course %>% str_detect(pattern = course_code_UCM_UCV_MSP) # simplify with %in% course_code_UCM
+
+titles_end_UCM_UCV_MSP <- c("1000", "2000", "3000", #UCV
+                            "Course coordinators?",    #UCM, MSP
+                            "Coordinator", "PLEASE NOTE:", "Note:" #MSP
+                            ) %>% collapse_or
+
+title_end_location <- function(string) str_locate(string, titles_end_UCM_UCV_MSP) %>% .[,1]
+extract_course_title <- function(string) str_sub(string, 9, title_end_location(string)-2)
 ```
 
 # Importing course data
@@ -180,8 +188,9 @@ overview_UCM_UCV_MSP <- function(catalogue, ID){
   
   # paste current page and following page (`lead(page)`) if overview is two page long
   transmute(
-    text        = list(page, lead(page)) %>% pmap_chr(paste_if_2_page_overview),
-    `Course ID` = text %>% extract_id_course) %>%
+    text           = list(page, lead(page)) %>% pmap_chr(paste_if_2_page_overview),
+    `Course ID`    = text %>% extract_id_course,
+    `Course Title` = text %>% extract_course_title) %>%
     mutate(department  = ID) %>%
     filter(!is.na(text))
     
