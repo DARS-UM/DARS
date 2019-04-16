@@ -111,7 +111,7 @@ d_transcript_augmented <- d_transcript_augmented %>%
          grade_ECTS_PRO = grade_PRO * ECTS_PRO)
 ```
 
-```{r student_GPA, cache = T}
+```{r student_GPA, cache = TRUE}
 student_GPA <- d_transcript_augmented %>%
   
   group_by(`Student ID`, time) %>%
@@ -140,12 +140,16 @@ student_GPA <- d_transcript_augmented %>%
 ```
 
 # Join student TP and GPA
-```{r student_profile}
-d_transcript_augmented <- d_transcript_augmented %>%
+```{r student_profile, cache = TRUE}
+student_profile <- d_transcript_augmented %>%
   
   left_join(student_GPA, by = c("Student ID", "time")) %>%
   
-  left_join(student_TP , by = c("Student ID", "time")) %>%
+  left_join(student_TP , by = c("Student ID", "time"))
+```
+
+```{r}
+student_profile_nest <- student_profile %>%
   
   nest(.key = profile, matches("GPA|Topic")) %>%
   
@@ -192,8 +196,8 @@ fit_lasso <- fit_lasso %>%
   
   # Results from CV
   mutate(m_lasso      = cv %>% map    (~ .[["glmnet.fit"]]),
-         lambda_min   = cv %>% map_dbl(~.[["lambda.min"]]),
-         lambda_1se   = cv %>% map_dbl(~.[["lambda.1se"]]),
+         lambda_min   = cv %>% map_dbl(~ .[["lambda.min"]]),
+         lambda_1se   = cv %>% map_dbl(~ .[["lambda.1se"]]),
          index_best   = cv %>% map_dbl(~ which.min(.[["cvm"]])),
          cv_error     = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]),
          cv_error_sd  = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvsd"]][..2])
@@ -228,40 +232,6 @@ Topic chosen by model are related to the course.
 i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ law, foreign policy, culture
 i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of western pol. thought predicted by HUM
 i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, culture
-```
-
-
-
-## find alpha
-
-```{r, cache = T}
-n_alpha <- 101
-mae   <- numeric(n_alpha)
-alphas <- seq(0, 1, length.out = n_alpha)
-
-for(i in 1 : n_alpha){
-  
-  fit_lasso <- tibble(target = course_target) %>%
-  
-    mutate(d = target %>% map(find_df),
-           n = d      %>% map_dbl(nrow)) %>%
-    
-    filter(n > 20) %>%
-    
-    mutate(cv = d %>% map(my_cv.glmnet, alpha = alphas[i], predictors = "GPA|Topic")) %>%
-    
-    mutate(index_best = cv                   %>% map_dbl (~ which.min(.[["cvm"]])),
-           cv_error   = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]    ))
-    
-  mae[i] <- weighted.mean(fit_lasso$cv_error, fit_lasso$n)
-  
-}
-
-# slight decrease in mae as alpha increase. Set alpha = 1 in my_cv.glmnet().
-m <- lm(mae ~ alphas)
-plot(alphas, mae)
-abline(m, col = "red")
-m %>% summary
 ```
 
 # Preparation
@@ -337,7 +307,7 @@ View(d_prep)
 ```{r}
 fit_lasso_app <- fit_lasso %>% select(target, cv)
 
-d_transcript_augmented_app <- d_transcript_augmented %>%
+student_profile_nest_app <- student_profile_nest %>%
   
   group_by(`Student ID`) %>% # only keep most recent profile of each student
   arrange(desc(time)) %>%
@@ -346,7 +316,7 @@ d_transcript_augmented_app <- d_transcript_augmented %>%
   select(`Student ID`, profile)
   
 
-save(fit_lasso_app, d_transcript_augmented_app, d_prep, file = "APP/Recommender System/grade_prediction.RDATA")
+save(fit_lasso_app, student_profile_nest_app, d_prep, file = "APP/Recommender System/grade_prediction.RDATA")
 ```
 
 # Predict
@@ -360,11 +330,11 @@ my_predict <- function(model, profile){
 ```
 
 ```{r}
-course_ID <- c("COR1005", "HUM2005") # input$course
+course_ID  <- c("COR1005", "HUM2005") # input$course
 student_ID <- "6087587" # input$student
 
 
-student_profile <- d_transcript_augmented_app %>% 
+student_prof <- student_profile_nest_app %>% 
   
   filter(`Student ID` == student_ID) %>%
   
@@ -375,9 +345,43 @@ fit_lasso_app %>%
   
   filter(target %in% course_ID) %>%
   
-  mutate(prediction = cv %>% map_dbl(my_predict, student_profile)) %>%
+  mutate(prediction = cv %>% map_dbl(my_predict, student_prof)) %>%
   
   mutate(flag_red    = prediction < 5.5,
          flag_orange = prediction %>% between(5.5, 7),
          flag_green  = prediction > 7)
+```
+
+# Extra: find best alpha
+
+Best alpha turns out to be 1 (lasso). Good, because predictor regularization also serves as predictor selection.
+
+```{r, cache = T}
+n_alpha <- 101
+mae   <- numeric(n_alpha)
+alphas <- seq(0, 1, length.out = n_alpha)
+
+for(i in 1 : n_alpha){
+  
+  fit_lasso <- tibble(target = course_target) %>%
+  
+    mutate(d = target %>% map(find_df),
+           n = d      %>% map_dbl(nrow)) %>%
+    
+    filter(n > 20) %>%
+    
+    mutate(cv = d %>% map(my_cv.glmnet, alpha = alphas[i], predictors = "GPA|Topic")) %>%
+    
+    mutate(index_best = cv                   %>% map_dbl (~ which.min(.[["cvm"]])),
+           cv_error   = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]    ))
+    
+  mae[i] <- weighted.mean(fit_lasso$cv_error, fit_lasso$n)
+  
+}
+
+# slight decrease in mae as alpha increase. Set alpha = 1 in my_cv.glmnet().
+m <- lm(mae ~ alphas)
+plot(alphas, mae)
+abline(m, col = "red")
+m %>% summary
 ```

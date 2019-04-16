@@ -1,7 +1,7 @@
 Pillar 1 - Student Topic Profile
 ================
 DARS
-2019-04-12
+2019-04-15
 
 -   [Course topic profile](#course-topic-profile)
 -   [Student topic profile](#student-topic-profile)
@@ -9,11 +9,10 @@ DARS
 -   [Join student TP and GPA](#join-student-tp-and-gpa)
 -   [Regressing grade on TP and GPA](#regressing-grade-on-tp-and-gpa)
     -   [Lasso](#lasso)
-    -   [find alpha](#find-alpha)
--   [Green flag](#green-flag)
--   [old code](#old-code)
-    -   [CV](#cv)
-    -   [BSS](#bss)
+-   [Preparation](#preparation)
+-   [Save](#save)
+-   [Predict](#predict)
+-   [Extra: find best alpha](#extra-find-best-alpha)
 
 **Considerations**:
 
@@ -152,6 +151,14 @@ student_profile <- d_transcript_augmented %>%
   left_join(student_TP , by = c("Student ID", "time"))
 ```
 
+``` r
+student_profile_nest <- student_profile %>%
+  
+  nest(.key = profile, matches("GPA|Topic")) %>%
+  
+  mutate(profile = profile %>% map(as.matrix))
+```
+
 Regressing grade on TP and GPA
 ==============================
 
@@ -195,14 +202,12 @@ fit_lasso <- fit_lasso %>%
   
   # Results from CV
   mutate(m_lasso      = cv %>% map    (~ .[["glmnet.fit"]]),
-         lambda_min   = cv %>% map_dbl(~.[["lambda.min"]]),
-         lambda_1se   = cv %>% map_dbl(~.[["lambda.1se"]]),
+         lambda_min   = cv %>% map_dbl(~ .[["lambda.min"]]),
+         lambda_1se   = cv %>% map_dbl(~ .[["lambda.1se"]]),
          index_best   = cv %>% map_dbl(~ which.min(.[["cvm"]])),
          cv_error     = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]),
          cv_error_sd  = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvsd"]][..2])
          ) %>%
-  
-  select(- cv) %>%
   
   # Best model
   mutate(
@@ -227,7 +232,7 @@ fit_lasso <- fit_lasso %>%
 hist(fit_lasso$cv_error)
 ```
 
-![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-1-1.png)
+![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-2-1.png)
 
 ``` r
 mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
@@ -380,65 +385,8 @@ i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, c
 
     ## [1] "SSC3044"
 
-find alpha
-----------
-
-``` r
-n_alpha <- 101
-mae   <- numeric(n_alpha)
-alphas <- seq(0, 1, length.out = n_alpha)
-
-for(i in 1 : n_alpha){
-  
-  fit_lasso <- tibble(target = course_target) %>%
-  
-    mutate(d = target %>% map(find_df),
-           n = d      %>% map_dbl(nrow)) %>%
-    
-    filter(n > 20) %>%
-    
-    mutate(cv = d %>% map(my_cv.glmnet, alpha = alphas[i], predictors = "GPA|Topic")) %>%
-    
-    mutate(index_best = cv                   %>% map_dbl (~ which.min(.[["cvm"]])),
-           cv_error   = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]    ))
-    
-  mae[i] <- weighted.mean(fit_lasso$cv_error, fit_lasso$n)
-  
-}
-
-# slight decrease in mae as alpha increase. Set alpha = 1 in my_cv.glmnet().
-m <- lm(mae ~ alphas)
-plot(alphas, mae)
-abline(m, col = "red")
-```
-
-![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-3-1.png)
-
-``` r
-m %>% summary
-```
-
-    ## 
-    ## Call:
-    ## lm(formula = mae ~ alphas)
-    ## 
-    ## Residuals:
-    ##        Min         1Q     Median         3Q        Max 
-    ## -9.940e-04 -2.674e-04 -2.928e-05  3.161e-04  1.519e-03 
-    ## 
-    ## Coefficients:
-    ##               Estimate Std. Error t value Pr(>|t|)    
-    ## (Intercept)  7.835e-01  8.961e-05  8743.3   <2e-16 ***
-    ## alphas      -2.167e-04  1.548e-04    -1.4    0.165    
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-    ## 
-    ## Residual standard error: 0.0004536 on 99 degrees of freedom
-    ## Multiple R-squared:  0.01941,    Adjusted R-squared:  0.009506 
-    ## F-statistic:  1.96 on 1 and 99 DF,  p-value: 0.1647
-
-Green flag
-==========
+Preparation
+===========
 
 ``` r
 fit_lasso_topic <- tibble(target = course_target) %>%
@@ -470,7 +418,7 @@ fit_lasso_topic <- fit_lasso_topic %>%
          coefi_m = list(m_lasso, lambda_min) %>% pmap(coef)) %>% 
   
   # extract coefficients
-  unnest(coefi_v)%>%
+  unnest(coefi_v) %>%
   
   select(target, topic, weight)
 
@@ -506,122 +454,119 @@ d_prep <- fit_lasso_topic %>%
 View(d_prep)  
 ```
 
-old code
-========
-
-CV
---
+Save
+====
 
 ``` r
-my_predict <- function(model, newdata, id){
+fit_lasso_app <- fit_lasso %>% select(target, cv)
+
+student_profile_nest_app <- student_profile_nest %>%
   
-  df    <- as.matrix(newdata)
-  coefi <- coef(model, id = id)
-  xvars <- names(coefi)[-1]
+  group_by(`Student ID`) %>% # only keep most recent profile of each student
+  arrange(desc(time)) %>%
+  slice(1) %>%
   
-  coefi[1] + df[ , xvars, drop = FALSE] %*% coefi[-1]
+  select(`Student ID`, profile)
+  
+
+save(fit_lasso_app, student_profile_nest_app, d_prep, file = "APP/Recommender System/grade_prediction.RDATA")
+```
+
+Predict
+=======
+
+``` r
+my_predict <- function(model, profile){
+  
+  predict.cv.glmnet(object = model, newx = profile, s = "lambda.min")
   
 }
 ```
 
 ``` r
-my_CV <- function(df){
+course_ID  <- c("COR1005", "HUM2005") # input$course
+student_ID <- "6087587" # input$student
+
+
+student_prof <- student_profile_nest_app %>% 
   
-  k <- 10
-  set.seed(2019)
-  folds <- sample( 1 : k, nrow(df), replace = TRUE)
+  filter(`Student ID` == student_ID) %>%
   
-  nvmax <- 5
-  cv.errors <- matrix(NA, k, nvmax, dimnames = list(NULL, paste(1 : nvmax, "predictor(s)")))
+  pull(profile) %>% .[[1]]
+
+
+fit_lasso_app %>%
   
-  for(j in 1 : k){
+  filter(target %in% course_ID) %>%
+  
+  mutate(prediction = cv %>% map_dbl(my_predict, student_prof)) %>%
+  
+  mutate(flag_red    = prediction < 5.5,
+         flag_orange = prediction %>% between(5.5, 7),
+         flag_green  = prediction > 7)
+```
+
+    ## # A tibble: 2 x 6
+    ##   target  cv              prediction flag_red flag_orange flag_green
+    ##   <chr>   <list>               <dbl> <lgl>    <lgl>       <lgl>     
+    ## 1 HUM2005 <S3: cv.glmnet>       7.74 FALSE    FALSE       TRUE      
+    ## 2 COR1005 <S3: cv.glmnet>       8.36 FALSE    FALSE       TRUE
+
+Extra: find best alpha
+======================
+
+Best alpha turns out to be 1 (lasso). Good, because predictor regularization also serves as predictor selection.
+
+``` r
+n_alpha <- 101
+mae   <- numeric(n_alpha)
+alphas <- seq(0, 1, length.out = n_alpha)
+
+for(i in 1 : n_alpha){
+  
+  fit_lasso <- tibble(target = course_target) %>%
+  
+    mutate(d = target %>% map(find_df),
+           n = d      %>% map_dbl(nrow)) %>%
     
-    training <- df[folds != j, ]
-    test     <- df[folds == j, ]
-  
-    m <- regsubsets(Grade ~ ., data = training, nvmax = nvmax)
+    filter(n > 20) %>%
     
-    for(i in 1 : nvmax){
-      
-      pred            <- my_predict(model = m, newdata = test, id = i)
-      pred            <- pmin(10, pred)
-      pred            <- pmax(0, pred)
-      cv.errors[j, i] <- mean(abs(test$Grade - as.vector(pred)))
-      
-    }
+    mutate(cv = d %>% map(my_cv.glmnet, alpha = alphas[i], predictors = "GPA|Topic")) %>%
     
-  }
-  
-  cv.errors
+    mutate(index_best = cv                   %>% map_dbl (~ which.min(.[["cvm"]])),
+           cv_error   = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]    ))
+    
+  mae[i] <- weighted.mean(fit_lasso$cv_error, fit_lasso$n)
   
 }
+
+# slight decrease in mae as alpha increase. Set alpha = 1 in my_cv.glmnet().
+m <- lm(mae ~ alphas)
+plot(alphas, mae)
+abline(m, col = "red")
 ```
 
-BSS
----
+![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-9-1.png)
 
 ``` r
-my_BSS <- function(df) regsubsets(Grade ~ ., data = df, nvmax = 7)
+m %>% summary
 ```
 
-``` r
-extract_coef <- function(BSS, BS) names(coef(BSS, BS))[-1]
-```
-
-``` r
-my_lm <- function(df, best_coef){
-  
-  best_coef %>%
-    
-    paste0(collapse = " + ") %>%
-    paste0("Grade ~ ", .) %>%
-    as.formula %>%
-  
-    lm(data = df)
-  
-}
-```
-
-``` r
-BSS <- tibble(target = course_obj) %>%
-  
-  mutate(df = target %>% map(find_df),
-         n = df %>% map(nrow)) %>%
-  
-  filter(n >= 25) %>%
-  
-  mutate(BSS = df %>% map(my_BSS)) %>%
-  
-  mutate(CV_error      = df %>% map(my_CV),
-         CV_error_mean = CV_error %>% map(colMeans),
-         n_pred        = CV_error_mean %>% map_dbl(which.min),
-         best_coef     = list(BSS, n_pred) %>% pmap(extract_coef),
-         best_model    = list(df, best_coef) %>% pmap(my_lm)
-         ) %>%
-  
-  mutate(tidied    = best_model %>% map(broom::tidy   ),
-         glanced   = best_model %>% map(broom::glance ),
-         augmented = best_model %>% map(broom::augment)) %>%
-  
-  select(target, n, tidied, glanced, augmented)
-```
-
-``` r
-BSS_glance <- BSS %>% unnest(glanced) %>% select(-c(tidied, augmented)) %>%
-  
-  mutate(MSE = deviance / df.residual )
-
-View(BSS_glance)
-```
-
-``` r
-course <- "HUM2021"
-
-BSS_tidy_temp <- BSS %>% filter(target == course) %>% unnest(tidied, .drop = F) %>% select(-c(glanced, augmented))
-
-View(BSS_tidy_temp)
-
-BSS_augm_temp <- BSS %>% filter(target == course) %>% unnest(augmented, .drop = FALSE) %>% select(-c(tidied, glanced))
-
-View(BSS_augm_temp)
-```
+    ## 
+    ## Call:
+    ## lm(formula = mae ~ alphas)
+    ## 
+    ## Residuals:
+    ##        Min         1Q     Median         3Q        Max 
+    ## -1.004e-03 -2.762e-04 -1.995e-05  3.061e-04  1.290e-03 
+    ## 
+    ## Coefficients:
+    ##               Estimate Std. Error  t value Pr(>|t|)    
+    ## (Intercept)  7.835e-01  8.836e-05 8867.256   <2e-16 ***
+    ## alphas      -2.257e-04  1.527e-04   -1.479    0.142    
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.0004473 on 99 degrees of freedom
+    ## Multiple R-squared:  0.02161,    Adjusted R-squared:  0.01173 
+    ## F-statistic: 2.186 on 1 and 99 DF,  p-value: 0.1424
