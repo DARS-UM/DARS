@@ -11,7 +11,11 @@ load("app_model.RDATA")
 
 
 function(input, output, session) {
-  #
+  
+  # ---------------------------------------------------------------------------------
+  ## -- RED FLAGS --
+  # ---------------------------------------------------------------------------------
+  
   ##Set up
   
   #Raw Data for RS:
@@ -115,28 +119,6 @@ function(input, output, session) {
         rhs_course %in% input$course_chosen
         ) %>%
       
-      # provide explanation
-      # mutate(
-      #   explanation = paste(
-      #     "Red flag for ",
-      #     rhs_course,
-      #     ":<br/>",
-      #     "You have not taken ",
-      #     lhs_course,
-      #     " and ",
-      #     round(confidence * 100, digits = 1),
-      #     "% of the ",
-      #     lhs.rhsTake.count,
-      #     " students who have taken ", 
-      #     rhs_course,
-      #     " without first taking ",
-      #     lhs_course,
-      #     " obtained less than 6.5/10 in  ",
-      #     rhs_course,
-      #     ".",
-      #     sep = ""
-      #   )
-      # )
     mutate(
       `Red Flag` = rhs_course,
       Reason = paste(
@@ -166,27 +148,6 @@ function(input, output, session) {
         rhs_course %in% input$course_chosen
         ) %>%
       
-      # mutate(
-      #   explanation = paste(
-      #     "Red flag for ",
-      #     rhs_course,
-      #     ":<br/>",
-      #     "You obtained less than 6.5/10 in ",
-      #     lhs_course,
-      #     " and ",
-      #     round(confidence * 100, digits = 1),
-      #     "% of the ",
-      #     lhs.rhsTake.count,
-      #     " students who have taken ", 
-      #     rhs_course,
-      #     " after obtaining less than 6.5/10 in ",
-      #     lhs_course,
-      #     " obtained less than 6.5/10 in  ",
-      #     rhs_course,
-      #     ".",
-      #     sep = ""
-      #     )
-      #   )
     mutate(
       `Red Flag` = rhs_course,
       Reason = paste(
@@ -216,27 +177,6 @@ function(input, output, session) {
         rhs_course %in% input$course_chosen
         ) %>%
       
-      # mutate(
-      #   explanation = paste(
-      #     "Red flag for ",
-      #     rhs_course,
-      #     ":<br/>",
-      #     "You have failed ",
-      #     lhs_course,
-      #     " and ",
-      #     round(confidence * 100, digits = 1),
-      #     "% of the ",
-      #     lhs.rhsTake.count,
-      #     " students who have taken ", 
-      #     rhs_course,
-      #     " after failing ",
-      #     lhs_course,
-      #     " also failed ",
-      #     rhs_course,
-      #     ".",
-      #     sep = ""
-      #   )
-      # )
     mutate(
       `Red Flag` = rhs_course,
       Reason = paste(
@@ -273,33 +213,6 @@ function(input, output, session) {
         rhs_course %in% input$course_chosen
       ) %>%
       
-      # mutate(
-      #   explanation = paste(
-      #     "Red flag for ",
-      #     rhs_course,
-      #     ":<br/>",
-      #     "You have obtained less than ",
-      #     lhs_outcome,
-      #     "/10 in ",
-      #     lhs_course,
-      #     " and ",
-      #     round(confidence * 100, digits = 1),
-      #     "% of the ",
-      #     lhs.rhsTake.count,
-      #     " students who have taken ", 
-      #     rhs_course,
-      #     " after obtaining less than ",
-      #     lhs_outcome,
-      #     "/10 in ",
-      #     lhs_course,
-      #     " obtained less than ",
-      #     rhs_outcome,
-      #     "/10 in ",
-      #     rhs_course,
-      #     ".",
-      #     sep = ""
-      #   )
-      # )
     mutate(
       `Red Flag` = rhs_course,
       Reason = paste(
@@ -364,29 +277,87 @@ function(input, output, session) {
       
       rules  %>%
         
-        select(`Red Flag`, Reason) #%>%
-        
-        #sort %>% 
-        # 
-        # paste0(
-        #   collapse = "<br/><br/>" # skip a line between individual red flags
-        # ) %>% 
-        # 
-        # HTML
+        select(`Red Flag`, Reason)
       
     }
     
     
   })
   
+  # ---------------------------------------------------------------------------------
+  ## -- TRAFFIC LIGHTS --
+  # ---------------------------------------------------------------------------------
+  
   #
-  ##COURSE RECOMMENDATION
+  ##Set up
+  
+  #Reactive Vectors 
+  
+  #student_ID
+  student_ID_traffic <- reactive({
+    req(input$student_traffic)
+  })
+  #course_ID
+  course_ID_traffic  <- reactive({ 
+    req(input$course_chosen_traffic) 
+    })
+  
+  #Helper function: predict grades
+  my_predict <- function(model, profile){
+    predict.cv.glmnet(object = model, newx = profile, s = "lambda.min")
+  }
+  
+  #Helper: resettabe input
+  output$resetable_input_traffic <- renderUI({
+    times <- input$reset_input_traffic
+    div(id = letters[(times %% length(letters)) + 1],
+        checkboxGroupInput(
+          inputId  = "course_chosen_traffic",
+          label    = "Tentative Courses",
+          choices  = course_all,
+          selected = course_all,
+          inline   = TRUE
+        ))
+  })
+  
+  ##OUTPUTS
+  ###Table
+  output$traffic_lights <- renderTable({
+    
+    #TO DO: add if statement
+    #read vectors
+    student_ID <- student_ID_traffic()
+    course_ID <- course_ID_traffic()
+    
+    #predict
+    student_prof <- student_profile_nest_app %>% 
+      filter(`Student ID` == student_ID) %>%
+      pull(profile) %>% .[[1]]
+    
+    #output
+   fit_lasso_app %>%
+
+      filter(target %in% course_ID) %>%
+
+      mutate(prediction = cv %>% map_dbl(my_predict, student_prof)) %>%
+
+      mutate(flag_red    = prediction < 5.5,
+             flag_orange = prediction %>% between(5.5, 7),
+             flag_green  = prediction > 7) %>%
+      select(-prediction, -cv)
+    
+  })
+  
+  # ---------------------------------------------------------------------------------
+  ## -- COURSE RECOMMENDATION --
+  # ---------------------------------------------------------------------------------
+  
   ###Set up
   recommendations_data <- reactive({
     
-    beta_distribution <- app_model$Beta[[1]]   # <-  #10, 25, 30, 35, 40, 45, 50, 55, 60 #distribution$beta$overview     #***********************************************SELECT: overview/manual
-    gamma_distribution <- app_model$Gamma[[1]] # <-  #10, 25, 30, 35, 40, 45, 50, 55, 60 #distribution$gamma$overview   #***********************************************SELECT: overview/manual
-    
+    beta_distribution <- app_model$Beta[[1]]   # 55  #***********************************************SELECT: overview/manual
+    gamma_distribution <- app_model$Gamma[[1]] # 55  #***********************************************SELECT: overview/manual
+    course_titles <- app_model$`Course Titles`[[1]]
     # Key words
     key_words_additional <- c(
       input$key_word_1,
@@ -485,7 +456,7 @@ function(input, output, session) {
       
       # Editing
       left_join(
-        select(d_course, `Course ID`, `Course Title`),
+        course_titles,
         by = c("document" = "Course ID")
       ) %>%
       arrange(desc(doc_score))})
