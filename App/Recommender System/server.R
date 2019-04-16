@@ -291,18 +291,20 @@ function(input, output, session) {
   #
   ##Set up
   
-  #Raw Data for RS:
-  raw_rules <- rules_clean %>%
-    select(-rules_rules)   %>%
-    filter(type_rule == "SR")
+  #Reactive Vectors 
   
-  #Helper function: return tibble of type_rules
-  get_type_rules <-  function(type){
-    tmp <- raw_rules %>%
-      filter(ID == type) %>%
-      pull(rules_RS)
-    
-    return(tmp[[1]])
+  #student_ID
+  student_ID_traffic <- reactive({
+    req(input$student_traffic)
+  })
+  #course_ID
+  course_ID_traffic  <- reactive({ 
+    req(input$course_chosen_traffic) 
+    })
+  
+  #Helper function: predict grades
+  my_predict <- function(model, profile){
+    predict.cv.glmnet(object = model, newx = profile, s = "lambda.min")
   }
   
   #Helper: resettabe input
@@ -313,9 +315,37 @@ function(input, output, session) {
           inputId  = "course_chosen_traffic",
           label    = "Tentative Courses",
           choices  = course_all,
-          #selected = course_all,
+          selected = course_all,
           inline   = TRUE
         ))
+  })
+  
+  ##OUTPUTS
+  ###Table
+  output$traffic_lights <- renderTable({
+    
+    #TO DO: add if statement
+    #read vectors
+    student_ID <- student_ID_traffic()
+    course_ID <- course_ID_traffic()
+    
+    #predict
+    student_prof <- student_profile_nest_app %>% 
+      filter(`Student ID` == student_ID) %>%
+      pull(profile) %>% .[[1]]
+    
+    #output
+   fit_lasso_app %>%
+
+      filter(target %in% course_ID) %>%
+
+      mutate(prediction = cv %>% map_dbl(my_predict, student_prof)) %>%
+
+      mutate(flag_red    = prediction < 5.5,
+             flag_orange = prediction %>% between(5.5, 7),
+             flag_green  = prediction > 7) %>%
+      select(-prediction, -cv)
+    
   })
   
   # ---------------------------------------------------------------------------------
