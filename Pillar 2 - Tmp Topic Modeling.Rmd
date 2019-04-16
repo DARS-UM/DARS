@@ -32,7 +32,16 @@ load("./Output/d_text.RDATA")
 load("./Output/data_pillar_2.RDATA") #used for app
 
 ```
+###Preparation of course_title vector
+```{r course titles, eval = TRUE}
+#Clean titles
+course_titles <-  d_text$catalogues %>%
+  select(`Course ID`, `Course Title`, department) %>% 
+  distinct
 
+empty_titles <- course_titles %>% filter(`Course Title` == "")
+
+```
 ###Functions for internal faceting
 We create the functions for internal faceting taken from https://github.com/dgrtwo/drlib/blob/master/R/reorder_within.R
 ```{r function reorder_within & co., echo = FALSE, eval = TRUE}
@@ -95,7 +104,7 @@ my_control <- list(
 )
 ```
 We create a helping control that we can use when we need fast convergence for testing new code. Thus, the control parameters we use for fast testing are:
-```{r fast control}
+```{r fast control, eval = TRUE}
 my_control_fast <- list(
   
   nstart = 1,
@@ -313,7 +322,7 @@ save(tb_topic_model, file = paste("./Output/", which_texts, "tmp_topic_model_tib
 
 ##Plots - Model Evaluation
 To evaluate how many topics are optimal, we graph the perplexity and log Likelihood of models against the number of topics.
-```{r perplexity plots, eval = TRUE}
+```{r perplexity plots, eval = FALSE}
 #Function
 plot_evaluation <- function(origin){
   
@@ -341,7 +350,7 @@ plot_evaluation("manuals")
 ##Different alphas and delta (prior of term distributions over topics)
 To evaluate the impact of the initial alpha and beta on our model, we train the model using different inizialization values for alpha and delta. Note that this is only an inizialisation and the algorithm will try to extimate alpha and beta.
 ###Alpha
-```{r alpha and beta}
+```{r alpha and beta, eval = FALSE}
 sample_dtm <- tb_topic_model$DTM[[1]] #1 CATALOGUES, 2 MANUALS
 
 fit_lda_alpha <-  function(alpha) {
@@ -374,7 +383,7 @@ tm_eval_alpha <- tibble( alpha = seq(from = 0.001, to = 2, length = 20)) %>%
          LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik))
 ```
 #Beta
-```{r alpha and beta}
+```{r alpha and beta, eval = FALSE}
 
 fit_lda_delta <-  function(delta) {
   control = list(
@@ -409,7 +418,7 @@ tm_eval_delta <- tibble( delta = seq(from = 0.001, to = 2, length = 20)) %>%
 
 ##Saving model_data:
 We save the data from our intermediate step in case further analysis is needed.
-```{r save, eval = T}
+```{r save, eval = TRUE}
 #save(tb_topic_model, file = "Output/tb_topic_model.RDATA" )
 ```
 
@@ -417,7 +426,7 @@ We save the data from our intermediate step in case further analysis is needed.
 For our Recommender System, we need to pass the distributions, number of topics, origin, and key words to the app.
 ##Distributions and Key words
 The function `clean_kw` removes stopwords from our key words.
-```{r function clean key words}
+```{r function clean key words, eval = T}
 clean_kw <- function(kw_list){
 
   #stopwords
@@ -435,14 +444,14 @@ clean_kw <- function(kw_list){
 
 ```
 On our `topic_model` tibble we filter only information relevant for the app, and apply `clean_kw` on our `kw` column
-```{r crop and clean TM for App}
+```{r crop and clean TM for App, eval = T}
 app_topic_model <- tb_topic_model %>% select(`Topic ID`, n_topic, Origin, Gamma, Beta, kw) %>%
   mutate(kw = map(kw, .f = clean_kw))
 ```
 
 ##Convenience Vectors
 For the app we also need to have a list of all courses and an example of a prospective semester
-```{r for convenience}
+```{r for convenience, eval = T}
 # set seed
 set.seed(1)
 
@@ -472,15 +481,16 @@ course_following_semester <- sample(
 
 ```
 
-```{r adding convenience vectors}
+```{r adding convenience vectors, eval = T}
 app_topic_model <- app_topic_model %>%
   mutate(`All Courses`     = list(course_all),
-         `Sample semester` = list(course_following_semester))
+         `Sample semester` = list(course_following_semester),
+         `Course Titles`   = list(course_titles) )
 
 #rm(course_all, course_following_semester)
 ```
 ## Saving files for APP
 We save all requirements for the app.
-```{r app files}
-# save(app_topic_model, file = "App/Recommender System/data_topic_models.RDATA")
+```{r app files, eval = T}
+save(app_topic_model, file = "App/Recommender System/data_topic_models.RDATA")
 ```
