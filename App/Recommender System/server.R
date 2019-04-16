@@ -384,9 +384,9 @@ function(input, output, session) {
   ###Set up
   recommendations_data <- reactive({
     
-    beta_distribution <- app_model$Beta[[1]]   # <-  #10, 25, 30, 35, 40, 45, 50, 55, 60 #distribution$beta$overview     #***********************************************SELECT: overview/manual
-    gamma_distribution <- app_model$Gamma[[1]] # <-  #10, 25, 30, 35, 40, 45, 50, 55, 60 #distribution$gamma$overview   #***********************************************SELECT: overview/manual
-    
+    beta_distribution <- app_model$Beta[[1]]   # 55  #***********************************************SELECT: overview/manual
+    gamma_distribution <- app_model$Gamma[[1]] # 55  #***********************************************SELECT: overview/manual
+    course_titles <- app_model$`Course Titles`[[1]]
     # Key words
     key_words_additional <- c(
       input$key_word_1,
@@ -485,7 +485,7 @@ function(input, output, session) {
       
       # Editing
       left_join(
-        select(d_course, `Course ID`, `Course Title`),
+        course_titles,
         by = c("document" = "Course ID")
       ) %>%
       arrange(desc(doc_score))})
