@@ -2,6 +2,7 @@ library(tidyverse)
 library(tidytext)
 library(stringr)
 library(hunspell)
+library(DT)
 
 load("rules.RDATA")
 load("data_pillar_1.RDATA")
@@ -314,8 +315,8 @@ function(input, output, session) {
         checkboxGroupInput(
           inputId  = "course_chosen_traffic",
           label    = "Tentative Courses",
-          choices  = course_all,
-          selected = course_all,
+          choices  = course_advanced,
+          selected = course_advanced,
           inline   = TRUE
         ))
   })
@@ -328,6 +329,15 @@ function(input, output, session) {
     #read vectors
     student_ID <- student_ID_traffic()
     course_ID <- course_ID_traffic()
+    
+  
+    preparatory <- d_prep %>%
+      filter(target %in% course_ID) %>%
+      group_by(target) %>%
+      top_n(5, prep_score) %>%
+      mutate(Preparation = paste(preparation, collapse =" | ")) %>% 
+      select(target, Preparation) %>%
+      distinct
     
     #predict
     student_prof <- student_profile_nest_app %>% 
@@ -344,7 +354,8 @@ function(input, output, session) {
       mutate(flag_red    = prediction < 5.5,
              flag_orange = prediction %>% between(5.5, 7),
              flag_green  = prediction > 7) %>%
-      select(-prediction, -cv)
+      select(-cv) %>%
+     left_join(preparatory, by = "target")
     
   })
   

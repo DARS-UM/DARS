@@ -18,8 +18,10 @@ app_model <- app_topic_model %>%
 
 course_all <- app_model$`All Courses`[[1]]
 
+course_advanced <-course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
+
 #pass model to app
-save(app_model,course_all, file = "./App/Recommender System/app_model.RDATA" )
+save(app_model,course_all,course_advanced, file = "./App/Recommender System/app_model.RDATA" )
 
 
 
