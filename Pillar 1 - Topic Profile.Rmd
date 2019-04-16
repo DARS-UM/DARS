@@ -31,8 +31,7 @@ load("App/Recommender System/topic_model_gb.RDATA")
 load("Output/data_pillar_1.RDATA")
 load("Output/course_current.RDATA")
 
-course_target <- course_current[! str_detect(course_current, "...10..")] 
-course_target <- setdiff(course_target, "CAP3000") # exclude capstone
+course_target <- course_current[! str_detect(course_current, "...10..")]
 course_target <- union(course_target, str_subset(course_current, "COR"))# include core courses
 ```
 
@@ -234,7 +233,7 @@ i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of western pol. t
 i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, culture
 ```
 
-# Preparation
+# Preparatory courses
 
 ```{r}
 fit_lasso_topic <- tibble(target = course_target) %>%
@@ -277,21 +276,21 @@ View(fit_lasso_topic)
 d_prep <- fit_lasso_topic %>% 
   
   left_join(gamma, by = "topic") %>%
-  rename(preparation = document) %>%
-  filter(target != preparation) %>%
+  rename(`Preparatory Courses` = document) %>%
+  filter(target != `Preparatory Courses`) %>%
   
   # exclude 3000 (advanced) courses from preparation courses
-  filter(!preparation %>% str_detect("^...30")) %>% 
+  filter(! `Preparatory Courses` %>% str_detect("^...30")) %>% 
   
   # double prep_score of intro courses
-  mutate(is_intro = preparation %>% str_detect("^...10")) %>%
+  mutate(is_intro = `Preparatory Courses` %>% str_detect("^...10")) %>%
   mutate(weight = weight * (1 + is_intro)) %>%
   
   # prep_score
   mutate(prep_score = weight * gamma) %>%
   
   # aggregate prep_score
-  group_by(target, preparation) %>%
+  group_by(target, `Preparatory Courses`) %>%
   summarize(prep_score = sum(prep_score)) %>%
   
   # identify top 15 preparation courses for each course
@@ -299,7 +298,7 @@ d_prep <- fit_lasso_topic %>%
   top_n(15, prep_score) %>%
   arrange(target, desc(prep_score))
 
-View(d_prep)  
+View(d_prep)
 ```
 
 # Save

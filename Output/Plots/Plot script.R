@@ -34,7 +34,7 @@ my_barplot_AoD <- function(transcript, var){
     ggplot(aes(reorder(AoD, AoD, function(x) length(x)))) +
     geom_bar() +
     coord_flip() +
-    labs(x = NULL)
+    labs(title = var, x = NULL)
   
 }
 
@@ -62,7 +62,7 @@ my_barplot_concentration <- function(transcript, var){
     scale_x_discrete(drop = FALSE) + 
     scale_fill_discrete(drop = FALSE) +
     theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-    labs(x = NULL)
+    labs(title = "Student's Courses", x = NULL)
 
 }
 
