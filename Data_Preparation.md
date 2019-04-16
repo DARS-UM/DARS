@@ -1,7 +1,7 @@
 Data Preparation
 ================
 DARS
-2019-03-28
+2019-04-10
 
 -   [Import Data](#import-data)
     -   [List of AoD's and Assessments](#list-of-aods-and-assessments)
@@ -11,6 +11,7 @@ DARS
     -   [Course Data](#course-data-1)
         -   [AoD](#aod)
         -   [Courses](#courses)
+    -   [](#section)
     -   [Student Data](#student-data-1)
         -   [Issues](#issues)
 -   [Save Data](#save-data)
@@ -251,12 +252,14 @@ Now that we have the matrix `map_assessment_AoD`, we want to find out which AoDs
 ``` r
 d_AoD_from_assessment <- d_assessment %>%
   
-  left_join(map_assessment_AoD, by = "Assessment") %T>%
+  left_join(map_assessment_AoD, by = "Assessment") %>%
+  
+  filter(!is.na(AoD)) %T>%
   
   print
 ```
 
-    ## # A tibble: 1,192 x 3
+    ## # A tibble: 1,089 x 3
     ##    `Course ID` Assessment AoD                     
     ##    <chr>       <chr>      <chr>                   
     ##  1 CAP3000     Paper      Problem Solving Skills  
@@ -269,7 +272,7 @@ d_AoD_from_assessment <- d_assessment %>%
     ##  8 COR1003     Paper      Communication Skills    
     ##  9 COR1003     Paper      Writing Skills          
     ## 10 COR1003     Paper      Research Skills         
-    ## # ... with 1,182 more rows
+    ## # ... with 1,079 more rows
 
 ``` r
 rm(map_assessment_AoD)
@@ -292,7 +295,7 @@ d_AoD <- rbind(
   print
 ```
 
-    ## # A tibble: 1,330 x 2
+    ## # A tibble: 1,231 x 2
     ##    `Course ID` AoD                   
     ##    <chr>       <chr>                 
     ##  1 AAM2001     Academic Expertise    
@@ -305,7 +308,7 @@ d_AoD <- rbind(
     ##  8 AAM2002     Communication Skills  
     ##  9 AAM2003     Academic Expertise    
     ## 10 AAM2003     Reflective Skills     
-    ## # ... with 1,320 more rows
+    ## # ... with 1,221 more rows
 
 ``` r
 rm(d_AoD_from_assessment, d_AoD_from_ILO)
@@ -354,7 +357,7 @@ d_course <- d_course %>%
   print
 ```
 
-    ## # A tibble: 280 x 3
+    ## # A tibble: 279 x 3
     ##    `Course ID` n_AoD `AoD Covered`                                         
     ##    <chr>       <int> <chr>                                                 
     ##  1 AAM2001         4 Academic Expertise, Reflective Skills, Decision-makin~
@@ -365,9 +368,9 @@ d_course <- d_course %>%
     ##  6 AAM2006         4 Academic Expertise, Reflective Skills, Decision-makin~
     ##  7 AAM2007         4 Academic Expertise, Reflective Skills, Decision-makin~
     ##  8 CAP3000        10 Advanced Knowledge, Academic Expertise, Graduate Stud~
-    ##  9 COR1002         8 <NA>                                                  
-    ## 10 COR1003         8 <NA>                                                  
-    ## # ... with 270 more rows
+    ##  9 COR1002         7 Core, Elementary Knowledge, Reflective Skills, Ethica~
+    ## 10 COR1003         7 Core, Elementary Knowledge, Critical Thinking Skills,~
+    ## # ... with 269 more rows
     ## # A tibble: 280 x 17
     ##    `Course ID` `Course Title` Cluster n_ILO n_assessment `Assessments Co~
     ##    <chr>       <chr>          <chr>   <int>        <int> <chr>           
@@ -496,6 +499,11 @@ d_course <- d_course %>%
     ## #   `Missing from ILO File` <dbl>, `Most Recent Catalogue` <chr>,
     ## #   Type <chr>, `ILO Covered` <chr>
 
+``` r
+d_course <- d_course %>%
+  mutate(target = Number > 2000 & Type == "Elective" & (! str_detect(`Course ID`, "SA")))
+```
+
 Student Data
 ------------
 
@@ -506,6 +514,8 @@ Student Data
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
+
+The data set `d_transcript` contains both the failed grades and the grade of the resit, and does not distinguish between them (same student, same course, same yera, same period, but different grade).
 
 ``` r
 course_letter_UCM <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>% paste(collapse = "|")
@@ -518,13 +528,9 @@ is_elective <- function(course_code) course_code %>% str_detect("HUM|SCI|SSC")
 d_transcript <- d_transcript %>%
   
   # for simplicity, we only keep 
-  # *UCM courses*  (courses present in the UCM catalogue)
-  # taken in the framework of the *BA Liberal Arts and Sciences (UCM)* (Program (Abbreviation) = 7501)
+  # courses taken in the framework of the *BA Liberal Arts and Sciences (UCM)* (Program (Abbreviation) = 7501)
   
-  filter(
-    `Module (Abbrev.)` %>% is_UCM,
-    `Program (Abbreviation)` == "7501"
-    ) %>%
+  filter(`Program (Abbreviation)` == "7501") %>%
   
   # The dataset has multiple rows for each student - course.
   # Following guidelines of Richard Vos, we only consider: 
@@ -539,11 +545,7 @@ d_transcript <- d_transcript %>%
 
 ``` r
 d_transcript <- d_transcript %>%
-  
-  # Remove variables with only one value (~10)
-  discard(function(x) n_distinct(x) == 1) %>%
-  
-  # Select: Student ID, course ID, when a course is taken and the grade 
+  # keep variables: Student ID, course ID, when a course is taken and the grade 
   select(
     `Student ID`   = `Student Number`,
     `Course ID`    = `Module (Abbrev.)`,
@@ -556,7 +558,7 @@ d_transcript <- d_transcript %>%
 ``` r
 clean_grade <- function(grade){
   
-  if(is.na(grade) | grade == "NG") grade <- "0"
+  if(grade == "NG" | is.na(grade)) return(NA)
   
   grade %>% str_replace(",", ".") %>% as.numeric
   
@@ -588,14 +590,14 @@ d_transcript <- d_transcript %>%
   mutate(
     
     # Clean grade, period and year
-    Grade          = Grade  %>% map_dbl(clean_grade ),
-    Period         = Period %>% map_chr(clean_period),
+    Grade          = Grade          %>% map_dbl(clean_grade ),
+    Period         = Period         %>% map_chr(clean_period),
     `Academic Year`= Year_numerical %>% map_chr(clean_year),
     
     # extract first period in which course spanning over mutliple periods is given
     period_numerical = substr(Period, 1, 1),
     
-    # Combine year and period to have be able to order the course in time using a single variable
+    # Combine year & period to chronologically order courses using a single variable
     time = str_c(Year_numerical, period_numerical) %>% as.numeric,
     
     grade_ceil = ceiling(Grade)
@@ -604,13 +606,12 @@ d_transcript <- d_transcript %>%
 ```
 
 ``` r
-d_transcript_augmented <- d_transcript %>% left_join(select(d_course, - Period), by = c("Course ID"))
+d_transcript <- d_transcript %>% filter(!is.na(Grade))
 ```
 
 ``` r
-d_transcript_elective <- d_transcript_augmented %>%
-  filter(`Course ID` %>% is_elective) %>%
-  select(`Student ID`, `Course ID`, time, Grade, grade_ceil)
+d_transcript_augmented <- d_transcript %>%
+  left_join(select(d_course, - Period), by = c("Course ID"))
 ```
 
 ### Issues
@@ -626,7 +627,7 @@ d_transcript %>%
   print
 ```
 
-    ## # A tibble: 72,657 x 10
+    ## # A tibble: 79,245 x 10
     ##    `Student ID` `Course ID` Year_numerical Period Grade `Academic Year`
     ##    <chr>        <chr>                <dbl> <chr>  <dbl> <chr>          
     ##  1 0268755      SKI1005               2007 1 to 6   4   2007-2008      
@@ -639,7 +640,7 @@ d_transcript %>%
     ##  8 0268755      SKI1005               2007 1 to 6   6.5 2007-2008      
     ##  9 0315524      COR1003               2008 1 to 6   4.8 2008-2009      
     ## 10 0315524      COR1003               2008 1 to 6   5   2008-2009      
-    ## # ... with 72,647 more rows, and 4 more variables: period_numerical <chr>,
+    ## # ... with 79,235 more rows, and 4 more variables: period_numerical <chr>,
     ## #   time <dbl>, grade_ceil <dbl>, n <int>
 
 ``` r
@@ -653,7 +654,7 @@ d_transcript %>%
   print
 ```
 
-    ## # A tibble: 72,657 x 10
+    ## # A tibble: 79,245 x 10
     ##    `Student ID` `Course ID` Year_numerical Period Grade `Academic Year`
     ##    <chr>        <chr>                <dbl> <chr>  <dbl> <chr>          
     ##  1 6054681      COR1003               2013 1        5.4 2013-2014      
@@ -666,7 +667,7 @@ d_transcript %>%
     ##  8 6068399      COR1002               2013 5        4.9 2013-2014      
     ##  9 6082615      COR1005               2014 1        4.6 2014-2015      
     ## 10 6082615      COR1005               2014 1        4.6 2014-2015      
-    ## # ... with 72,647 more rows, and 4 more variables: period_numerical <chr>,
+    ## # ... with 79,235 more rows, and 4 more variables: period_numerical <chr>,
     ## #   time <dbl>, grade_ceil <dbl>, n <int>
 
 ``` r
@@ -678,13 +679,17 @@ d_transcript %>%
   pull(`Course ID`)
 ```
 
-    ##  [1] "CAP3000" "COR1002" "COR1003" "COR1004" "COR1005" "HUM3045" "PRO1010"
-    ##  [8] "PRO1012" "PRO3008" "SCI1016" "SCI2010" "SCI2019" "SCI2033" "SCI2036"
-    ## [15] "SCI3003" "SCI3051" "SKI1004" "SKI1005" "SKI1008" "SKI1009" "SKI2049"
-    ## [22] "SKI3002" "SSC2039" "SSC2043" "SSC2043" "SSC2061" "SSC3011" "SSC3018"
-    ## [29] "SSC3033" "UGR2001"
+    ##  [1] "CAP3000" "COR1002" "COR1003" "COR1004" "COR1005" "EBC1032" "EBC2106"
+    ##  [8] "HUM3045" "PRO1010" "PRO1012" "PRO3008" "SAC2001" "SAC3001" "SAC3002"
+    ## [15] "SAC3003" "SCI1016" "SCI2010" "SCI2019" "SCI2033" "SCI2036" "SCI3003"
+    ## [22] "SCI3051" "SKI1004" "SKI1005" "SKI1008" "SKI1009" "SKI2049" "SKI3002"
+    ## [29] "SSC2039" "SSC2043" "SSC2043" "SSC2061" "SSC3011" "SSC3018" "SSC3033"
+    ## [36] "UGR2001"
 
 ``` r
+  # ~ 10 incomplete rows for a student's profile
+  d_transcript %>% filter(`Student ID` == "0481343") %>% View
+
 #TODO: list issues here
 ```
 
@@ -694,7 +699,7 @@ Save Data
 ``` r
 save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO, file = "Output/data_general.RDATA")
 
-save(d_transcript_augmented, d_transcript_elective, file = "Output/data_pillar_1.RDATA")
+save(d_transcript_augmented, file = "Output/data_pillar_1.RDATA")
 
 save(d_course, d_transcript, file = "Output/data_pillar_2.RDATA")
 ```

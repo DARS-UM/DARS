@@ -32,12 +32,12 @@ collapse_space    <- function(string) string %>% str_c(collapse = " ")
 symbol_to_line    <- c("\r\n", "\n") %>% collapse_or
 split             <- function(string) string %>% str_split(pattern = symbol_to_line) %>% .[[1]]
 
-remove_header_UCV <- function(string) string %>% str_sub(29, -1)
+remove_header_UCV <- function(string) string %>% str_sub(28, -1)
 
-overview_section_start <- function(string) string %>% str_detect(pattern = "^ *Core Courses")
-overview_section_end   <- function(string) string %>% str_detect(pattern = "Appendix|^ *Courses at\r\n *Maastricht Science Programme")
+overview_section_start <- function(string) string %>% str_detect(pattern = "^ *Core Courses|^ *Mathematics and")
+overview_section_end   <- function(string) string %>% str_detect(pattern = "Appendix|^ *Courses at\n *Maastricht Science Programme|^*Courses Available at University")
 
-headers_UCM_UCV <- c("^ *Core Courses",
+headers_UCM_UCV_MSP <- c("^ *Core Courses",
                      "^Humanities \\(HUM\\)",
                      "^ *Life Sciences Courses",
                      "^Sciences \\(SCI\\)",
@@ -45,13 +45,23 @@ headers_UCM_UCV <- c("^ *Core Courses",
                      "^ *Skills Trainings",
                      "^ *Projects",
                      "^Undergraduate Research",
-                     "Appendix") %>% collapse_or
-is_header     <- function(string) string %>% str_detect(pattern = headers_UCM_UCV)
+                     "Appendix",
+                     "^ *Mathematics and") %>% collapse_or
+is_header     <- function(string) string %>% str_detect(pattern = headers_UCM_UCV_MSP)
 
-course_code_UCM_UCV <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP", # UCM
-                         "VCO", "VSC", "VSS", "VSK", "VPR", "VCA" # UCV
+course_code_UCM_UCV_MSP <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP", # UCM
+                         "VCO", "VSC", "VSS", "VSK", "VPR", "VCA", # UCV
+                         "BIO", "CHE", "MAT", "PHY", "NEU", "INT", "PRA" #MSP
                          ) %>% collapse_or
-overview_start  <- function(string) string %>% extract_id_course %>% str_detect(pattern = course_code_UCM_UCV) # simplify with %in% course_code_UCM
+overview_start  <- function(string) string %>% extract_id_course %>% str_detect(pattern = course_code_UCM_UCV_MSP) # simplify with %in% course_code_UCM
+
+titles_end_UCM_UCV_MSP <- c("1000", "2000", "3000", #UCV
+                            "Course coordinators?",    #UCM, MSP
+                            "Coordinator", "PLEASE NOTE:", "Note:" #MSP
+                            ) %>% collapse_or
+
+title_end_location <- function(string) str_locate(string, titles_end_UCM_UCV_MSP) %>% .[,1]
+extract_course_title <- function(string) str_sub(string, 9, title_end_location(string)-2)
 ```
 
 # Importing course data
@@ -86,7 +96,8 @@ d_text$catalogues <- tribble(
   "European_studies", "^.Bachelor European Studies", "Faculty of Arts and Social Sciences"   ,
   "Psychology"      , "^.Bachelor Psychology"      , "Faculty of Psychology and Neuroscience",
   "UCV"             , NA_character_                , NA_character_                           ,
-  "UCM"             , NA_character_                , NA_character_                                   
+  "UCM"             , NA_character_                , NA_character_                           ,
+  "MSP"             , NA_character_                , NA_character_
   ) %>%
   
   full_join(read_in_pdfs("./Input/Catalogues/UM"), by = "ID") %>%
@@ -140,7 +151,7 @@ overview_ES_PSY <- function(catalogue, ID, page_top, before_overview){
 }
 ```
 
-## UCM, UCV
+## UCM, UCV, MSP
 
 ```{r paste_if_2_page_overview}
 paste_if_2_page_overview <- function(page, page_following){
@@ -156,7 +167,7 @@ paste_if_2_page_overview <- function(page, page_following){
 ```
 
 ```{r overview_UCM}
-overview_UCM_UCV <- function(catalogue, ID){
+overview_UCM_UCV_MSP <- function(catalogue, ID){
   
   if(ID == "UCV") catalogue <- catalogue %>% remove_header_UCV
   
@@ -176,8 +187,10 @@ overview_UCM_UCV <- function(catalogue, ID){
   filter(! page %>% is_header) %>%
   
   # paste current page and following page (`lead(page)`) if overview is two page long
-  transmute(text        = list(page, lead(page)) %>% pmap_chr(paste_if_2_page_overview),
-            `Course ID` = text %>% extract_id_course) %>%
+  transmute(
+    text           = list(page, lead(page)) %>% pmap_chr(paste_if_2_page_overview),
+    `Course ID`    = text %>% extract_id_course,
+    `Course Title` = text %>% extract_course_title) %>%
     mutate(department  = ID) %>%
     filter(!is.na(text))
     
@@ -191,10 +204,10 @@ overview <- function(ID, catalogue, page_top, before_overview){
   if(ID %in% c("European_studies", "Psychology")){
     catalogue %>% overview_ES_PSY(ID = ID, page_top = page_top, before_overview = before_overview)
   
-  }else if(ID %in% c("UCM", "UCV")){
-    catalogue %>% overview_UCM_UCV(ID = ID)
-  
-  }else "to do"
+  }else if(ID %in% c("UCM", "UCV", "MSP")){
+    catalogue %>% overview_UCM_UCV_MSP(ID = ID)
+    
+  } else "to do"
   
 }
 ```
@@ -310,8 +323,15 @@ d_text <- d_text %>% map(remove_sw) %T>% print
 rm(sw_own, remove_sw)
 ```
 
+# Current course
+```{r}
+course_current <- d_text$catalogues %>% filter(department == "UCM") %>% distinct(`Course ID`) %>% pull
+```
+
+
 # Save data
 
 ```{r}
-save(d_text, file = "Output/d_text.RDATA")
+save(course_current, file = "Output/course_current.RDATA")
+save(d_text        , file = "Output/d_text.RDATA")
 ```

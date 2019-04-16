@@ -30,8 +30,8 @@ paste_ <- function(...) paste(..., sep = "_")
 ```
 
 ```{r constants}
-course_all  <- unique(d_transcript_informative$`Course ID` )
-student_all <- unique(d_transcript_informative$`Student ID`)
+course_all  <- unique(d_transcript_elective$`Course ID` )
+student_all <- unique(d_transcript_elective$`Student ID`)
 n_students  <- length(student_all)
 
 pass_grade <- 5.5
@@ -110,7 +110,7 @@ rm(statistics, provide_statistics)
 d_support <- list()
 
 # Probability of taking / failing / obtaining of low grade a course
-d_support$TPH <- d_transcript_informative %>%
+d_support$TPH <- d_transcript_elective %>%
   
   group_by(`Course ID`) %>%
   
@@ -122,7 +122,7 @@ d_support$TPH <- d_transcript_informative %>%
 ```
 
 ```{r d_support G}
-d_support$G <- d_transcript_informative %>%
+d_support$G <- d_transcript_elective %>%
   
   group_by(`Course ID`) %>%
   
@@ -157,7 +157,7 @@ d_transactions <- list()
 
 ## taken_PF_HL
 ```{r taken_PF_HL}
-d_transactions$taken_PF_HL <- d_transcript_informative %>%
+d_transactions$taken_PF_HL <- d_transcript_elective %>%
   
   # sequenceID and event ID
   rename(
@@ -297,7 +297,7 @@ d_transcript_cum <- d_transactions$taken_PF_HL %>%
   arrange(eventID) %>%
   
   mutate(
-    course_so_far  = course_current %>% accumulate(union),
+    course_so_far  = course_current %>% purrr::accumulate(union),
     course_past    = course_so_far  %>% lag(default = NA_character_),
     course_not_yet = course_past    %>% map(~ setdiff(course_all, .) %>% paste_("not"))
     ) %>%

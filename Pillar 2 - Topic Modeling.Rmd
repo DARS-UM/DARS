@@ -383,7 +383,7 @@ my_FindTopicsNumber <- function(data_cast, n_topics){
   topics = n_topics,
   metrics = c("CaoJuan2009", "Arun2010", "Deveaud2014"),
   method = "Gibbs",
-  control = my_control,
+  control = my_control_fast,
   mc.cores = 4L
   
   )
@@ -514,7 +514,8 @@ get_kw <- function(d_beta){
 ###Training Models
 We train the LDA for different numbers of topics (5 to 250 by 5), we save the resulting 50 models under `topic_model`, along with the DTM used to build the model, the corpus of origin (overview or manuals), the word and topic distributions results from that model, it's evaluation measures, and vectors of words and topics that allow us humans to get a feel of the model, along with some key words.
 ```{r LDA fit, cache = TRUE, eval = TRUE}
-topic_numbers <- seq(from = 4, to = 150, by = 2)
+initial_time <- Sys.time()
+topic_numbers <- seq(from = 4, to = 8, by = 2)
 
 test_topic_model <- tibble( #CHANGE NAME TO: topic_model
   
@@ -522,7 +523,7 @@ test_topic_model <- tibble( #CHANGE NAME TO: topic_model
   n_topic = rep(topic_numbers, each = 2) # from = 5, to = 250, by = 5
   
   ) %>%
-  mutate(Origin     = rep(c("catalogues", "manuals"), 74),         # should be 50
+  mutate(Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         # should be 50
          `Topic ID` = paste(Origin, n_topic, sep = "_"),
          
          #Document Term Matrix
@@ -557,6 +558,8 @@ test_topic_model <- tibble( #CHANGE NAME TO: topic_model
          kw = map(Beta, .f = get_kw)
          )
 
+final_time <- Sys.time()
+took_how_long <- final_time - initial_time
 # Clean workspace
 
 # rm(extract_dtm, get_distributions, my_perplexity,
@@ -564,6 +567,9 @@ test_topic_model <- tibble( #CHANGE NAME TO: topic_model
 
 ```
 
+```{r print how long it takes}
+(took_how_long)
+```
 ##Plots - Model Evaluation
 To evaluate how many topics are optiomal, we graph the perplexity and log Likelihood of models against the number of topics.
 ```{r perplexity plots, eval = TRUE}

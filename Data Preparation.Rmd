@@ -148,7 +148,9 @@ In the loop, we first extract a row of `d_assessment` and save it as `observatio
 ```{r d_AoD_assessment}
 d_AoD_from_assessment <- d_assessment %>%
   
-  left_join(map_assessment_AoD, by = "Assessment") %T>%
+  left_join(map_assessment_AoD, by = "Assessment") %>%
+  
+  filter(!is.na(AoD)) %T>%
   
   print
 
@@ -268,6 +270,13 @@ d_course <- d_course %>%
   print
 ```
 
+##
+```{r}
+d_course <- d_course %>%
+  mutate(target = Number > 2000 & Type == "Elective" & (! str_detect(`Course ID`, "SA")))
+```
+
+
 ## Student Data
 
 * Is `Academic Work ID` a unique ID number?
@@ -277,6 +286,8 @@ d_course <- d_course %>%
 (In this section we use: `d_transcript`- contains the transcript information of students as was provided. It has 40 columns, and rows correspond roughly to a type of grade (e.g. final grade, attendance) per student per course per time they took it).
 
 Our dataframe contains many variables and rows that are either empty or meaningless for our analysis. First, we filter, the final grades of studets to keep only relevant rows (Final Confirmed Grades are those with `Appraisal (Description)` as "Grade supervisor"). Then we select ony the 10 variables that we will use for the anlysis, and give them more comprehensible names.
+
+The data set `d_transcript` contains both the failed grades and the grade of the resit, and does not distinguish between them (same student, same course, same yera, same period, but different grade).
 
 ```{r d_transcript helper}
 course_letter_UCM <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>% paste(collapse = "|")
@@ -289,13 +300,9 @@ is_elective <- function(course_code) course_code %>% str_detect("HUM|SCI|SSC")
 d_transcript <- d_transcript %>%
   
   # for simplicity, we only keep 
-  # *UCM courses*  (courses present in the UCM catalogue)
-  # taken in the framework of the *BA Liberal Arts and Sciences (UCM)* (Program (Abbreviation) = 7501)
+  # courses taken in the framework of the *BA Liberal Arts and Sciences (UCM)* (Program (Abbreviation) = 7501)
   
-  filter(
-    `Module (Abbrev.)` %>% is_UCM,
-    `Program (Abbreviation)` == "7501"
-    ) %>%
+  filter(`Program (Abbreviation)` == "7501") %>%
   
   # The dataset has multiple rows for each student - course.
   # Following guidelines of Richard Vos, we only consider: 
@@ -310,11 +317,7 @@ d_transcript <- d_transcript %>%
 
 ```{r d_transcript column selection}
 d_transcript <- d_transcript %>%
-  
-  # Remove variables with only one value (~10)
-  discard(function(x) n_distinct(x) == 1) %>%
-  
-  # Select: Student ID, course ID, when a course is taken and the grade 
+  # keep variables: Student ID, course ID, when a course is taken and the grade 
   select(
     `Student ID`   = `Student Number`,
     `Course ID`    = `Module (Abbrev.)`,
@@ -327,7 +330,7 @@ d_transcript <- d_transcript %>%
 ```{r clean_grade}
 clean_grade <- function(grade){
   
-  if(is.na(grade) | grade == "NG") grade <- "0"
+  if(grade == "NG" | is.na(grade)) return(NA)
   
   grade %>% str_replace(",", ".") %>% as.numeric
   
@@ -359,14 +362,14 @@ d_transcript <- d_transcript %>%
   mutate(
     
     # Clean grade, period and year
-    Grade          = Grade  %>% map_dbl(clean_grade ),
-    Period         = Period %>% map_chr(clean_period),
+    Grade          = Grade          %>% map_dbl(clean_grade ),
+    Period         = Period         %>% map_chr(clean_period),
     `Academic Year`= Year_numerical %>% map_chr(clean_year),
     
     # extract first period in which course spanning over mutliple periods is given
     period_numerical = substr(Period, 1, 1),
     
-    # Combine year and period to have be able to order the course in time using a single variable
+    # Combine year & period to chronologically order courses using a single variable
     time = str_c(Year_numerical, period_numerical) %>% as.numeric,
     
     grade_ceil = ceiling(Grade)
@@ -375,13 +378,12 @@ d_transcript <- d_transcript %>%
 ```
 
 ```{r}
-d_transcript_augmented <- d_transcript %>% left_join(select(d_course, - Period), by = c("Course ID"))
+d_transcript <- d_transcript %>% filter(!is.na(Grade))
 ```
 
 ```{r}
-d_transcript_elective <- d_transcript_augmented %>%
-  filter(`Course ID` %>% is_elective) %>%
-  select(`Student ID`, `Course ID`, time, Grade, grade_ceil)
+d_transcript_augmented <- d_transcript %>%
+  left_join(select(d_course, - Period), by = c("Course ID"))
 ```
 
 ### Issues
@@ -411,6 +413,9 @@ d_transcript %>%
   arrange(`Course ID`) %>%
   pull(`Course ID`)
 
+  # ~ 10 incomplete rows for a student's profile
+  d_transcript %>% filter(`Student ID` == "0481343") %>% View
+
 #TODO: list issues here
 ```
 
@@ -418,7 +423,7 @@ d_transcript %>%
 ```{r}
 save(d_course, list_AoD_assessment, d_AoD, d_assessment, d_ILO, file = "Output/data_general.RDATA")
 
-save(d_transcript_augmented, d_transcript_elective, file = "Output/data_pillar_1.RDATA")
+save(d_transcript_augmented, file = "Output/data_pillar_1.RDATA")
 
 save(d_course, d_transcript, file = "Output/data_pillar_2.RDATA")
 ```

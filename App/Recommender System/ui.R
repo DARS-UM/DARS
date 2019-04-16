@@ -5,22 +5,21 @@
 # libraries
 library(tidyverse)
 library(tidytext)
+
 library(shiny)
+library(shinythemes)
 
 #load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
 load("rules_clean.RDATA")
 
-# stopwords <- c("2016", "academic", "account", "age", "analysis","apply", "approach")
-# kw_clean <- kw$overview %>% setdiff(stopwords)
-# kw_clean <- sort(kw_clean)
-
-
+load("app_model.RDATA")
 
 #
 # ui
 navbarPage(
+  theme = shinytheme("united"),
   
   # App title
   title = "Recommender System",
@@ -62,7 +61,7 @@ navbarPage(
       mainPanel(
         
         # Output: dataset
-        htmlOutput(
+        tableOutput(
           outputId = "red_flags"
           )
         
@@ -77,6 +76,7 @@ navbarPage(
     # Panel Title
     title = "Course Recommender",
     
+    
     # Sidebar layout
     sidebarLayout(
       
@@ -87,7 +87,7 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = sort(kw$overview),      #***********************************************SELECT: overview/manual
+          choices  = sort(app_model$kw[[1]]),      #***********************************************SELECT: overview/manual
           #selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),
@@ -119,17 +119,13 @@ navbarPage(
       
       # Main panel for displaying outputs
       mainPanel(
-        
-        # Output: dataset
-        htmlOutput(
-          outputId = "course_recommendation"
-          ),
-        tags$head(tags$style("#course_recommendation{color: black;
-                                 font-size: 20px;
-                                 }"
-        )
-        )
-        
+        h3("Course Recommendations"),
+        mainPanel( width = 12,
+          tableOutput(outputId = "course_recommendation"), 
+          tags$head(tags$style("#course_recommendation{color: black; font-size: 20px;}")
+                    )
+                  )
+      
         )
       
       )

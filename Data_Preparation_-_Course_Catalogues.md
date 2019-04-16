@@ -1,19 +1,20 @@
 Data Preparation - Course Catalogues
 ================
 DARS
-2019-03-28
+2019-04-16
 
 -   [Helper functions](#helper-functions)
 -   [Importing course data](#importing-course-data)
     -   [Application](#application)
 -   [Extracting course overviews](#extracting-course-overviews)
     -   [ES, PSY](#es-psy)
-    -   [UCM, UCV](#ucm-ucv)
+    -   [UCM, UCV, MSP](#ucm-ucv-msp)
     -   [Application](#application-1)
 -   [Clean data](#clean-data)
     -   [Tidy data](#tidy-data)
     -   [Stem data](#stem-data)
 -   [Remove stopwords](#remove-stopwords)
+-   [Current course](#current-course)
 -   [Save data](#save-data)
 
 Helper functions
@@ -29,12 +30,12 @@ collapse_space    <- function(string) string %>% str_c(collapse = " ")
 symbol_to_line    <- c("\r\n", "\n") %>% collapse_or
 split             <- function(string) string %>% str_split(pattern = symbol_to_line) %>% .[[1]]
 
-remove_header_UCV <- function(string) string %>% str_sub(29, -1)
+remove_header_UCV <- function(string) string %>% str_sub(28, -1)
 
-overview_section_start <- function(string) string %>% str_detect(pattern = "^ *Core Courses")
-overview_section_end   <- function(string) string %>% str_detect(pattern = "Appendix|^ *Courses at\r\n *Maastricht Science Programme")
+overview_section_start <- function(string) string %>% str_detect(pattern = "^ *Core Courses|^ *Mathematics and")
+overview_section_end   <- function(string) string %>% str_detect(pattern = "Appendix|^ *Courses at\n *Maastricht Science Programme|^*Courses Available at University")
 
-headers_UCM_UCV <- c("^ *Core Courses",
+headers_UCM_UCV_MSP <- c("^ *Core Courses",
                      "^Humanities \\(HUM\\)",
                      "^ *Life Sciences Courses",
                      "^Sciences \\(SCI\\)",
@@ -42,13 +43,23 @@ headers_UCM_UCV <- c("^ *Core Courses",
                      "^ *Skills Trainings",
                      "^ *Projects",
                      "^Undergraduate Research",
-                     "Appendix") %>% collapse_or
-is_header     <- function(string) string %>% str_detect(pattern = headers_UCM_UCV)
+                     "Appendix",
+                     "^ *Mathematics and") %>% collapse_or
+is_header     <- function(string) string %>% str_detect(pattern = headers_UCM_UCV_MSP)
 
-course_code_UCM_UCV <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP", # UCM
-                         "VCO", "VSC", "VSS", "VSK", "VPR", "VCA" # UCV
+course_code_UCM_UCV_MSP <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP", # UCM
+                         "VCO", "VSC", "VSS", "VSK", "VPR", "VCA", # UCV
+                         "BIO", "CHE", "MAT", "PHY", "NEU", "INT", "PRA" #MSP
                          ) %>% collapse_or
-overview_start  <- function(string) string %>% extract_id_course %>% str_detect(pattern = course_code_UCM_UCV) # simplify with %in% course_code_UCM
+overview_start  <- function(string) string %>% extract_id_course %>% str_detect(pattern = course_code_UCM_UCV_MSP) # simplify with %in% course_code_UCM
+
+titles_end_UCM_UCV_MSP <- c("1000", "2000", "3000", #UCV
+                            "Course coordinators?",    #UCM, MSP
+                            "Coordinator", "PLEASE NOTE:", "Note:" #MSP
+                            ) %>% collapse_or
+
+title_end_location <- function(string) str_locate(string, titles_end_UCM_UCV_MSP) %>% .[,1]
+extract_course_title <- function(string) str_sub(string, 9, title_end_location(string)-2)
 ```
 
 Importing course data
@@ -86,7 +97,8 @@ d_text$catalogues <- tribble(
   "European_studies", "^.Bachelor European Studies", "Faculty of Arts and Social Sciences"   ,
   "Psychology"      , "^.Bachelor Psychology"      , "Faculty of Psychology and Neuroscience",
   "UCV"             , NA_character_                , NA_character_                           ,
-  "UCM"             , NA_character_                , NA_character_                                   
+  "UCM"             , NA_character_                , NA_character_                           ,
+  "MSP"             , NA_character_                , NA_character_
   ) %>%
   
   full_join(read_in_pdfs("./Input/Catalogues/UM"), by = "ID") %>%
@@ -94,6 +106,8 @@ d_text$catalogues <- tribble(
   mutate(year = "2018-2019") %>%
   rename(catalogue = text)
 ```
+
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
 
     ## Warning: Column `ID` has different attributes on LHS and RHS of join
 
@@ -145,8 +159,8 @@ overview_ES_PSY <- function(catalogue, ID, page_top, before_overview){
 }
 ```
 
-UCM, UCV
---------
+UCM, UCV, MSP
+-------------
 
 ``` r
 paste_if_2_page_overview <- function(page, page_following){
@@ -162,7 +176,7 @@ paste_if_2_page_overview <- function(page, page_following){
 ```
 
 ``` r
-overview_UCM_UCV <- function(catalogue, ID){
+overview_UCM_UCV_MSP <- function(catalogue, ID){
   
   if(ID == "UCV") catalogue <- catalogue %>% remove_header_UCV
   
@@ -182,8 +196,10 @@ overview_UCM_UCV <- function(catalogue, ID){
   filter(! page %>% is_header) %>%
   
   # paste current page and following page (`lead(page)`) if overview is two page long
-  transmute(text        = list(page, lead(page)) %>% pmap_chr(paste_if_2_page_overview),
-            `Course ID` = text %>% extract_id_course) %>%
+  transmute(
+    text           = list(page, lead(page)) %>% pmap_chr(paste_if_2_page_overview),
+    `Course ID`    = text %>% extract_id_course,
+    `Course Title` = text %>% extract_course_title) %>%
     mutate(department  = ID) %>%
     filter(!is.na(text))
     
@@ -199,10 +215,10 @@ overview <- function(ID, catalogue, page_top, before_overview){
   if(ID %in% c("European_studies", "Psychology")){
     catalogue %>% overview_ES_PSY(ID = ID, page_top = page_top, before_overview = before_overview)
   
-  }else if(ID %in% c("UCM", "UCV")){
-    catalogue %>% overview_UCM_UCV(ID = ID)
-  
-  }else "to do"
+  }else if(ID %in% c("UCM", "UCV", "MSP")){
+    catalogue %>% overview_UCM_UCV_MSP(ID = ID)
+    
+  } else "to do"
   
 }
 ```
@@ -232,20 +248,20 @@ d_text <- d_text %>% map(tidy_text) %T>% print
 ```
 
     ## $catalogues
-    ## # A tibble: 157,172 x 3
-    ##    `Course ID`                                   department      word      
-    ##    <chr>                                         <chr>           <chr>     
-    ##  1 Language & professional skills: English Diag~ European_studi~ language  
-    ##  2 Language & professional skills: English Diag~ European_studi~ professio~
-    ##  3 Language & professional skills: English Diag~ European_studi~ skills    
-    ##  4 Language & professional skills: English Diag~ European_studi~ english   
-    ##  5 Language & professional skills: English Diag~ European_studi~ diagnostic
-    ##  6 Language & professional skills: English Diag~ European_studi~ test      
-    ##  7 Language & professional skills: English Diag~ European_studi~ full      
-    ##  8 Language & professional skills: English Diag~ European_studi~ course    
-    ##  9 Language & professional skills: English Diag~ European_studi~ descripti~
-    ## 10 Language & professional skills: English Diag~ European_studi~ this      
-    ## # ... with 157,162 more rows
+    ## # A tibble: 192,734 x 4
+    ##    `Course ID`                        department    `Course Title` word    
+    ##    <chr>                              <chr>         <chr>          <chr>   
+    ##  1 Language & professional skills: E~ European_stu~ <NA>           language
+    ##  2 Language & professional skills: E~ European_stu~ <NA>           profess~
+    ##  3 Language & professional skills: E~ European_stu~ <NA>           skills  
+    ##  4 Language & professional skills: E~ European_stu~ <NA>           english 
+    ##  5 Language & professional skills: E~ European_stu~ <NA>           diagnos~
+    ##  6 Language & professional skills: E~ European_stu~ <NA>           test    
+    ##  7 Language & professional skills: E~ European_stu~ <NA>           full    
+    ##  8 Language & professional skills: E~ European_stu~ <NA>           course  
+    ##  9 Language & professional skills: E~ European_stu~ <NA>           descrip~
+    ## 10 Language & professional skills: E~ European_stu~ <NA>           this    
+    ## # ... with 192,724 more rows
     ## 
     ## $manuals
     ## # A tibble: 1,114,195 x 2
@@ -381,20 +397,20 @@ d_text <- d_text %>% map(remove_sw) %T>% print
 ```
 
     ## $catalogues
-    ## # A tibble: 76,981 x 4
-    ##    `Course ID`                         department    word_original word    
-    ##    <chr>                               <chr>         <chr>         <chr>   
-    ##  1 Language & professional skills: En~ European_stu~ language      language
-    ##  2 Language & professional skills: En~ European_stu~ professional  profess~
-    ##  3 Language & professional skills: En~ European_stu~ skills        skill   
-    ##  4 Language & professional skills: En~ European_stu~ english       english 
-    ##  5 Language & professional skills: En~ European_stu~ diagnostic    diagnos~
-    ##  6 Language & professional skills: En~ European_stu~ test          test    
-    ##  7 Language & professional skills: En~ European_stu~ description   descrip~
-    ##  8 Language & professional skills: En~ European_stu~ compulsory    compuls~
-    ##  9 Language & professional skills: En~ European_stu~ diagnostic    diagnos~
-    ## 10 Language & professional skills: En~ European_stu~ test          test    
-    ## # ... with 76,971 more rows
+    ## # A tibble: 94,469 x 5
+    ##    `Course ID`             department   `Course Title` word_original word  
+    ##    <chr>                   <chr>        <chr>          <chr>         <chr> 
+    ##  1 Language & professiona~ European_st~ <NA>           language      langu~
+    ##  2 Language & professiona~ European_st~ <NA>           professional  profe~
+    ##  3 Language & professiona~ European_st~ <NA>           skills        skill 
+    ##  4 Language & professiona~ European_st~ <NA>           english       engli~
+    ##  5 Language & professiona~ European_st~ <NA>           diagnostic    diagn~
+    ##  6 Language & professiona~ European_st~ <NA>           test          test  
+    ##  7 Language & professiona~ European_st~ <NA>           description   descr~
+    ##  8 Language & professiona~ European_st~ <NA>           compulsory    compu~
+    ##  9 Language & professiona~ European_st~ <NA>           diagnostic    diagn~
+    ## 10 Language & professiona~ European_st~ <NA>           test          test  
+    ## # ... with 94,459 more rows
     ## 
     ## $manuals
     ## # A tibble: 482,526 x 3
@@ -416,9 +432,17 @@ d_text <- d_text %>% map(remove_sw) %T>% print
 rm(sw_own, remove_sw)
 ```
 
+Current course
+==============
+
+``` r
+course_current <- d_text$catalogues %>% filter(department == "UCM") %>% distinct(`Course ID`) %>% pull
+```
+
 Save data
 =========
 
 ``` r
-save(d_text, file = "Output/d_text.RDATA")
+save(course_current, file = "Output/course_current.RDATA")
+save(d_text        , file = "Output/d_text.RDATA")
 ```
