@@ -228,9 +228,21 @@ mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
 
 Topic chosen by model are related to the course.
 ```{r}
-i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ law, foreign policy, culture
-i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of western pol. thought predicted by HUM
-i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, culture
+beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
+
+i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Contemporary Classical Sociology: topic ~ law, foreign policy, culture
+beta %>% filter(topic == "Topic 18")
+beta %>% filter(topic == "Topic 8" )
+
+i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Business Administration: topic ~ business
+beta %>% filter(topic == "Topic 19")
+
+i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Culture, Politics and SOciety in Contemporary Asia: topic ~ law, international, policy
+beta %>% filter(topic == "Topic 21") 
+beta %>% filter(topic == "Topic 23")
+
+i <- 9; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of Western Political Thought: GPA_HUM and topic ~ natural science
+beta %>% filter(topic == "Topic 7") 
 ```
 
 # Preparatory courses
@@ -269,7 +281,7 @@ fit_lasso_topic <- fit_lasso_topic %>%
   
   select(target, topic, weight)
 
-View(fit_lasso_topic)
+print(fit_lasso_topic)
 ```
 
 ```{r}
@@ -298,7 +310,7 @@ d_prep <- fit_lasso_topic %>%
   top_n(15, prep_score) %>%
   arrange(target, desc(prep_score))
 
-View(d_prep)
+print(d_prep)
 ```
 
 # Save

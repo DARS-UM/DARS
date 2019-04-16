@@ -1,7 +1,7 @@
 Pillar 1 - Student Topic Profile
 ================
 DARS
-2019-04-15
+2019-04-16
 
 -   [Course topic profile](#course-topic-profile)
 -   [Student topic profile](#student-topic-profile)
@@ -9,7 +9,7 @@ DARS
 -   [Join student TP and GPA](#join-student-tp-and-gpa)
 -   [Regressing grade on TP and GPA](#regressing-grade-on-tp-and-gpa)
     -   [Lasso](#lasso)
--   [Preparation](#preparation)
+-   [Preparatory courses](#preparatory-courses)
 -   [Save](#save)
 -   [Predict](#predict)
 -   [Extra: find best alpha](#extra-find-best-alpha)
@@ -27,8 +27,7 @@ load("App/Recommender System/topic_model_gb.RDATA")
 load("Output/data_pillar_1.RDATA")
 load("Output/course_current.RDATA")
 
-course_target <- course_current[! str_detect(course_current, "...10..")] 
-course_target <- setdiff(course_target, "CAP3000") # exclude capstone
+course_target <- course_current[! str_detect(course_current, "...10..")]
 course_target <- union(course_target, str_subset(course_current, "COR"))# include core courses
 ```
 
@@ -238,14 +237,16 @@ hist(fit_lasso$cv_error)
 mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
 ```
 
-    ## [1] 0.8052675
+    ## [1] 0.8049792
 
-    ## [1] 0.7823819
+    ## [1] 0.7743765
 
 Topic chosen by model are related to the course.
 
 ``` r
-i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ law, foreign policy, culture
+beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
+
+i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Contemporary Classical Sociology: topic ~ law, foreign policy, culture
 ```
 
     ## 38 x 1 sparse Matrix of class "dgCMatrix"
@@ -292,65 +293,137 @@ i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ law, foreign polic
     ## [1] "SSC3038"
 
 ``` r
-i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of western pol. thought predicted by HUM
+beta %>% filter(topic == "Topic 18")
+```
+
+    ## # A tibble: 15 x 3
+    ## # Groups:   topic [1]
+    ##    topic    term           beta
+    ##    <chr>    <chr>         <dbl>
+    ##  1 Topic 18 art         0.0507 
+    ##  2 Topic 18 century     0.0347 
+    ##  3 Topic 18 modern      0.0245 
+    ##  4 Topic 18 temporary   0.0195 
+    ##  5 Topic 18 artistic    0.0153 
+    ##  6 Topic 18 performance 0.0127 
+    ##  7 Topic 18 london      0.00936
+    ##  8 Topic 18 familiarize 0.00852
+    ##  9 Topic 18 20th        0.00852
+    ## 10 Topic 18 enable      0.00767
+    ## 11 Topic 18 maastricht  0.00683
+    ## 12 Topic 18 stance      0.00683
+    ## 13 Topic 18 ha          0.00683
+    ## 14 Topic 18 reality     0.00599
+    ## 15 Topic 18 initiate    0.00599
+
+``` r
+beta %>% filter(topic == "Topic 8" )
+```
+
+    ## # A tibble: 15 x 3
+    ## # Groups:   topic [1]
+    ##    topic   term           beta
+    ##    <chr>   <chr>         <dbl>
+    ##  1 Topic 8 study       0.0590 
+    ##  2 Topic 8 cultural    0.0490 
+    ##  3 Topic 8 culture     0.0270 
+    ##  4 Topic 8 gender      0.0245 
+    ##  5 Topic 8 identity    0.0230 
+    ##  6 Topic 8 humanity    0.0170 
+    ##  7 Topic 8 class       0.0155 
+    ##  8 Topic 8 differences 0.0140 
+    ##  9 Topic 8 perspective 0.0135 
+    ## 10 Topic 8 visual      0.0125 
+    ## 11 Topic 8 critical    0.0110 
+    ## 12 Topic 8 examine     0.0110 
+    ## 13 Topic 8 diversity   0.0105 
+    ## 14 Topic 8 shape       0.0100 
+    ## 15 Topic 8 historical  0.00955
+
+``` r
+i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Business Administration: topic ~ business
 ```
 
     ## 38 x 1 sparse Matrix of class "dgCMatrix"
-    ##                      1
-    ## (Intercept)  7.3435912
-    ## GPA          .        
-    ## GPA_HUM      .        
-    ## GPA_SCI      .        
-    ## GPA_SSC      0.1087329
-    ## GPA_COR      .        
-    ## GPA_SKI      .        
-    ## GPA_PRO      .        
-    ## Topic_1      .        
-    ## Topic_10     .        
-    ## Topic_11     .        
-    ## Topic_12     .        
-    ## Topic_13     .        
-    ## Topic_14     .        
-    ## Topic_15     .        
-    ## Topic_16     .        
-    ## Topic_17    -0.4818858
-    ## Topic_18     .        
-    ## Topic_19     .        
-    ## Topic_2      .        
-    ## Topic_20     .        
-    ## Topic_21     .        
-    ## Topic_22     .        
-    ## Topic_23     .        
-    ## Topic_24     .        
-    ## Topic_25     .        
-    ## Topic_26     .        
-    ## Topic_27     .        
-    ## Topic_28     .        
-    ## Topic_29     .        
-    ## Topic_3      .        
-    ## Topic_30     .        
-    ## Topic_4      .        
-    ## Topic_5      .        
-    ## Topic_6      .        
-    ## Topic_7      .        
-    ## Topic_8      .        
-    ## Topic_9      .
+    ##                        1
+    ## (Intercept)  6.062007037
+    ## GPA          0.147095588
+    ## GPA_HUM      .          
+    ## GPA_SCI      0.005736446
+    ## GPA_SSC      .          
+    ## GPA_COR      .          
+    ## GPA_SKI      0.050351697
+    ## GPA_PRO      0.013674573
+    ## Topic_1      .          
+    ## Topic_10    -0.133472817
+    ## Topic_11    -0.568157564
+    ## Topic_12     .          
+    ## Topic_13     0.075135660
+    ## Topic_14    -0.064848221
+    ## Topic_15    -0.058294951
+    ## Topic_16     0.152868714
+    ## Topic_17     .          
+    ## Topic_18    -0.476662808
+    ## Topic_19     .          
+    ## Topic_2      0.032824202
+    ## Topic_20     .          
+    ## Topic_21     0.068198017
+    ## Topic_22     0.007171636
+    ## Topic_23     0.019900867
+    ## Topic_24     .          
+    ## Topic_25     .          
+    ## Topic_26     .          
+    ## Topic_27     .          
+    ## Topic_28    -0.122044662
+    ## Topic_29    -0.030238503
+    ## Topic_3      .          
+    ## Topic_30     0.099328610
+    ## Topic_4      .          
+    ## Topic_5      0.152802942
+    ## Topic_6     -0.280079172
+    ## Topic_7      .          
+    ## Topic_8      .          
+    ## Topic_9      0.036379230
 
-    ## [1] "UGR3003"
+    ## [1] "PRO3008"
 
 ``` r
-i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, culture
+beta %>% filter(topic == "Topic 19")
+```
+
+    ## # A tibble: 15 x 3
+    ## # Groups:   topic [1]
+    ##    topic    term             beta
+    ##    <chr>    <chr>           <dbl>
+    ##  1 Topic 19 trade         0.0278 
+    ##  2 Topic 19 international 0.0226 
+    ##  3 Topic 19 negotiate     0.0174 
+    ##  4 Topic 19 economic      0.0166 
+    ##  5 Topic 19 strategy      0.0148 
+    ##  6 Topic 19 country       0.0148 
+    ##  7 Topic 19 wto           0.0131 
+    ##  8 Topic 19 rule          0.0122 
+    ##  9 Topic 19 tail          0.00963
+    ## 10 Topic 19 simulate      0.00876
+    ## 11 Topic 19 numb          0.00789
+    ## 12 Topic 19 text          0.00703
+    ## 13 Topic 19 crisis        0.00703
+    ## 14 Topic 19 negotiations  0.00703
+    ## 15 Topic 19 organization  0.00616
+
+``` r
+i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Culture, Politics and SOciety in Contemporary Asia: topic ~ law, international, policy
 ```
 
     ## 38 x 1 sparse Matrix of class "dgCMatrix"
     ##                       1
-    ## (Intercept)  4.56120708
-    ## GPA          0.04590077
+    ## (Intercept)  4.61939610
+    ## GPA          0.06502965
     ## GPA_HUM      .         
     ## GPA_SCI      .         
-    ## GPA_SSC      0.24487218
-    ## GPA_COR      0.02433523
-    ## GPA_SKI      0.12389364
+    ## GPA_SSC      0.23313780
+    ## GPA_COR      0.01720849
+    ## GPA_SKI      0.11705323
     ## GPA_PRO      .         
     ## Topic_1      .         
     ## Topic_10     .         
@@ -363,14 +436,14 @@ i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, c
     ## Topic_17     .         
     ## Topic_18     .         
     ## Topic_19     .         
-    ## Topic_2      0.04094893
+    ## Topic_2      .         
     ## Topic_20     .         
-    ## Topic_21     0.17917753
+    ## Topic_21     0.16414125
     ## Topic_22     .         
-    ## Topic_23     0.34315347
+    ## Topic_23     0.31569578
     ## Topic_24     .         
     ## Topic_25     .         
-    ## Topic_26    -0.17314549
+    ## Topic_26    -0.12712832
     ## Topic_27     .         
     ## Topic_28     .         
     ## Topic_29     .         
@@ -385,8 +458,129 @@ i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # topic ~ literature, art, c
 
     ## [1] "SSC3044"
 
-Preparation
-===========
+``` r
+beta %>% filter(topic == "Topic 21") 
+```
+
+    ## # A tibble: 17 x 3
+    ## # Groups:   topic [1]
+    ##    topic    term             beta
+    ##    <chr>    <chr>           <dbl>
+    ##  1 Topic 21 law           0.0963 
+    ##  2 Topic 21 legal         0.0434 
+    ##  3 Topic 21 european      0.0298 
+    ##  4 Topic 21 international 0.0272 
+    ##  5 Topic 21 reason        0.0169 
+    ##  6 Topic 21 eu            0.0136 
+    ##  7 Topic 21 common        0.0110 
+    ##  8 Topic 21 institute     0.00911
+    ##  9 Topic 21 integrate     0.00911
+    ## 10 Topic 21 national      0.00717
+    ## 11 Topic 21 study         0.00717
+    ## 12 Topic 21 ion           0.00653
+    ## 13 Topic 21 govern        0.00653
+    ## 14 Topic 21 understand    0.00588
+    ## 15 Topic 21 press         0.00588
+    ## 16 Topic 21 court         0.00588
+    ## 17 Topic 21 principle     0.00588
+
+``` r
+beta %>% filter(topic == "Topic 23")
+```
+
+    ## # A tibble: 15 x 3
+    ## # Groups:   topic [1]
+    ##    topic    term            beta
+    ##    <chr>    <chr>          <dbl>
+    ##  1 Topic 23 policy       0.0927 
+    ##  2 Topic 23 public       0.0470 
+    ##  3 Topic 23 foreign      0.0359 
+    ##  4 Topic 23 analysis     0.0353 
+    ##  5 Topic 23 evaluate     0.0216 
+    ##  6 Topic 23 heal         0.0190 
+    ##  7 Topic 23 role         0.0144 
+    ##  8 Topic 23 section      0.0131 
+    ##  9 Topic 23 process      0.00985
+    ## 10 Topic 23 basic        0.00985
+    ## 11 Topic 23 american     0.00789
+    ## 12 Topic 23 issue        0.00724
+    ## 13 Topic 23 familiar     0.00724
+    ## 14 Topic 23 policymaking 0.00724
+    ## 15 Topic 23 opine        0.00659
+
+``` r
+i <- 9; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of Western Political Thought: GPA_HUM and topic ~ natural science
+```
+
+    ## 38 x 1 sparse Matrix of class "dgCMatrix"
+    ##                    1
+    ## (Intercept) 7.334426
+    ## GPA         .       
+    ## GPA_HUM     .       
+    ## GPA_SCI     .       
+    ## GPA_SSC     .       
+    ## GPA_COR     .       
+    ## GPA_SKI     .       
+    ## GPA_PRO     .       
+    ## Topic_1     .       
+    ## Topic_10    .       
+    ## Topic_11    .       
+    ## Topic_12    .       
+    ## Topic_13    .       
+    ## Topic_14    .       
+    ## Topic_15    .       
+    ## Topic_16    .       
+    ## Topic_17    .       
+    ## Topic_18    .       
+    ## Topic_19    .       
+    ## Topic_2     .       
+    ## Topic_20    .       
+    ## Topic_21    .       
+    ## Topic_22    .       
+    ## Topic_23    .       
+    ## Topic_24    .       
+    ## Topic_25    .       
+    ## Topic_26    .       
+    ## Topic_27    .       
+    ## Topic_28    .       
+    ## Topic_29    .       
+    ## Topic_3     .       
+    ## Topic_30    .       
+    ## Topic_4     .       
+    ## Topic_5     .       
+    ## Topic_6     .       
+    ## Topic_7     .       
+    ## Topic_8     .       
+    ## Topic_9     .
+
+    ## [1] "PRO2012"
+
+``` r
+beta %>% filter(topic == "Topic 7") 
+```
+
+    ## # A tibble: 15 x 3
+    ## # Groups:   topic [1]
+    ##    topic   term           beta
+    ##    <chr>   <chr>         <dbl>
+    ##  1 Topic 7 physic      0.0226 
+    ##  2 Topic 7 chemistry   0.0218 
+    ##  3 Topic 7 science     0.0201 
+    ##  4 Topic 7 natural     0.0143 
+    ##  5 Topic 7 learn       0.0134 
+    ##  6 Topic 7 organic     0.0134 
+    ##  7 Topic 7 base        0.0126 
+    ##  8 Topic 7 action      0.0126 
+    ##  9 Topic 7 physical    0.0109 
+    ## 10 Topic 7 ects        0.0101 
+    ## 11 Topic 7 maastricht  0.0101 
+    ## 12 Topic 7 basis       0.0101 
+    ## 13 Topic 7 chemical    0.0101 
+    ## 14 Topic 7 advance     0.00926
+    ## 15 Topic 7 participant 0.00759
+
+Preparatory courses
+===================
 
 ``` r
 fit_lasso_topic <- tibble(target = course_target) %>%
@@ -429,21 +623,21 @@ View(fit_lasso_topic)
 d_prep <- fit_lasso_topic %>% 
   
   left_join(gamma, by = "topic") %>%
-  rename(preparation = document) %>%
-  filter(target != preparation) %>%
+  rename(`Preparatory Courses` = document) %>%
+  filter(target != `Preparatory Courses`) %>%
   
   # exclude 3000 (advanced) courses from preparation courses
-  filter(!preparation %>% str_detect("^...30")) %>% 
+  filter(! `Preparatory Courses` %>% str_detect("^...30")) %>% 
   
   # double prep_score of intro courses
-  mutate(is_intro = preparation %>% str_detect("^...10")) %>%
+  mutate(is_intro = `Preparatory Courses` %>% str_detect("^...10")) %>%
   mutate(weight = weight * (1 + is_intro)) %>%
   
   # prep_score
   mutate(prep_score = weight * gamma) %>%
   
   # aggregate prep_score
-  group_by(target, preparation) %>%
+  group_by(target, `Preparatory Courses`) %>%
   summarize(prep_score = sum(prep_score)) %>%
   
   # identify top 15 preparation courses for each course
@@ -451,7 +645,7 @@ d_prep <- fit_lasso_topic %>%
   top_n(15, prep_score) %>%
   arrange(target, desc(prep_score))
 
-View(d_prep)  
+View(d_prep)
 ```
 
 Save
@@ -509,8 +703,8 @@ fit_lasso_app %>%
     ## # A tibble: 2 x 6
     ##   target  cv              prediction flag_red flag_orange flag_green
     ##   <chr>   <list>               <dbl> <lgl>    <lgl>       <lgl>     
-    ## 1 HUM2005 <S3: cv.glmnet>       7.74 FALSE    FALSE       TRUE      
-    ## 2 COR1005 <S3: cv.glmnet>       8.36 FALSE    FALSE       TRUE
+    ## 1 HUM2005 <S3: cv.glmnet>       7.77 FALSE    FALSE       TRUE      
+    ## 2 COR1005 <S3: cv.glmnet>       8.40 FALSE    FALSE       TRUE
 
 Extra: find best alpha
 ======================
@@ -558,15 +752,15 @@ m %>% summary
     ## 
     ## Residuals:
     ##        Min         1Q     Median         3Q        Max 
-    ## -1.004e-03 -2.762e-04 -1.995e-05  3.061e-04  1.290e-03 
+    ## -0.0012939 -0.0003116 -0.0000143  0.0002845  0.0014527 
     ## 
     ## Coefficients:
     ##               Estimate Std. Error  t value Pr(>|t|)    
-    ## (Intercept)  7.835e-01  8.836e-05 8867.256   <2e-16 ***
-    ## alphas      -2.257e-04  1.527e-04   -1.479    0.142    
+    ## (Intercept)  7.754e-01  9.292e-05 8344.163   <2e-16 ***
+    ## alphas      -2.667e-04  1.605e-04   -1.661   0.0999 .  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 0.0004473 on 99 degrees of freedom
-    ## Multiple R-squared:  0.02161,    Adjusted R-squared:  0.01173 
-    ## F-statistic: 2.186 on 1 and 99 DF,  p-value: 0.1424
+    ## Residual standard error: 0.0004704 on 99 degrees of freedom
+    ## Multiple R-squared:  0.02711,    Adjusted R-squared:  0.01729 
+    ## F-statistic: 2.759 on 1 and 99 DF,  p-value: 0.09987
