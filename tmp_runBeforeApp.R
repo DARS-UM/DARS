@@ -19,3 +19,6 @@ app_model <- app_topic_model %>%
 #pass model to app
 save(app_model, file = "./App/Recommender System/app_model.RDATA" )
 
+
+
+load("./App/Recommender System/grade_prediction.RDATA")
