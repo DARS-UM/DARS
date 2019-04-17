@@ -1,0 +1,50 @@
+---
+title: "Ternary plot"
+author: "DARS"
+date: "4/17/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ternary Plots
+This is a simple visualization tool to see where you are in the SCI, SSC, and HUM space. 
+
+```{r libraries}
+library(tidyverse)
+library(Ternary)
+
+```
+
+## Load
+```{r load, echo=FALSE}
+load("~/Documents/DARS/GitDARS/Output/data_pillar_1.RDATA")
+```
+
+```{r}
+data <- d_transcript_augmented %>% 
+  select(`Student ID`, `Course ID`) %>% 
+  distinct() %>%
+  mutate(`Course Concentration` = str_sub(`Course ID`, 1,3)) %>%
+  filter(`Course Concentration` %in% c("HUM", "SSC", "SCI")) %>%
+  group_by(`Student ID`) %>%
+  count(`Course Concentration`) %>%
+  group_by(`Student ID`) %>%
+  mutate(student_total = sum(n),
+         proportion = n/student_total) %>%
+  select(-n,-student_total) %>%
+  spread(key = `Course Concentration`, value = proportion, fill = 0)
+  
+```
+
+```{r}
+TernaryPlot()
+AddToTernary(points, data)
+
+```
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
