@@ -1,20 +1,13 @@
-
-#
-# set up
-
-# libraries
 library(tidyverse)
 library(tidytext)
 
 library(shiny)
 library(shinythemes)
 
-#load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
 load("rules_clean.RDATA")
-
-load("app_model.RDATA")
+load("app_model.RDATA") #containes selected model, must be equal to app_model calculated in server
 
 #
 # ui
@@ -24,7 +17,10 @@ navbarPage(
   # App title
   title = "Recommender System",
   
+  # ---------------------------------------------------------------------------------
   # -- RED FLAGS --
+  # ---------------------------------------------------------------------------------
+  
   tabPanel(
     
     # Panel Title
@@ -63,7 +59,10 @@ navbarPage(
     
     ),
   
+  # ---------------------------------------------------------------------------------
   # -- TRAFFIC LIGHTS --
+  # ---------------------------------------------------------------------------------
+  
   tabPanel(
     
     # Panel Title
@@ -102,7 +101,10 @@ navbarPage(
     
   ),
   
+  # ---------------------------------------------------------------------------------
   # -- COURSE RECOMMENDATIONS --
+  # ---------------------------------------------------------------------------------
+  
   tabPanel(
     
     # Panel Title
@@ -119,7 +121,7 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = sort(app_model$kw[[1]]),      #***********************************************SELECT: overview/manual
+          choices  = sort(app_model$kw[[1]]),      #***********************************************SELECT
           #selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),
