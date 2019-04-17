@@ -1,17 +1,32 @@
 library(tidyverse)
 library(tidytext)
+
 library(stringr)
 library(hunspell)
+
+library(glmnet)
+
 library(DT)
 
-load("rules.RDATA")
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
-load("app_model.RDATA")
 
 
+load("rules_clean.RDATA")
+load("grade_prediction.RDATA")
 
+
+#
+#server
 function(input, output, session) {
+  
+  #General set up
+  app_model <- app_topic_model %>%
+    filter(n_topic == 55)
+  
+  course_all <- app_model$`All Courses`[[1]]
+  
+  course_advanced <-course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
   
   # ---------------------------------------------------------------------------------
   ## -- RED FLAGS --
@@ -41,7 +56,7 @@ function(input, output, session) {
           inputId  = "course_chosen",
           label    = "Tentative Courses for following period",
           choices  = course_all,
-          #selected = course_all,
+          selected = course_all,
           inline   = TRUE
         ))
   })
@@ -325,7 +340,6 @@ function(input, output, session) {
   ###Table
   output$traffic_lights <- renderTable({
     
-    #TO DO: add if statement
     #read vectors
     student_ID <- student_ID_traffic()
     course_ID <- course_ID_traffic()
@@ -335,7 +349,7 @@ function(input, output, session) {
       filter(target %in% course_ID) %>%
       group_by(target) %>%
       top_n(5, prep_score) %>%
-      mutate(Preparation = paste(preparation, collapse =" | ")) %>% 
+      mutate(Preparation = paste(`Preparatory Courses`, collapse =" | ")) %>% 
       select(target, Preparation) %>%
       distinct
     
@@ -345,7 +359,7 @@ function(input, output, session) {
       pull(profile) %>% .[[1]]
     
     #output
-   fit_lasso_app %>%
+    fit_lasso_app %>%
 
       filter(target %in% course_ID) %>%
 
@@ -356,7 +370,7 @@ function(input, output, session) {
              flag_green  = prediction > 7) %>%
       select(-cv) %>%
      left_join(preparatory, by = "target")
-    
+  
   })
   
   # ---------------------------------------------------------------------------------
@@ -364,6 +378,7 @@ function(input, output, session) {
   # ---------------------------------------------------------------------------------
   
   ###Set up
+  
   recommendations_data <- reactive({
     
     beta_distribution <- app_model$Beta[[1]]   # 55  #***********************************************SELECT: overview/manual
