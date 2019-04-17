@@ -15,14 +15,6 @@ ggplot(tb_topic_model, aes(n_topic, LogLikelihood))+
 app_model <- app_topic_model %>%
   filter(n_topic == 55)
 
-course_all <- app_model$`All Courses`[[1]]
-
-course_advanced <-course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
-
 #pass model to app
-save(app_model,#course_all,course_advanced,
+save(app_model,
      file = "./App/Recommender System/app_model.RDATA" )
-
-
-
-load("./App/Recommender System/grade_prediction.RDATA")
