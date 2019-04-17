@@ -6,7 +6,7 @@ library(glmnet)   #for grade prediction
 
 
 #
-#General set up
+#General set up ---------------------------------------------------------------------------------
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains app_model and full dataframe of topic models
 load("rules_clean.RDATA")
@@ -16,7 +16,7 @@ course_all <- app_model$`All Courses`[[1]]
 course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
 
 #
-#server
+#server ---------------------------------------------------------------------------------
 function(input, output, session) {
   
   # ---------------------------------------------------------------------------------
