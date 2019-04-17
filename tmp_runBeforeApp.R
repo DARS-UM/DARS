@@ -4,7 +4,6 @@
 
 #Load necessary files to the environment
 load("./App/Recommender System/data_topic_models.RDATA") 
-load("./App/Recommender System/rules_clean.RDATA")
 
 #Inspect what number of topics to use:
 ggplot(tb_topic_model, aes(n_topic, Perplexity))+
@@ -21,7 +20,8 @@ course_all <- app_model$`All Courses`[[1]]
 course_advanced <-course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
 
 #pass model to app
-save(app_model,course_all,course_advanced, file = "./App/Recommender System/app_model.RDATA" )
+save(app_model,#course_all,course_advanced,
+     file = "./App/Recommender System/app_model.RDATA" )
 
 
 
