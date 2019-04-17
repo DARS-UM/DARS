@@ -369,8 +369,8 @@ Best alpha turns out to be 1 (lasso). Good, because predictor regularization als
 
 ```{r, cache = T}
 n_alpha <- 101
-mae   <- numeric(n_alpha)
-alphas <- seq(0, 1, length.out = n_alpha)
+mae     <- numeric(n_alpha)
+alphas  <- seq(0, 1, length.out = n_alpha)
 
 for(i in 1 : n_alpha){
   
