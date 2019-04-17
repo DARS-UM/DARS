@@ -6,7 +6,6 @@ library(hunspell)
 
 library(glmnet)
 
-library(DT)
 
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
@@ -278,7 +277,9 @@ function(input, output, session) {
       top_n(
         n  = 1,
         wt = confidence
-        )
+        ) %>% 
+      ungroup
+    
     
     if(nrow(student$transcript)==0){
       #"ERROR: id not found- we need new students ID's before running this"
@@ -289,9 +290,8 @@ function(input, output, session) {
       
     }else{
       
-      rules  %>%
-        
-        select(`Red Flag`, Reason)
+       rules  %>%
+         select(`Red Flag`, Reason)
       
     }
     
