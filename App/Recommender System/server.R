@@ -1,15 +1,22 @@
 library(tidyverse)
 library(tidytext)
 library(stringr)
-library(hunspell)
+library(hunspell) #for stemming
+library(glmnet)   #for grade prediction
 
-load("rules.RDATA")
+
+#
+#General set up ---------------------------------------------------------------------------------
 load("data_pillar_1.RDATA")
-load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
-load("app_model.RDATA")
+load("data_topic_models.RDATA") #contains app_model and full dataframe of topic models
+load("rules_clean.RDATA")
+load("grade_prediction.RDATA") 
 
+course_all <- app_model$`All Courses`[[1]]
+course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
 
-
+#
+#server ---------------------------------------------------------------------------------
 function(input, output, session) {
   
   # ---------------------------------------------------------------------------------
@@ -24,7 +31,7 @@ function(input, output, session) {
     filter(type_rule == "SR")
   
   #Helper function: return tibble of type_rules
-  get_type_rules <-  function(type){
+  get_type_rules <-  function(type) {
     tmp <- raw_rules %>%
       filter(ID == type) %>%
       pull(rules_RS)
@@ -35,19 +42,19 @@ function(input, output, session) {
   #Helper: resettabe input
   output$resetable_input <- renderUI({
     times <- input$reset_input
-    div(id=letters[(times %% length(letters)) + 1],
+    div(id = letters[(times %% length(letters)) + 1],
         checkboxGroupInput(
           inputId  = "course_chosen",
           label    = "Tentative Courses for following period",
           choices  = course_all,
-          #selected = course_all,
+          selected = course_all,
           inline   = TRUE
         ))
   })
   
   
   # Helper function: Return student
-  student_trans <- function(d_student){
+  student_trans <- function(d_student) {
  
     # Student profile
     student <- list()
@@ -121,7 +128,7 @@ function(input, output, session) {
       
     mutate(
       `Red Flag` = rhs_course,
-      Reason = paste(
+      Reason     = paste(
         "You have not taken ",
         lhs_course,
         " and ",
@@ -179,7 +186,7 @@ function(input, output, session) {
       
     mutate(
       `Red Flag` = rhs_course,
-      Reason = paste(
+      Reason     = paste(
         "You have failed ",
         lhs_course,
         " and ",
@@ -215,7 +222,7 @@ function(input, output, session) {
       
     mutate(
       `Red Flag` = rhs_course,
-      Reason = paste(
+      Reason     = paste(
         "You have obtained less than ",
             lhs_outcome,
             "/10 in ",
@@ -264,20 +271,22 @@ function(input, output, session) {
       top_n(
         n  = 1,
         wt = confidence
-        )
+        ) %>% 
+      ungroup
     
-    if(nrow(student$transcript)==0){
-      #"ERROR: id not found- we need new students ID's before running this"
+    #output
+    if(nrow(student$transcript) == 0){
+      
       tibble(ERROR = "Student ID not found")
+      
     }else if(nrow(rules) == 0){
       
       tibble(`Red Flag` = "No red flag")
       
     }else{
       
-      rules  %>%
-        
-        select(`Red Flag`, Reason)
+       rules  %>%
+         select(`Red Flag`, Reason)
       
     }
     
@@ -314,8 +323,8 @@ function(input, output, session) {
         checkboxGroupInput(
           inputId  = "course_chosen_traffic",
           label    = "Tentative Courses",
-          choices  = course_all,
-          selected = course_all,
+          choices  = course_advanced,
+          selected = course_advanced,
           inline   = TRUE
         ))
   })
@@ -324,10 +333,18 @@ function(input, output, session) {
   ###Table
   output$traffic_lights <- renderTable({
     
-    #TO DO: add if statement
     #read vectors
     student_ID <- student_ID_traffic()
     course_ID <- course_ID_traffic()
+    
+  
+    preparatory <- d_prep %>%
+      filter(target %in% course_ID) %>%
+      group_by(target) %>%
+      top_n(5, prep_score) %>%
+      mutate(Preparation = paste(`Preparatory Courses`, collapse =" | ")) %>% 
+      select(target, Preparation) %>%
+      distinct
     
     #predict
     student_prof <- student_profile_nest_app %>% 
@@ -335,7 +352,7 @@ function(input, output, session) {
       pull(profile) %>% .[[1]]
     
     #output
-   fit_lasso_app %>%
+    fit_lasso_app %>%
 
       filter(target %in% course_ID) %>%
 
@@ -344,8 +361,10 @@ function(input, output, session) {
       mutate(flag_red    = prediction < 5.5,
              flag_orange = prediction %>% between(5.5, 7),
              flag_green  = prediction > 7) %>%
-      select(-prediction, -cv)
-    
+      mutate_at(vars(flag_red, flag_orange, flag_green), funs(ifelse(.,., " ")))%>%
+      select(-cv) %>%
+     left_join(preparatory, by = "target")
+  
   })
   
   # ---------------------------------------------------------------------------------
@@ -353,11 +372,13 @@ function(input, output, session) {
   # ---------------------------------------------------------------------------------
   
   ###Set up
+  
   recommendations_data <- reactive({
     
-    beta_distribution <- app_model$Beta[[1]]   # 55  #***********************************************SELECT: overview/manual
-    gamma_distribution <- app_model$Gamma[[1]] # 55  #***********************************************SELECT: overview/manual
-    course_titles <- app_model$`Course Titles`[[1]]
+    beta_distribution  <- app_model$Beta[[1]] 
+    gamma_distribution <- app_model$Gamma[[1]] 
+    course_titles      <- app_model$`Course Titles`[[1]]
+    
     # Key words
     key_words_additional <- c(
       input$key_word_1,
@@ -369,15 +390,18 @@ function(input, output, session) {
     
     
     stem_hunspell <- function(term) {
+      
       stems   <- hunspell_stem(term)[[1]] # look up the term in the dictionary
       n_stems <- length(stems)            # number of stems
+      
       if (n_stems == 0) term              # if no stems, return original term
       else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
+      
     }
     
     key_words_additional <- sapply(key_words_additional, stem_hunspell)
     
-    key_words <- c(input$key_words, key_words_additional)
+    key_words            <- c(input$key_words, key_words_additional)
     
     #Student profiles
     student <- list()

@@ -1,30 +1,29 @@
-
-#
-# set up
-
-# libraries
 library(tidyverse)
 library(tidytext)
-
 library(shiny)
 library(shinythemes)
 
-#load("rules.RDATA")
+#
+#General set up---------------------------------------------------------------------------------
+
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
 load("rules_clean.RDATA")
 
-load("app_model.RDATA")
+kw_used <- app_model$kw[[1]]
 
 #
-# ui
+# ui ---------------------------------------------------------------------------------
 navbarPage(
   theme = shinytheme("united"),
   
   # App title
   title = "Recommender System",
   
+  # ---------------------------------------------------------------------------------
   # -- RED FLAGS --
+  # ---------------------------------------------------------------------------------
+  
   tabPanel(
     
     # Panel Title
@@ -39,11 +38,12 @@ navbarPage(
         # Input: student id number
         textInput(
           inputId = "student",
-          label   = "Student ID"#,
-          #value   = "6087587"
+          label   = "Student ID",
+          value   = "6113335"
           ),
         
         uiOutput('resetable_input'),
+        tags$head(tags$style("#resetable_input{color: black; font-size: 19px;}")),
         tags$hr(),
         actionButton("reset_input", "Reset inputs")
         
@@ -55,7 +55,8 @@ navbarPage(
         # Output: dataset
         tableOutput(
           outputId = "red_flags"
-          )
+          ),
+        tags$head(tags$style("#red_flags{color: black; font-size: 20px;}"))
         
         )
       
@@ -63,7 +64,10 @@ navbarPage(
     
     ),
   
+  # ---------------------------------------------------------------------------------
   # -- TRAFFIC LIGHTS --
+  # ---------------------------------------------------------------------------------
+  
   tabPanel(
     
     # Panel Title
@@ -78,11 +82,12 @@ navbarPage(
         # Input: student id number
         textInput(
           inputId = "student_traffic",
-          label   = "Student ID"#,
-          #value   = "6087587"
+          label   = "Student ID",
+          value   = "6113335"
         ),
         
         uiOutput('resetable_input_traffic'),
+        tags$head(tags$style("#resetable_input_traffic{color: black; font-size: 19px;}")),
         tags$hr(),
         actionButton("reset_input_traffic", "Reset inputs")
         
@@ -94,7 +99,8 @@ navbarPage(
         # Output: dataset
         tableOutput(
           outputId = "traffic_lights"
-        )
+        ),
+        tags$head(tags$style("#traffic_lights{color: black; font-size: 20px;}"))
         
       )
       
@@ -102,7 +108,10 @@ navbarPage(
     
   ),
   
+  # ---------------------------------------------------------------------------------
   # -- COURSE RECOMMENDATIONS --
+  # ---------------------------------------------------------------------------------
+  
   tabPanel(
     
     # Panel Title
@@ -119,10 +128,11 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = sort(app_model$kw[[1]]),      #***********************************************SELECT: overview/manual
+          choices  = sort(kw_used),      
           #selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),
+        tags$head(tags$style("#key_words{color: black; font-size: 19px;}")),
         
         # Input: additional key word 1-5
         textInput(
