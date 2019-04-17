@@ -23,7 +23,7 @@ function(input, output, session) {
 
   course_all <- app_model$`All Courses`[[1]]
   
-  course_advanced <-course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
+  course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
   
   # ---------------------------------------------------------------------------------
   ## -- RED FLAGS --
@@ -37,7 +37,7 @@ function(input, output, session) {
     filter(type_rule == "SR")
   
   #Helper function: return tibble of type_rules
-  get_type_rules <-  function(type){
+  get_type_rules <-  function(type) {
     tmp <- raw_rules %>%
       filter(ID == type) %>%
       pull(rules_RS)
@@ -48,7 +48,7 @@ function(input, output, session) {
   #Helper: resettabe input
   output$resetable_input <- renderUI({
     times <- input$reset_input
-    div(id=letters[(times %% length(letters)) + 1],
+    div(id = letters[(times %% length(letters)) + 1],
         checkboxGroupInput(
           inputId  = "course_chosen",
           label    = "Tentative Courses for following period",
@@ -60,7 +60,7 @@ function(input, output, session) {
   
   
   # Helper function: Return student
-  student_trans <- function(d_student){
+  student_trans <- function(d_student) {
  
     # Student profile
     student <- list()
@@ -134,7 +134,7 @@ function(input, output, session) {
       
     mutate(
       `Red Flag` = rhs_course,
-      Reason = paste(
+      Reason     = paste(
         "You have not taken ",
         lhs_course,
         " and ",
@@ -192,7 +192,7 @@ function(input, output, session) {
       
     mutate(
       `Red Flag` = rhs_course,
-      Reason = paste(
+      Reason     = paste(
         "You have failed ",
         lhs_course,
         " and ",
@@ -228,7 +228,7 @@ function(input, output, session) {
       
     mutate(
       `Red Flag` = rhs_course,
-      Reason = paste(
+      Reason     = paste(
         "You have obtained less than ",
             lhs_outcome,
             "/10 in ",
@@ -280,10 +280,11 @@ function(input, output, session) {
         ) %>% 
       ungroup
     
-    
-    if(nrow(student$transcript)==0){
-      #"ERROR: id not found- we need new students ID's before running this"
+    #output
+    if(nrow(student$transcript) == 0){
+      
       tibble(ERROR = "Student ID not found")
+      
     }else if(nrow(rules) == 0){
       
       tibble(`Red Flag` = "No red flag")
@@ -380,9 +381,10 @@ function(input, output, session) {
   
   recommendations_data <- reactive({
     
-    beta_distribution <- app_model$Beta[[1]]   # 55  #***********************************************SELECT: overview/manual
-    gamma_distribution <- app_model$Gamma[[1]] # 55  #***********************************************SELECT: overview/manual
-    course_titles <- app_model$`Course Titles`[[1]]
+    beta_distribution  <- app_model$Beta[[1]] 
+    gamma_distribution <- app_model$Gamma[[1]] 
+    course_titles      <- app_model$`Course Titles`[[1]]
+    
     # Key words
     key_words_additional <- c(
       input$key_word_1,
@@ -394,15 +396,18 @@ function(input, output, session) {
     
     
     stem_hunspell <- function(term) {
+      
       stems   <- hunspell_stem(term)[[1]] # look up the term in the dictionary
       n_stems <- length(stems)            # number of stems
+      
       if (n_stems == 0) term              # if no stems, return original term
       else              stems[[n_stems]]  # if multiple stems, return last (most basic) stem
+      
     }
     
     key_words_additional <- sapply(key_words_additional, stem_hunspell)
     
-    key_words <- c(input$key_words, key_words_additional)
+    key_words            <- c(input$key_words, key_words_additional)
     
     #Student profiles
     student <- list()
