@@ -140,14 +140,14 @@ The following functions are used as input in a map to compute and evaluate topic
 extract_dtm <- function(origin) d_cast[[origin]]
 
 #Extract Distributions (Gamma/Beta)-----------------------------------------------
-get_distributions <- function(model, distrib_str){ #input gamma or beta
-  tidy(model, matrix = distrib_str)        %>%
+get_distributions <- function(model, distrib_str) { #input gamma or beta
+  tidy(model, matrix = distrib_str) %>%
     mutate(topic = paste("Topic", topic) ) %>%
-      arrange(topic, desc(!!sym(distrib_str)))
+    arrange(topic, desc(!!sym(distrib_str)))
 }
 
 #perplexity Function-----------------------------------------------
-my_perplexity <- function(model, dtm){
+my_perplexity <- function(model, dtm) {
   perplexity(model, dtm, estimate_theta = FALSE)
 }
 
@@ -157,7 +157,7 @@ my_perplexity <- function(model, dtm){
 The following functions allow us to inspect the results from our models(inspect distributions and get kw):
 ```{r inspection functions, eval = TRUE}
  
-get_top_terms_topic <- function(d_beta){
+get_top_terms_topic <- function(d_beta) {
   data.frame(d_beta) %>%
     group_by(topic) %>%
     top_n(10, beta) %>%
@@ -167,7 +167,7 @@ get_top_terms_topic <- function(d_beta){
   
 }
 
-get_top_topics_course <- function(d_gamma){
+get_top_topics_course <- function(d_gamma) {
   data.frame(d_gamma) %>%
     group_by(document) %>%
     top_n(5, gamma) %>%
@@ -175,12 +175,12 @@ get_top_topics_course <- function(d_gamma){
     summarise(top_topic = list(topic))
 }
 
-get_kw <- function(d_beta){
+get_kw <- function(d_beta) {
   data.frame(d_beta) %>%
     group_by(topic) %>%
     top_n(3, beta) %>%
-    ungroup()%>%
-    pull(term)%>%
+    ungroup() %>%
+    pull(term) %>%
     unique()
 }
 
@@ -208,13 +208,13 @@ tb_topic_model <- tibble(
          DTM        = pmap(.l = list(Origin), .f = extract_dtm),
          
          #Fit Model
-         Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control), #my_control
+         Model      = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control), #my_control
          
          #Gamma distribution
-         Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
+         Gamma      = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
 
          #Beta distribution
-         Beta = pmap(.l = list(Model),  .f = get_distributions, distrib_str = "beta"),
+         Beta       = pmap(.l = list(Model),  .f = get_distributions, distrib_str = "beta"),
 
          #Perplexity
          Perplexity = pmap_dbl(.l = list(Model, DTM), .f = my_perplexity),
@@ -264,17 +264,17 @@ which_texts <- "catalogues"
 
 
 tb_topic_model <- tibble( 
-  
-  #repeat each topic number twice (once for catalogues and once for manual)
   n_topic = rep(topic_numbers, each = length(d_text)) 
-  
   ) %>%
+  
   mutate(Origin     = rep(c("catalogues", "manuals"), length(topic_numbers)),         # should be 50
          `Topic ID` = paste(Origin, n_topic, sep = "_"),
          
          #Document Term Matrix
          DTM        = pmap(.l = list(Origin), .f = extract_dtm)) %>%
+  
   filter(Origin == which_texts) %>%
+  
   mutate(
          #Fit Model
          Model  = pmap(.l = list(n_topic, DTM), .f = my_LDA, control = my_control), #my_control
@@ -324,7 +324,7 @@ save(tb_topic_model, file = paste("./Output/", which_texts, "tmp_topic_model_tib
 To evaluate how many topics are optimal, we graph the perplexity and log Likelihood of models against the number of topics.
 ```{r perplexity plots, eval = FALSE}
 #Function
-plot_evaluation <- function(origin){
+plot_evaluation <- function(origin) {
   
   #data
   tb_topic_model %>%
@@ -427,8 +427,8 @@ For our Recommender System, we need to pass the distributions, number of topics,
 ##Distributions and Key words
 The function `clean_kw` removes stopwords from our key words.
 ```{r function clean key words, eval = T}
-clean_kw <- function(kw_list){
-
+clean_kw <- function(kw_list) {
+  
   #stopwords
   kw_stopwords <- c("source", "primary", "type", "assess", "involve", "e.g", "discussion", "institute", "ha", "introduce",
                  "role","address", "student", "examination","coordinator", "maastrichtuniversity.nl", "identify", "manner", "mechanism", "concept", "hour",
@@ -445,7 +445,8 @@ clean_kw <- function(kw_list){
 ```
 On our `topic_model` tibble we filter only information relevant for the app, and apply `clean_kw` on our `kw` column
 ```{r crop and clean TM for App, eval = T}
-app_topic_model <- tb_topic_model %>% select(`Topic ID`, n_topic, Origin, Gamma, Beta, kw) %>%
+app_topic_model <- tb_topic_model %>% 
+  select(`Topic ID`, n_topic, Origin, Gamma, Beta, kw) %>%
   mutate(kw = map(kw, .f = clean_kw))
 ```
 
@@ -473,11 +474,10 @@ course_all <- d_course %>%
 
 #
 ##courses following_semester
-course_following_semester <- sample(
-  x       = course_all,
-  size    = 60,
-  replace = FALSE
-  ) %>% sort
+course_following_semester <- sample(x = course_all,
+                                    size    = 60,
+                                    replace = FALSE) %>% 
+  sort()
 
 ```
 
@@ -489,6 +489,7 @@ app_topic_model <- app_topic_model %>%
 
 app_model <- app_topic_model %>%
   filter(n_topic == 55)
+
 #rm(course_all, course_following_semester)
 ```
 ## Saving files for APP
