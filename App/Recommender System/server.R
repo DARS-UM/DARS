@@ -1,29 +1,23 @@
 library(tidyverse)
 library(tidytext)
-
 library(stringr)
-library(hunspell)
+library(hunspell) #for stemming
+library(glmnet)   #for grade prediction
 
-library(glmnet)
 
-
+#
+#General set up
 load("data_pillar_1.RDATA")
-load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
-
-
+load("data_topic_models.RDATA") #contains app_model and full dataframe of topic models
 load("rules_clean.RDATA")
-load("grade_prediction.RDATA")
+load("grade_prediction.RDATA") 
 
+course_all <- app_model$`All Courses`[[1]]
+course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
 
 #
 #server
 function(input, output, session) {
-  
-  #General set up
-
-  course_all <- app_model$`All Courses`[[1]]
-  
-  course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
   
   # ---------------------------------------------------------------------------------
   ## -- RED FLAGS --

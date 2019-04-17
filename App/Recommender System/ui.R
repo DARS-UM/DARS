@@ -1,12 +1,16 @@
 library(tidyverse)
 library(tidytext)
-
 library(shiny)
 library(shinythemes)
+
+#
+#General set up
 
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
 load("rules_clean.RDATA")
+
+kw_used <- app_model$kw[[1]]
 
 #
 # ui
@@ -124,7 +128,7 @@ navbarPage(
         checkboxGroupInput(
           inputId  = "key_words",
           label    = "Academic Interest",
-          choices  = sort(app_model$kw[[1]]),      #***********************************************SELECT
+          choices  = sort(kw_used),      
           #selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),
