@@ -368,6 +368,7 @@ function(input, output, session) {
       mutate(flag_red    = prediction < 5.5,
              flag_orange = prediction %>% between(5.5, 7),
              flag_green  = prediction > 7) %>%
+      mutate_at(vars(flag_red, flag_orange, flag_green), funs(ifelse(.,., " ")))%>%
       select(-cv) %>%
      left_join(preparatory, by = "target")
   
