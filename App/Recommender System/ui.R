@@ -34,11 +34,12 @@ navbarPage(
         # Input: student id number
         textInput(
           inputId = "student",
-          label   = "Student ID"#,
-          #value   = "6087587"
+          label   = "Student ID",
+          value   = "6113335"
           ),
         
         uiOutput('resetable_input'),
+        tags$head(tags$style("#resetable_input{color: black; font-size: 19px;}")),
         tags$hr(),
         actionButton("reset_input", "Reset inputs")
         
@@ -50,7 +51,8 @@ navbarPage(
         # Output: dataset
         tableOutput(
           outputId = "red_flags"
-          )
+          ),
+        tags$head(tags$style("#red_flags{color: black; font-size: 20px;}"))
         
         )
       
@@ -76,11 +78,12 @@ navbarPage(
         # Input: student id number
         textInput(
           inputId = "student_traffic",
-          label   = "Student ID"#,
-          #value   = "6087587"
+          label   = "Student ID",
+          value   = "6113335"
         ),
         
         uiOutput('resetable_input_traffic'),
+        tags$head(tags$style("#resetable_input_traffic{color: black; font-size: 19px;}")),
         tags$hr(),
         actionButton("reset_input_traffic", "Reset inputs")
         
@@ -92,7 +95,8 @@ navbarPage(
         # Output: dataset
         tableOutput(
           outputId = "traffic_lights"
-        )
+        ),
+        tags$head(tags$style("#traffic_lights{color: black; font-size: 20px;}"))
         
       )
       
@@ -124,6 +128,7 @@ navbarPage(
           #selected = c("international", "economic", "conflict", "develop", "policy"),
           inline   = TRUE
           ),
+        tags$head(tags$style("#key_words{color: black; font-size: 19px;}")),
         
         # Input: additional key word 1-5
         textInput(
