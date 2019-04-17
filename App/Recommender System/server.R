@@ -21,9 +21,7 @@ load("grade_prediction.RDATA")
 function(input, output, session) {
   
   #General set up
-  app_model <- app_topic_model %>%
-    filter(n_topic == 55)
-  
+
   course_all <- app_model$`All Courses`[[1]]
   
   course_advanced <-course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
