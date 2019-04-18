@@ -324,7 +324,7 @@ function(input, output, session) {
           inputId  = "course_chosen_traffic",
           label    = "Tentative Courses",
           choices  = course_advanced,
-          selected = course_advanced,
+          selected = c("SSC2028", "SCI2040", "SSC2050", "HUM3034", "SSC3038"), #course_advanced,
           inline   = TRUE
         ))
   })
