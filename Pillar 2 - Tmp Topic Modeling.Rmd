@@ -316,7 +316,7 @@ took_how_long <- final_time - initial_time
 #tb_topic_model
 
 #Save
-save(tb_topic_model, file = paste("./Output/", which_texts, "tmp_topic_model_tibble.RDATA", sep = "_"))
+save(tb_topic_model, file = paste("./Output/", which_texts, "_tmp_topic_model_tibble.RDATA", sep = ""))
 
 ```
 
