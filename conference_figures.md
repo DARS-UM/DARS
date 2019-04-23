@@ -3,7 +3,8 @@ Figures for conference paper
 DARS
 2019-04-23
 
--   [Transcript](#transcript)
+-   [Student data](#student-data)
+-   [Course data](#course-data)
 -   [Beta](#beta)
 -   [Gamma](#gamma)
 
@@ -21,10 +22,15 @@ DARS
     ##  9 22092        SCI1009     2014-2015       1        6.4
     ## 10 19512        COR1004     2016-2017       5        7
 
-Transcript
-==========
+Student data
+============
 
-![](Conference/Figures/transcript.pdf)
+![](Conference/Figures/student_data.pdf)
+
+Course data
+===========
+
+![](Conference/Figures/course_data.pdf)
 
 Beta
 ====
