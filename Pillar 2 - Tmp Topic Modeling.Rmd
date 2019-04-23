@@ -258,7 +258,7 @@ For time constrains, we sometimes need to train the model only on the manuals or
 initial_time <- Sys.time()
 
 #Training
-topic_numbers <-c(50, 55, 60, 65, 70) #seq(from = 5, to = 10, by = 2) #5 to 150 by 50
+topic_numbers <-seq(from = 5, to = 150, by = 5)#c(50, 55, 60, 65, 70) #seq(from = 5, to = 10, by = 2) #5 to 150 by 50
 which_texts <- "catalogues"
 
 
@@ -345,7 +345,7 @@ plot_evaluation <- function(origin) {
 
 #Plot
 plot_evaluation("catalogues")
-plot_evaluation("manuals")
+#plot_evaluation("manuals")
 ```
 ##Different alphas and delta (prior of term distributions over topics)
 To evaluate the impact of the initial alpha and beta on our model, we train the model using different inizialization values for alpha and delta. Note that this is only an inizialisation and the algorithm will try to extimate alpha and beta.
