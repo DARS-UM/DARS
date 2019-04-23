@@ -1,0 +1,129 @@
+---
+title: "Figures for conference paper"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(kableExtra)
+
+knitr::opts_chunk$set(echo = FALSE)
+theme_set(theme_light())
+
+load("Output/_catalogues_tmp_topic_model_tibble.RDATA")
+load("Output/data_pillar_1.Rdata")
+
+output_folder <- "Conference/Figures"
+plot_width <- 6
+plot_height <- plot_width / 1.6 
+```
+
+```{r TM}
+d     <- tb_topic_model
+gamma <- d$Gamma[[1]]
+beta  <- d$Beta[[1]]
+```
+
+```{r transcript}
+set.seed(2019)
+
+transcript <- d_transcript_augmented %>%
+  
+  select(`Student ID`, `Course ID`, `Academic Year`, Period = period_numerical, Grade) %>%
+  
+  mutate(`Student ID` = ((as.numeric(`Student ID`) + 2019) * as.numeric(`Student ID`)) %% 1e5  %>% as.character) %>% # anonymization
+  
+  sample_n(10) %>%
+  
+  arrange(`Academic Year`) %>%
+  
+  print
+```
+
+# Transcript
+
+```{r fig_transcript}
+transcript %>% 
+  kable("latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/transcript.pdf"))
+```
+
+# Beta
+
+```{r plot_beta}
+plot_beta <- function(topic = 1, sub = NULL){
+  
+  top <-  str_c("Topic ", topic)
+  
+  beta %>%
+    filter(topic == top) %>% 
+    top_n(10, beta) %>%
+    
+    ggplot() +
+    geom_col(aes(x = reorder(term, beta), y = beta)) +
+    
+    coord_flip() +
+    
+    labs(title = str_c("Main Terms of ", top),
+         subtitle = sub,
+         x = "Terms",
+         y = "Beta"
+    )
+  
+  ggsave(filename = str_c("Beta - topic ", topic, ".jpeg"), path = output_folder,
+         width = plot_width, height = plot_height)
+  
+}
+```
+
+```{r fig_beta}
+# topic 1: engineering",
+plot_beta(1, sub = "Topic 1 corresponds to the theme of engineering")
+# topic 9: computer science, topic 
+# Topic 20: psychology
+# topic 25: history
+# topic 26: literature 
+```
+
+# Gamma
+
+```{r plot_gamma}
+plot_gamma <- function(course = "COR1002", sub = NULL, course_title = course){
+  
+  gamma %>%
+    filter(document == course) %>% 
+    top_n(10, gamma) %>%
+    
+    ggplot() +
+    geom_col(aes(x = reorder(topic, gamma), y = gamma)) +
+    
+    coord_flip() +
+    
+    labs(title    = str_c("Main Topics of Course ", course_title),
+         subtitle = sub,
+         x = "Topics",
+         y = "Gamma"
+         )
+  
+  ggsave(filename = str_c("gamma - course ", course, ".jpeg"), path = output_folder,
+         width = plot_width, height = plot_height)
+  
+}
+```
+
+```{r fig_gamma}
+plot_gamma("HUM1014", sub = "HUM1014 is characterized by topics 43 (philosophy) and 26 (literature)", course_title = "HUM1014 Great Novels 1850 - Present")
+
+plot_beta(43, sub = "Topic 43 corresponds to the theme of philosophy")
+
+plot_beta(26, sub = "Topic 26 corresponds to the theme of literature")
+```
+
+
