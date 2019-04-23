@@ -1,0 +1,71 @@
+---
+title: "Read in articles for recommendation"
+author: "DARS"
+date: "4/18/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##Libraries
+```{r library, message = FALSE, eval = TRUE}
+library(tidyverse)
+library(tidytext)
+
+library(topicmodels)
+library(lemon)
+library(ggthemes)
+library(rlang) #quote
+library(ldatuning) # ideal number of topics in LDA
+
+library(tm)
+library(hunspell) # Stemmer
+library(magrittr)
+
+```
+#Load set up
+```{r}
+load("~/Documents/DARS/GitDARS/App/Recommender System/data_topic_models.RDATA")
+load("~/Documents/DARS/GitDARS/Output/_catalogues_tmp_topic_model_tibble.RDATA")
+```
+
+We select a single model to pass it the new document
+```{r load model}
+my_model <- tb_topic_model %>% filter(n_topic == 55) %>% .[["Model"]]
+```
+
+We load a new document and clean it
+```{r}
+
+read_in_pdfs <- function(file) {
+  
+  Corpus(
+    x             = DirSource(file),
+    readerControl = list(reader = readPDF(control = list(text = "-layout")))
+    ) %>%
+    
+    # turn corpus into a tibble to facilitate manipulation
+    as.list %>% tibble(raw = .) %>%
+
+    transmute(
+      ID   = raw %>% map(function(x) x$meta$id),
+      text = raw %>% map(content)
+      )
+  
+}
+```
+
+```{r}
+my_pdf <- read_in_pdfs("~/Documents/DARS/GitDARS/Input/Articles/")
+
+my_pdf$text
+
+my_document <- tibble( 
+  ID   = my_pdf$`Narrative Media-Article.pdf`$meta$id,
+  page = my_pdf$`Narrative Media-Article.pdf`$content) 
+
+my_document <- my_document %>% 
+  mutate(ID = str_sub(ID, 1,-5)) %>% #remove .pdf
+```
+
