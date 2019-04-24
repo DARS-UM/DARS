@@ -148,7 +148,7 @@ plot_beta(26, sub = "Topic 26 corresponds to the theme of literature")
 # Flow chart
 
 ```{r}
-test <- grViz("digraph flowchart {
+grViz("digraph flowchart {
 
       node [fontname = Helvetica, shape = rectangle]
 
@@ -179,9 +179,12 @@ test <- grViz("digraph flowchart {
       style = filled;
 		  color = lightCyan;
 		  node [style = filled, color = black, fillcolor = white];
+      rank = same;
       SUG [label = 'Course Suggestions']
-      WAR [label = 'Warnings \n and Preparatory Coursework']
+      WAR [label = 'Warnings']
+      PRE [label = 'Preparatory Coursework']
       }
+
 
       # Intermediate nodes
       node [color = black]
@@ -192,23 +195,31 @@ test <- grViz("digraph flowchart {
       PM [label = 'Predictive Models']
       GP [label = 'Grade Prediction']
       TR [label = 'Student´s Transcript']
+      x [shape=circle,width=.01,height=.01,label='']
 
       # edges
+
+      WAR SUG PRE [ group = 1 ]
+
       {TE, KW} -> AI; 
       {ID, SD} -> TR;
       TR -> AP;
       {TR, TM} -> TE;
       {PM, TE, AP, CS} -> GP;
       GP -> WAR;
+		  {TM, PM, WAR} -> PRE;
 
-      edge[label = 'LDA']
+      edge[label = 'LDA', decorate = TRUE]
       CD -> TM;
 
       edge[label = 'Lasso']
       SD -> PM;
+      
+      edge[label = '']
+      {TM, AI} -> x [arrowhead=none]
+      edge[label = 'KL distance', decorate = TRUE]
+      x -> SUG;
 
-      edge[label = 'KL distance']
-      {TM, AI} -> SUG
       }
       ")
 
