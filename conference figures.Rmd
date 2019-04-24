@@ -12,6 +12,7 @@ editor_options:
 ```{r setup, include = FALSE}
 library(tidyverse)
 library(kableExtra)
+library(DiagrammeR)
 
 knitr::opts_chunk$set(echo = FALSE)
 theme_set(theme_light())
@@ -142,6 +143,80 @@ plot_gamma("HUM1014", sub = "HUM1014 is characterized by topics 43 (philosophy) 
 plot_beta(43, sub = "Topic 43 corresponds to the theme of philosophy")
 
 plot_beta(26, sub = "Topic 26 corresponds to the theme of literature")
+```
+
+# Flow chart
+
+```{r}
+test <- grViz("digraph flowchart {
+
+      node [fontname = Helvetica, shape = rectangle]
+
+      # Input Data
+      subgraph cluster0 {
+      label = 'Input Data';
+      style = filled;
+		  color = lightgrey;
+		  node [style = filled, color = black, fillcolor = white];
+      CD [label = 'Course Data']
+      SD [label = 'Student Data']
+      }
+
+      # User Input
+      subgraph cluster1 {
+      label = 'User Input';
+      style = filled;
+		  color = coral;
+		  node [style = filled, color = black, fillcolor = white];
+      ID [label = 'Student ID']
+      KW [label = 'Selected Key Words']
+      CS [label = 'Selected Courses']
+      }
+
+      # Ouput
+      subgraph cluster2 {
+      label = 'System Output';
+      style = filled;
+		  color = lightCyan;
+		  node [style = filled, color = black, fillcolor = white];
+      SUG [label = 'Course Suggestions']
+      WAR [label = 'Warnings \n and Preparatory Coursework']
+      }
+
+      # Intermediate nodes
+      node [color = black]
+      TM [label = 'Topic Model']
+      TE [label = 'Student큦 Topic Expertise']
+      AI [label = 'Student큦 Academic Interests']
+      AP [label = 'Student큦 Academic Performance']
+      PM [label = 'Predictive Models']
+      GP [label = 'Grade Prediction']
+      TR [label = 'Student큦 Transcript']
+
+      # edges
+      {TE, KW} -> AI; 
+      {ID, SD} -> TR;
+      TR -> AP;
+      {TR, TM} -> TE;
+      {PM, TE, AP, CS} -> GP;
+      GP -> WAR;
+
+      edge[label = 'LDA']
+      CD -> TM;
+
+      edge[label = 'Lasso']
+      SD -> PM;
+
+      edge[label = 'KL distance']
+      {TM, AI} -> SUG
+      }
+      ")
+
+# Save by hand
+# image format: JPEG
+# Width: 626
+# Check Maintain aspect ratio
+# File name: Conference/Figures/Flowchart
 ```
 
 
