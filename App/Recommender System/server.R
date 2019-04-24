@@ -14,6 +14,7 @@ load("grade_prediction.RDATA")
 
 course_all <- app_model$`All Courses`[[1]]
 course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
+kw_used <- app_model$kw[[1]] #is the same as in ui
 
 #
 #server ---------------------------------------------------------------------------------
@@ -372,7 +373,28 @@ function(input, output, session) {
   # ---------------------------------------------------------------------------------
   
   ###Set up
+  use_past <- reactive({input$use_past})
+ 
+   # Helper function: Return student
+  student_courses <- function(d_student) {
+    student_hist <- d_transcript %>%
+        
+        filter(
+          `Student ID` == d_student
+        ) %>%
+        
+        select(
+          course = `Course ID`
+        ) 
+    }
   
+  #Reactive student function 
+  student_past <- reactive({
+    student_courses(input$student_rec)
+  })
+  
+    
+  #recommendations
   recommendations_data <- reactive({
     
     beta_distribution  <- app_model$Beta[[1]] 
@@ -399,8 +421,9 @@ function(input, output, session) {
       
     }
     
-    key_words_additional <- sapply(key_words_additional, stem_hunspell)
     
+    key_words_additional <- sapply(key_words_additional, stem_hunspell)
+
     key_words            <- c(input$key_words, key_words_additional)
     
     #Student profiles
@@ -486,6 +509,49 @@ function(input, output, session) {
       arrange(desc(doc_score))})
   
   ##OUTPUTS
+  ###Choice buttons
+  
+  # Input: button for the courses students wants to take following semester
+  output$display_key_words <- renderUI({ 
+    
+    #Set up
+    beta_distribution  <- app_model$Beta[[1]] 
+    gamma_distribution <- app_model$Gamma[[1]] 
+    course_titles      <- app_model$`Course Titles`[[1]]
+    
+    with_guess <- student_past()%>% 
+      left_join(gamma_distribution, by = c("course" = "document"))%>%
+      group_by(topic) %>%
+      summarise(topic_score = sum(gamma)) %>%
+      ungroup()%>%
+      arrange(desc(topic_score)) %>%
+      top_n(5, topic_score) %>%
+      left_join(beta_distribution, by = "topic") %>%
+      group_by(term) %>%
+      summarize(topic_score = sum(beta)) %>%
+      top_n(100, topic_score) %>% pull(term)
+    
+    kw_select <- if(use_past()){
+      intersect(with_guess, kw_used)
+    } else {
+      NA
+    }
+    
+    #kw_select <- intersect(with_guess, app_model$kw[[1]])
+    
+    #Checkbox
+      checkboxGroupInput(
+        inputId  = "key_words",
+        label    = "Academic Interest",
+        choices  = sort(kw_used),
+        selected = kw_select,
+        inline   = TRUE
+      )
+      # tags$head(tags$style("#key_words{color: black; font-size: 19px;}"))
+    
+    })
+  
+
   ###Table
   output$course_recommendation <- renderTable({
     

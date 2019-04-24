@@ -347,6 +347,25 @@ plot_evaluation <- function(origin) {
 plot_evaluation("catalogues")
 #plot_evaluation("manuals")
 ```
+##Best model
+We extract the best model for the catalogues and use it to innitialise the the second run of LDA algorithm with mode burns and iterations
+```{r best model}
+load("./Output/catalogues_tmp_topic_model_tibble.RDATA") #do not run this if knitted
+
+catalogue_dtm <- tb_topic_model$DTM[[1]]
+catalogue_lda <- tb_topic_model %>% filter(n_topic == "40") %>% pull(Model) %>%.[[1]]
+
+best_lda <- LDA(x = catalogue_dtm, 
+                model = catalogue_lda, 
+                control =  list(
+                  nstart = 50,
+                  seed   = 1 : 50, #must have length nstart
+                  best   = TRUE,
+                  burnin = 100,
+                  iter   = 10000,
+                  thin   = 2000) 
+                )
+```
 ##Different alphas and delta (prior of term distributions over topics)
 To evaluate the impact of the initial alpha and beta on our model, we train the model using different inizialization values for alpha and delta. Note that this is only an inizialisation and the algorithm will try to extimate alpha and beta.
 ###Alpha

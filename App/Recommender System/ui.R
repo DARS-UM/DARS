@@ -123,16 +123,21 @@ navbarPage(
       
       # Sidebar panel for inputs
       sidebarPanel(
+        # Input: student id number
+        textInput(
+          inputId = "student_rec",
+          label   = "Student ID",
+          value   = "6113335"
+        ),
         
-        # Input: button for the courses students wants to take following semester
-        checkboxGroupInput(
-          inputId  = "key_words",
-          label    = "Academic Interest",
-          choices  = sort(kw_used),      
-          #selected = c("international", "economic", "conflict", "develop", "policy"),
-          inline   = TRUE
-          ),
-        tags$head(tags$style("#key_words{color: black; font-size: 19px;}")),
+        #Input: button to use previous data and avoid cold start
+        checkboxInput(
+          inputId = "use_past",
+          label = "Guess my interests"
+        ),
+        
+        #Output: Dependant Input shows which courses to select: either empty or based on previous data
+        uiOutput("display_key_words"),
         
         # Input: additional key word 1-5
         textInput(
