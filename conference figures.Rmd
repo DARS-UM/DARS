@@ -18,6 +18,7 @@ theme_set(theme_light())
 
 load("Output/_catalogues_tmp_topic_model_tibble.RDATA")
 load("Output/data_pillar_1.Rdata")
+load("Output/d_text.RDATA")
 
 output_folder <- "Conference/Figures"
 plot_width <- 6
@@ -30,10 +31,10 @@ gamma <- d$Gamma[[1]]
 beta  <- d$Beta[[1]]
 ```
 
-```{r transcript}
+```{r student_data}
 set.seed(2019)
 
-transcript <- d_transcript_augmented %>%
+student_data <- d_transcript_augmented %>%
   
   select(`Student ID`, `Course ID`, `Academic Year`, Period = period_numerical, Grade) %>%
   
@@ -46,13 +47,30 @@ transcript <- d_transcript_augmented %>%
   print
 ```
 
-# Transcript
+```{r}
+course_data <- d_text$catalogues %>% 
+  
+  slice(50005:50014) %>%
+  
+  select(`Course ID`, `Course Title`, Department = department, word) 
+```
 
-```{r fig_transcript}
-transcript %>% 
+# Student data
+
+```{r fig_student_data}
+student_data %>% 
   kable("latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("striped", "scale_down")) %>%
-  as_image(file = str_c(output_folder, "/transcript.pdf"))
+  as_image(file = str_c(output_folder, "/student_data.pdf"))
+```
+
+# Course data
+
+```{r fig_course_data}
+course_data %>%
+  kable("latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/course_data.pdf"))
 ```
 
 # Beta
