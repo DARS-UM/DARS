@@ -152,9 +152,14 @@ grViz("digraph flowchart {
 
       node [fontname = Helvetica, shape = rectangle]
 
-      # Input Data
-      subgraph cluster0 {
-      label = 'Input Data';
+
+      subgraph cluster_input {
+      label = '';
+      style = filled;
+		  color = white;
+
+      subgraph cluster_input_data {
+      label = 'Data';
       style = filled;
 		  color = lightgrey;
 		  node [style = filled, color = black, fillcolor = white];
@@ -162,8 +167,7 @@ grViz("digraph flowchart {
       SD [label = 'Student Data']
       }
 
-      # User Input
-      subgraph cluster1 {
+      subgraph cluster_input_user {
       label = 'User Input';
       style = filled;
 		  color = coral;
@@ -173,8 +177,26 @@ grViz("digraph flowchart {
       CS [label = 'Selected Courses']
       }
 
+      }
+
+      subgraph cluster_inter_first{
+      label = '';
+      style = filled;
+		  color = white;
+      TE [label = 'Topic Expertise']
+      AP [label = 'Academic Performance']
+      }
+
+      subgraph cluster_inter_last{
+      label = '';
+      style = filled;
+		  color = white;
+      GP [label = 'Grade Prediction']
+      AI [label = 'Student큦 Academic Interests']
+      }
+
       # Ouput
-      subgraph cluster2 {
+      subgraph cluster_ouput {
       label = 'System Output';
       style = filled;
 		  color = lightCyan;
@@ -189,36 +211,35 @@ grViz("digraph flowchart {
       # Intermediate nodes
       node [color = black]
       TM [label = 'Topic Model']
-      TE [label = 'Student큦 Topic Expertise']
-      AI [label = 'Student큦 Academic Interests']
-      AP [label = 'Student큦 Academic Performance']
       PM [label = 'Predictive Models']
-      GP [label = 'Grade Prediction']
       TR [label = 'Student큦 Transcript']
-      x [shape=circle,width=.01,height=.01,label='']
+
+      # Invisible node
+      node [shape = circle, width = .01, height = .01, label = '']
+      x1 x2
 
       # edges
 
-      WAR SUG PRE [ group = 1 ]
-
-      {TE, KW} -> AI; 
+      SD -> AP;
+      {SD, TM} -> TE;
+      {TR, KW} -> AI;
       {ID, SD} -> TR;
-      TR -> AP;
-      {TR, TM} -> TE;
-      {PM, TE, AP, CS} -> GP;
+      {PM, CS, TR} -> GP;
       GP -> WAR;
 		  {TM, PM, WAR} -> PRE;
 
       edge[label = 'LDA', decorate = TRUE]
       CD -> TM;
 
-      edge[label = 'Lasso']
-      SD -> PM;
+      edge[label = '']
+      {AP, TE} -> x2 [arrowhead = none]
+      edge[label = ' Lasso', decorate = TRUE]
+      x2 -> PM;
       
       edge[label = '']
-      {TM, AI} -> x [arrowhead=none]
+      {TM, AI} -> x1 [arrowhead = none]
       edge[label = 'KL distance', decorate = TRUE]
-      x -> SUG;
+      x1 -> SUG;
 
       }
       ")
