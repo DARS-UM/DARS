@@ -107,7 +107,9 @@ d_text$catalogues <- tribble(
 ```
 
 ```{r d_text$manuals}
-d_text$manuals <- read_in_pdfs("./Input/Manuals 2017-18") %>% rename(`Course ID` = ID) %>% mutate(text = text %>% map_chr(str_c, collapse = " "))
+d_text$manuals <- read_in_pdfs("./Input/Manuals 2017-18") %>%
+  rename(`Course ID` = ID) %>%
+  mutate(text = text %>% map_chr(str_c, collapse = " "))
 ```
 
 # Extracting course overviews
@@ -213,7 +215,8 @@ overview <- function(ID, catalogue, page_top, before_overview){
 ```
 
 ```{r}
-d_text$catalogues <- d_text$catalogues %>% mutate(overviews = list(ID, catalogue, page_top, before_overview) %>% pmap(overview))
+d_text$catalogues <- d_text$catalogues %>%
+  mutate(overviews = list(ID, catalogue, page_top, before_overview) %>% pmap(overview))
 ```
 
 ```{r}
