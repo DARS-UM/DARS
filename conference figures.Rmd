@@ -20,6 +20,8 @@ theme_set(theme_light())
 load("Output/_catalogues_tmp_topic_model_tibble.RDATA")
 load("Output/data_pillar_1.Rdata")
 load("Output/d_text.RDATA")
+load("Output/df_logLike_catalogue.RDATA")
+load("Output/CV.RDATA")
 
 output_folder <- "Conference/Figures"
 plot_width <- 6
@@ -72,81 +74,6 @@ course_data %>%
   kable("latex", booktabs = TRUE) %>%
   kable_styling(latex_options = c("striped", "scale_down")) %>%
   as_image(file = str_c(output_folder, "/course_data.pdf"))
-```
-
-# Beta
-
-```{r plot_beta}
-plot_beta <- function(topic = 1, sub = NULL, resize_factor = 1){
-  
-  top <-  str_c("Topic ", topic)
-  
-  beta %>%
-    filter(topic == top) %>% 
-    top_n(10, beta) %>%
-    
-    ggplot() +
-    geom_col(aes(x = reorder(term, beta), y = beta)) +
-    
-    coord_flip() +
-    
-    theme(axis.text.y = element_text(size = 11)) +
-    
-    labs(title = str_c("Main Terms of ", top),
-         subtitle = sub,
-         x = "Terms",
-         y = "Beta"
-    )
-  
-  ggsave(filename = str_c("Beta - topic ", topic, ".jpeg"), path = output_folder,
-         width = plot_width / resize_factor, height = plot_height / resize_factor)
-  
-}
-```
-
-```{r fig_beta}
-# topic 1: engineering",
-plot_beta(1, sub = "Topic 1 corresponds to the theme of engineering")
-# topic 9: computer science, topic 
-# Topic 20: psychology
-# topic 25: history
-# topic 26: literature 
-```
-
-# Gamma
-
-```{r plot_gamma}
-plot_gamma <- function(course = "COR1002", sub = NULL, course_title = course){
-  
-  gamma %>%
-    filter(document == course) %>% 
-    top_n(10, gamma) %>%
-    
-    ggplot() +
-    geom_col(aes(x = reorder(topic, gamma), y = gamma)) +
-    
-    coord_flip() +
-    
-    labs(title    = str_c("Main Topics of Course ", course_title),
-         subtitle = sub,
-         x = "Topics",
-         y = "Gamma"
-         )
-  
-  ggsave(filename = str_c("gamma - course ", course, ".jpeg"), path = output_folder,
-         width = plot_width, height = plot_height)
-  
-}
-```
-
-```{r fig_gamma}
-plot_gamma("HUM1014", sub = "HUM1014 is dominated by topics 43 (philosophy) and 26 (literature)", course_title = "HUM1014 Great Novels 1850 - Present")
-
-resize_factor <- 1.6
-
-plot_beta(43, sub = "Theme of philosophy", resize_factor = resize_factor)
-
-plot_beta(26, sub = "Theme of literature", resize_factor = resize_factor)
 ```
 
 # Flow chart
@@ -255,6 +182,96 @@ grViz("digraph flowchart {
 # File name: Conference/Figures/Flowchart
 ```
 
+# Model Selection (topic model)
+
+```{r}
+df_logLike_catalogue %>%
+  ggplot(aes(x = n_topic, y = LogLikelihood)) +
+  geom_vline(xintercept = 80, col = "red", alpha = 0.5, linetype = "dashed") +
+  geom_line() +
+  
+  labs(title = "Model Selection", subtitle = "The maximum-likelihood model has 80 topics", x = "Number of Topics", y = "Log-Likelihood") +
+
+  ggsave(filename = str_c("Model Selection.jpeg"), path = output_folder,
+         width = plot_width, height = plot_height)
+```
+
+# Beta
+
+```{r plot_beta}
+plot_beta <- function(topic = 1, sub = NULL, resize_factor = 1){
+  
+  top <-  str_c("Topic ", topic)
+  
+  beta %>%
+    filter(topic == top) %>% 
+    top_n(10, beta) %>%
+    
+    ggplot() +
+    geom_col(aes(x = reorder(term, beta), y = beta)) +
+    
+    coord_flip() +
+    
+    theme(axis.text.y = element_text(size = 11)) +
+    
+    labs(title = str_c("Main Terms of ", top),
+         subtitle = sub,
+         x = "Terms",
+         y = "Beta"
+    )
+  
+  ggsave(filename = str_c("Beta - topic ", topic, ".jpeg"), path = output_folder,
+         width = plot_width / resize_factor, height = plot_height / resize_factor)
+  
+}
+```
+
+```{r fig_beta}
+# topic 1: engineering",
+plot_beta(1, sub = "Topic 1 corresponds to the theme of engineering")
+# topic 9: computer science, topic 
+# Topic 20: psychology
+# topic 25: history
+# topic 26: literature 
+```
+
+# Gamma
+
+```{r plot_gamma}
+plot_gamma <- function(course = "COR1002", sub = NULL, course_title = course){
+  
+  gamma %>%
+    filter(document == course) %>% 
+    top_n(10, gamma) %>%
+    
+    ggplot() +
+    geom_col(aes(x = reorder(topic, gamma), y = gamma)) +
+    
+    coord_flip() +
+    
+    labs(title    = str_c("Main Topics of Course ", course_title),
+         subtitle = sub,
+         x = "Topics",
+         y = "Gamma"
+         )
+  
+  ggsave(filename = str_c("gamma - course ", course, ".jpeg"), path = output_folder,
+         width = plot_width, height = plot_height)
+  
+}
+```
+
+```{r fig_gamma}
+plot_gamma("HUM1014", sub = "HUM1014 is dominated by topics 43 (philosophy) and 26 (literature)", course_title = "HUM1014 Great Novels 1850 - Present")
+
+resize_factor <- 1.6
+
+plot_beta(43, sub = "Theme of philosophy", resize_factor = resize_factor)
+
+plot_beta(26, sub = "Theme of literature", resize_factor = resize_factor)
+```
+
+
 # Topic Expertise
 ```{r}
 transcript <- tibble(Course    = paste("Course", 1:3),
@@ -306,5 +323,35 @@ df1 %>%
 
 ggsave(filename = str_c("toy Topic Expertise.jpeg"), path = output_folder,
        width = plot_width, height = plot_height)
+```
+
+
+# CV
+```{r}
+fit_lasso %>%
+  ggplot(aes(y = cv_error, group = 1)) +
+  geom_boxplot() +
+  theme(axis.ticks.x = element_line(color = "white"),
+        axis.text.x = element_text(color = "white"),
+        panel.border = element_rect(color = "white"),
+        panel.grid = element_line(color = "white")
+        ) +
+  
+  labs(title = "Distribution of Prediction Error", y = "Cross-Validation \n Mean Absolute Error")
+
+ggsave(filename = str_c("CV.jpeg"), path = output_folder,
+         width = plot_width/1.9, height = plot_height/1.2)
+
+fit_lasso %>%
+  summarize(Mean = mean(cv_error),
+            `Weighted mean` = weighted.mean(cv_error, n),
+            Median = median(cv_error),
+            `Standard Deviation` = sd(cv_error),
+            Minimum = min(cv_error),
+            Maximum = max(cv_error)) %>%
+  gather(key = x, value = y) %>% 
+  kable("latex", booktabs = TRUE, col.names = NULL) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/CV.pdf"))
 ```
 
