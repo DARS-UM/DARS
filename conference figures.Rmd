@@ -77,7 +77,7 @@ course_data %>%
 # Beta
 
 ```{r plot_beta}
-plot_beta <- function(topic = 1, sub = NULL){
+plot_beta <- function(topic = 1, sub = NULL, resize_factor = 1){
   
   top <-  str_c("Topic ", topic)
   
@@ -90,6 +90,8 @@ plot_beta <- function(topic = 1, sub = NULL){
     
     coord_flip() +
     
+    theme(axis.text.y = element_text(size = 11)) +
+    
     labs(title = str_c("Main Terms of ", top),
          subtitle = sub,
          x = "Terms",
@@ -97,7 +99,7 @@ plot_beta <- function(topic = 1, sub = NULL){
     )
   
   ggsave(filename = str_c("Beta - topic ", topic, ".jpeg"), path = output_folder,
-         width = plot_width, height = plot_height)
+         width = plot_width / resize_factor, height = plot_height / resize_factor)
   
 }
 ```
@@ -138,11 +140,13 @@ plot_gamma <- function(course = "COR1002", sub = NULL, course_title = course){
 ```
 
 ```{r fig_gamma}
-plot_gamma("HUM1014", sub = "HUM1014 is characterized by topics 43 (philosophy) and 26 (literature)", course_title = "HUM1014 Great Novels 1850 - Present")
+plot_gamma("HUM1014", sub = "HUM1014 is dominated by topics 43 (philosophy) and 26 (literature)", course_title = "HUM1014 Great Novels 1850 - Present")
 
-plot_beta(43, sub = "Topic 43 corresponds to the theme of philosophy")
+resize_factor <- 1.6
 
-plot_beta(26, sub = "Topic 26 corresponds to the theme of literature")
+plot_beta(43, sub = "Theme of philosophy", resize_factor = resize_factor)
+
+plot_beta(26, sub = "Theme of literature", resize_factor = resize_factor)
 ```
 
 # Flow chart
@@ -183,8 +187,9 @@ grViz("digraph flowchart {
       label = '';
       style = filled;
 		  color = white;
-      TE [label = 'Topic Expertise']
       AP [label = 'Academic Performance']
+      TR [label = 'Student´s Transcript']
+      TE [label = 'Topic Expertise']
       }
 
       subgraph cluster_inter_last{
@@ -212,7 +217,6 @@ grViz("digraph flowchart {
       node [color = black]
       TM [label = 'Topic Model']
       PM [label = 'Predictive Models']
-      TR [label = 'Student´s Transcript']
 
       # Invisible node
       node [shape = circle, width = .01, height = .01, label = '']
@@ -232,14 +236,14 @@ grViz("digraph flowchart {
       CD -> TM;
 
       edge[label = '']
-      {AP, TE} -> x2 [arrowhead = none]
+      {AP, TE} -> x1 [arrowhead = none]
       edge[label = ' Lasso', decorate = TRUE]
-      x2 -> PM;
+      x1 -> PM;
       
       edge[label = '']
-      {TM, AI} -> x1 [arrowhead = none]
+      {TM, AI} -> x2 [arrowhead = none]
       edge[label = 'KL distance', decorate = TRUE]
-      x1 -> SUG;
+      x2 -> SUG;
 
       }
       ")
