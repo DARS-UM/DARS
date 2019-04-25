@@ -230,4 +230,56 @@ grViz("digraph flowchart {
 # File name: Conference/Figures/Flowchart
 ```
 
+# Topic Expertise
+```{r}
+transcript <- tibble(Course    = paste("Course", 1:3),
+                     Grade     = c(6  , 9  , 2.5))
+
+gamma <- tibble(Course    = paste("Course", 1:3),
+                `Topic 1` = c(0  , 0.2, 0.6),
+                `Topic 2` = c(0.4, 0.2, 0.3),
+                `Topic 3` = c(0  , 0.2, 0  ),
+                `Topic 4` = c(0.4, 0.2, 0.1),
+                `Topic 5` = c(0.2, 0.2, 0  ))
+
+df1 <- gamma %>% 
+  gather(key = Topic, value = gamma, -Course) %>% 
+  arrange(Course) %>%
+  
+  left_join(transcript, by = "Course") %>%
+  mutate(contribution = Grade/10 * gamma)
+
+topic_expertise <- df1 %>%
+  select(-gamma, - Grade) %>% 
+  spread(key = Topic, value = contribution)
+
+# Table
+
+transcript %>% 
+  mutate(Grade = str_c(Grade, "/10")) %>%
+  kable("latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/toy_transcript.pdf"))
+
+gamma %>% 
+  kable("latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/toy_gamma.pdf"))
+
+topic_expertise %>% 
+  kable("latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/toy_topic_expertise.pdf"))
+
+
+
+# Plot
+df1 %>% 
+  ggplot(aes(x = Topic, y = contribution, fill = Course)) +
+  geom_col() +
+  labs(x = "Topics", y = "Topic Expertise", title = "Course Contribution towards Topic Expertise")
+
+ggsave(filename = str_c("toy Topic Expertise.jpeg"), path = output_folder,
+       width = plot_width, height = plot_height)
+```
 
