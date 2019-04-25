@@ -527,6 +527,7 @@ function(input, output, session) {
       arrange(desc(topic_score)) %>%
       top_n(5, topic_score) %>%
       left_join(beta_distribution, by = "topic") %>%
+      filter(topic !="Topic 3" | topic !="Topic 13" |topic !="Topic 28" | topic !="Topic 15" |topic !="Topic 20" ) %>%
       group_by(term) %>%
       summarize(topic_score = sum(beta)) %>%
       top_n(100, topic_score) %>% pull(term)
