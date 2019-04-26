@@ -79,10 +79,9 @@ course_data %>%
 # Flow chart
 
 ```{r}
-grViz("digraph flowchart {
+grViz("digraph flowchart{
 
       node [fontname = Helvetica, shape = rectangle]
-
 
       subgraph cluster_input {
       label = '';
@@ -93,7 +92,7 @@ grViz("digraph flowchart {
       label = 'Data';
       style = filled;
 		  color = lightgrey;
-		  node [style = filled, color = black, fillcolor = white];
+		  node [style = filled, color = black, fillcolor = white, shape = cylinder];
       CD [label = 'Course Data']
       SD [label = 'Student Data']
       }
@@ -107,6 +106,7 @@ grViz("digraph flowchart {
       KW [label = 'Selected Key Words']
       CS [label = 'Selected Courses']
       }
+
 
       }
 
@@ -147,7 +147,7 @@ grViz("digraph flowchart {
 
       # Invisible node
       node [shape = circle, width = .01, height = .01, label = '']
-      x1 x2
+      x1 x2 x3
 
       # edges
 
@@ -157,7 +157,7 @@ grViz("digraph flowchart {
       {ID, SD} -> TR;
       {PM, CS, TR} -> GP;
       GP -> WAR;
-		  {TM, PM, WAR} -> PRE;
+		  WAR -> PRE;
 
       edge[label = 'LDA', decorate = TRUE]
       CD -> TM;
@@ -172,6 +172,11 @@ grViz("digraph flowchart {
       edge[label = 'KL distance', decorate = TRUE]
       x2 -> SUG;
 
+      edge[label = '']
+      {TM, PM} -> x3 [arrowhead = none]
+      edge[label = 'KL distance', decorate = TRUE]
+      x3 -> PRE;
+
       }
       ")
 
@@ -185,10 +190,13 @@ grViz("digraph flowchart {
 # Model Selection (topic model)
 
 ```{r}
+max_LL <- df_logLike_catalogue$n_topic[which.max(df_logLike_catalogue$LogLikelihood)]
+
 df_logLike_catalogue %>%
   ggplot(aes(x = n_topic, y = LogLikelihood)) +
-  geom_vline(xintercept = 80, col = "red", alpha = 0.5, linetype = "dashed") +
-  geom_line() +
+  geom_vline(xintercept = max_LL, col = "red", alpha = 0.5, linetype = "dashed", size = 1) +
+  geom_line(linetype = "dashed") +
+  geom_point() +
   
   labs(title = "Model Selection", subtitle = "The maximum-likelihood model has 80 topics", x = "Number of Topics", y = "Log-Likelihood") +
 
