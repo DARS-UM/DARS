@@ -20,6 +20,8 @@ theme_set(theme_light())
 load("Output/_catalogues_tmp_topic_model_tibble.RDATA")
 load("Output/data_pillar_1.Rdata")
 load("Output/d_text.RDATA")
+load("Output/df_logLike_catalogue.RDATA")
+load("Output/CV.RDATA")
 
 output_folder <- "Conference/Figures"
 plot_width <- 6
@@ -74,10 +76,138 @@ course_data %>%
   as_image(file = str_c(output_folder, "/course_data.pdf"))
 ```
 
+# Flow chart
+
+```{r}
+grViz("digraph flowchart{
+
+      node [fontname = Helvetica, shape = rectangle]
+
+      subgraph cluster_input {
+      label = '';
+      style = filled;
+		  color = white;
+
+      subgraph cluster_input_data {
+      label = 'Data';
+      style = filled;
+		  color = lightgrey;
+		  node [style = filled, color = black, fillcolor = white, shape = cylinder];
+      CD [label = 'Course Data']
+      SD [label = 'Student Data']
+      }
+
+      subgraph cluster_input_user {
+      label = 'User Input';
+      style = filled;
+		  color = coral;
+		  node [style = filled, color = black, fillcolor = white];
+      ID [label = 'Student ID']
+      KW [label = 'Selected Key Words']
+      CS [label = 'Selected Courses']
+      }
+
+
+      }
+
+      subgraph cluster_inter_first{
+      label = '';
+      style = filled;
+		  color = white;
+      AP [label = 'Academic Performance']
+      TR [label = 'Student큦 Transcript']
+      TE [label = 'Topic Expertise']
+      }
+
+      subgraph cluster_inter_last{
+      label = '';
+      style = filled;
+		  color = white;
+      GP [label = 'Grade Prediction']
+      AI [label = 'Student큦 Academic Interests']
+      }
+
+      # Ouput
+      subgraph cluster_ouput {
+      label = 'System Output';
+      style = filled;
+		  color = lightCyan;
+		  node [style = filled, color = black, fillcolor = white];
+      rank = same;
+      SUG [label = 'Course Suggestions']
+      WAR [label = 'Warnings']
+      PRE [label = 'Preparatory Coursework']
+      }
+
+
+      # Intermediate nodes
+      node [color = black]
+      TM [label = 'Topic Model']
+      PM [label = 'Predictive Models']
+
+      # Invisible node
+      node [shape = circle, width = .01, height = .01, label = '']
+      x1 x2 x3
+
+      # edges
+
+      SD -> AP;
+      {SD, TM} -> TE;
+      {TR, KW} -> AI;
+      {ID, SD} -> TR;
+      {PM, CS, TR} -> GP;
+      GP -> WAR;
+		  WAR -> PRE;
+
+      edge[label = 'LDA', decorate = TRUE]
+      CD -> TM;
+
+      edge[label = '']
+      {AP, TE} -> x1 [arrowhead = none]
+      edge[label = ' Lasso', decorate = TRUE]
+      x1 -> PM;
+      
+      edge[label = '']
+      {TM, AI} -> x2 [arrowhead = none]
+      edge[label = 'KL distance', decorate = TRUE]
+      x2 -> SUG;
+
+      edge[label = '']
+      {TM, PM} -> x3 [arrowhead = none]
+      edge[label = 'KL distance', decorate = TRUE]
+      x3 -> PRE;
+
+      }
+      ")
+
+# Save by hand
+# image format: JPEG
+# Width: 626
+# Check Maintain aspect ratio
+# File name: Conference/Figures/Flowchart
+```
+
+# Model Selection (topic model)
+
+```{r}
+max_LL <- df_logLike_catalogue$n_topic[which.max(df_logLike_catalogue$LogLikelihood)]
+
+df_logLike_catalogue %>%
+  ggplot(aes(x = n_topic, y = LogLikelihood)) +
+  geom_vline(xintercept = max_LL, col = "red", alpha = 0.5, linetype = "dashed", size = 1) +
+  geom_line(linetype = "dashed") +
+  geom_point() +
+  
+  labs(title = "Model Selection", subtitle = "The maximum-likelihood model has 80 topics", x = "Number of Topics", y = "Log-Likelihood") +
+
+  ggsave(filename = str_c("Model Selection.jpeg"), path = output_folder,
+         width = plot_width, height = plot_height)
+```
+
 # Beta
 
 ```{r plot_beta}
-plot_beta <- function(topic = 1, sub = NULL){
+plot_beta <- function(topic = 1, sub = NULL, resize_factor = 1){
   
   top <-  str_c("Topic ", topic)
   
@@ -90,6 +220,8 @@ plot_beta <- function(topic = 1, sub = NULL){
     
     coord_flip() +
     
+    theme(axis.text.y = element_text(size = 11)) +
+    
     labs(title = str_c("Main Terms of ", top),
          subtitle = sub,
          x = "Terms",
@@ -97,7 +229,7 @@ plot_beta <- function(topic = 1, sub = NULL){
     )
   
   ggsave(filename = str_c("Beta - topic ", topic, ".jpeg"), path = output_folder,
-         width = plot_width, height = plot_height)
+         width = plot_width / resize_factor, height = plot_height / resize_factor)
   
 }
 ```
@@ -138,85 +270,96 @@ plot_gamma <- function(course = "COR1002", sub = NULL, course_title = course){
 ```
 
 ```{r fig_gamma}
-plot_gamma("HUM1014", sub = "HUM1014 is characterized by topics 43 (philosophy) and 26 (literature)", course_title = "HUM1014 Great Novels 1850 - Present")
+plot_gamma("HUM1014", sub = "HUM1014 is dominated by topics 43 (philosophy) and 26 (literature)", course_title = "HUM1014 Great Novels 1850 - Present")
 
-plot_beta(43, sub = "Topic 43 corresponds to the theme of philosophy")
+resize_factor <- 1.6
 
-plot_beta(26, sub = "Topic 26 corresponds to the theme of literature")
+plot_beta(43, sub = "Theme of philosophy", resize_factor = resize_factor)
+
+plot_beta(26, sub = "Theme of literature", resize_factor = resize_factor)
 ```
 
-# Flow chart
 
+# Topic Expertise
 ```{r}
-test <- grViz("digraph flowchart {
+transcript <- tibble(Course    = paste("Course", 1:3),
+                     Grade     = c(6  , 9  , 2.5))
 
-      node [fontname = Helvetica, shape = rectangle]
+gamma <- tibble(Course    = paste("Course", 1:3),
+                `Topic 1` = c(0  , 0.2, 0.6),
+                `Topic 2` = c(0.4, 0.2, 0.3),
+                `Topic 3` = c(0  , 0.2, 0  ),
+                `Topic 4` = c(0.4, 0.2, 0.1),
+                `Topic 5` = c(0.2, 0.2, 0  ))
 
-      # Input Data
-      subgraph cluster0 {
-      label = 'Input Data';
-      style = filled;
-		  color = lightgrey;
-		  node [style = filled, color = black, fillcolor = white];
-      CD [label = 'Course Data']
-      SD [label = 'Student Data']
-      }
+df1 <- gamma %>% 
+  gather(key = Topic, value = gamma, -Course) %>% 
+  arrange(Course) %>%
+  
+  left_join(transcript, by = "Course") %>%
+  mutate(contribution = Grade/10 * gamma)
 
-      # User Input
-      subgraph cluster1 {
-      label = 'User Input';
-      style = filled;
-		  color = coral;
-		  node [style = filled, color = black, fillcolor = white];
-      ID [label = 'Student ID']
-      KW [label = 'Selected Key Words']
-      CS [label = 'Selected Courses']
-      }
+topic_expertise <- df1 %>%
+  select(-gamma, - Grade) %>% 
+  spread(key = Topic, value = contribution)
 
-      # Ouput
-      subgraph cluster2 {
-      label = 'System Output';
-      style = filled;
-		  color = lightCyan;
-		  node [style = filled, color = black, fillcolor = white];
-      SUG [label = 'Course Suggestions']
-      WAR [label = 'Warnings \n and Preparatory Coursework']
-      }
+# Table
 
-      # Intermediate nodes
-      node [color = black]
-      TM [label = 'Topic Model']
-      TE [label = 'Student큦 Topic Expertise']
-      AI [label = 'Student큦 Academic Interests']
-      AP [label = 'Student큦 Academic Performance']
-      PM [label = 'Predictive Models']
-      GP [label = 'Grade Prediction']
-      TR [label = 'Student큦 Transcript']
+transcript %>% 
+  mutate(Grade = str_c(Grade, "/10")) %>%
+  kable("latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/toy_transcript.pdf"))
 
-      # edges
-      {TE, KW} -> AI; 
-      {ID, SD} -> TR;
-      TR -> AP;
-      {TR, TM} -> TE;
-      {PM, TE, AP, CS} -> GP;
-      GP -> WAR;
+gamma %>% 
+  kable("latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/toy_gamma.pdf"))
 
-      edge[label = 'LDA']
-      CD -> TM;
+topic_expertise %>% 
+  kable("latex", booktabs = TRUE) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/toy_topic_expertise.pdf"))
 
-      edge[label = 'Lasso']
-      SD -> PM;
 
-      edge[label = 'KL distance']
-      {TM, AI} -> SUG
-      }
-      ")
 
-# Save by hand
-# image format: JPEG
-# Width: 626
-# Check Maintain aspect ratio
-# File name: Conference/Figures/Flowchart
+# Plot
+df1 %>% 
+  ggplot(aes(x = Topic, y = contribution, fill = Course)) +
+  geom_col() +
+  labs(x = "Topics", y = "Topic Expertise", title = "Course Contribution towards Topic Expertise")
+
+ggsave(filename = str_c("toy Topic Expertise.jpeg"), path = output_folder,
+       width = plot_width, height = plot_height)
 ```
 
+
+# CV
+```{r}
+fit_lasso %>%
+  ggplot(aes(y = cv_error, group = 1)) +
+  geom_boxplot() +
+  theme(axis.ticks.x = element_line(color = "white"),
+        axis.text.x = element_text(color = "white"),
+        panel.border = element_rect(color = "white"),
+        panel.grid = element_line(color = "white")
+        ) +
+  
+  labs(title = "Distribution of Prediction Error", y = "Cross-Validation \n Mean Absolute Error")
+
+ggsave(filename = str_c("CV.jpeg"), path = output_folder,
+         width = plot_width/1.9, height = plot_height/1.2)
+
+fit_lasso %>%
+  summarize(Mean = mean(cv_error),
+            `Weighted mean` = weighted.mean(cv_error, n),
+            Median = median(cv_error),
+            `Standard Deviation` = sd(cv_error),
+            Minimum = min(cv_error),
+            Maximum = max(cv_error)) %>%
+  gather(key = x, value = y) %>% 
+  kable("latex", booktabs = TRUE, col.names = NULL) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/CV.pdf"))
+```
 

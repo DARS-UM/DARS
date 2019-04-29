@@ -222,6 +222,10 @@ fit_lasso <- fit_lasso %>%
 ```
 
 ```{r}
+save(fit_lasso, file = "Output/CV.RDATA")
+```
+
+```{r}
 hist(fit_lasso$cv_error)
 mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
 ```
