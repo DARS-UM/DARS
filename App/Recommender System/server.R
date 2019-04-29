@@ -518,6 +518,7 @@ function(input, output, session) {
         by = c("course" = "Course ID")
       ) %>%
       arrange(desc(doc_score))
+    })
 
   
   ##OUTPUTS
