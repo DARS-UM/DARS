@@ -53,6 +53,8 @@ student_past <- student_courses("6113335")
   
   
   key_words_additional <- sapply(key_words_additional, stem_hunspell)
+
+  kw_used <- app_model$kw[[1]] #is the same as in ui
   
   with_guess <- student_past%>% 
     left_join(gamma_distribution, by = c("course" = "document"))%>%
@@ -66,19 +68,109 @@ student_past <- student_courses("6113335")
     summarize(topic_score = sum(beta)) %>%
     top_n(100, topic_score) %>% pull(term)
     
-
-  key_words            <- c(input$key_words, key_words_additional, key_words_guess)
-  
-  kw_select <- intersect(with_guess, app_model$kw[[1]])
-  
-  
-  
-  test <- T
-  kw_select <- ifelse(test,intersect(with_guess, kw_used), NA)
-  
-  kw_select <- if(test){
+  kw_select <- if(use_past){
     intersect(with_guess, kw_used)
   } else {
     NA
   }
+  
+  #test key words
+  key_words <- c("economic", "science", "analysis", "equation", "data")
+  
+  #__________________________
+  
+  #Kl function
+  
+  
+  
+  my_kl <- function(distribution, reference) {
+    
+    kl.dist(reference, tibble(distribution), base = 2)[[1]]
+    
+  }
+  
+  #Student profile
+  student <- list()
+  student$topic_score <- beta_distribution %>%
+    
+    # Interest profile
+    filter(
+      term %in% key_words
+    ) %>%
+    group_by(
+      topic
+    ) %>%
+    summarize(
+      topic_score = sum(beta)
+    ) %>%
+    ungroup %>% ############### NORMALIZE
+    mutate(student_interest = topic_score/sum(topic_score)) %>%
+    select(-topic_score) %>% 
+    full_join(gamma_distribution %>% 
+                spread(key = document, value = gamma),
+              by = "topic")
+  
+  #KL Distance
+  ref <- student$topic_score %>% select(student_interest)
+  
+  kl_dist <- student$topic_score %>% 
+    select(-topic) %>% 
+    map_dbl(my_kl, reference = ref) %>%
+    tibble(course = names(.), distance = .) %>%
+    arrange((distance))
+  
+
+  #Recommendations
+  recommendations <- kl_dist %>% 
+   filter(course != "student_interest") %>%   
+    # Recommendations
+    top_n(
+      n  = -20,
+      wt = distance
+    ) %>%
+    
+    # Key words per recommendation
+    left_join(
+      gamma_distribution,
+      by = c("course" = "document")
+    ) %>%
+    
+    left_join(
+      beta_distribution,
+      by = "topic"
+    ) %>%
+    
+    filter(
+      term %in% key_words
+    ) %>%
+    
+    group_by(
+      term,
+      course
+    ) %>%
+    summarize(
+      word_contribution_to_document = sum(gamma * beta)
+    ) %>%
+    
+    group_by(
+      course
+    ) %>%
+    top_n(
+      n  = 3,
+      wt = word_contribution_to_document
+    ) %>%
+    arrange(desc(word_contribution_to_document)) %>% 
+    group_by(course) %>% 
+    summarize(
+      key_words = paste(term, collapse = ", "),
+      doc_score = sum(word_contribution_to_document)
+    ) %>%
+    ungroup %>%
+    
+    # Editing
+    left_join(
+      course_titles,
+      by = c("course" = "Course ID")
+    ) %>%
+    arrange(desc(doc_score))
   

@@ -249,13 +249,13 @@ rm(my_cast_dtm)</code></pre>
 <p>The control parameters we will use to train our LDA model are:</p>
 <pre class="r"><code>my_control &lt;- list(
   
-  nstart = 10,
-  seed   = 1 : 10, #must have length nstart
+  nstart = 20,
+  seed   = 1 : 20, #must have length nstart
   best   = TRUE,
   
-  burnin = 100,
-  iter   = 2000,
-  thin   = 2000
+  burnin = 1000,
+  iter   = 6000,
+  thin   = 100
   
 )</code></pre>
 <p>We create a helping control that we can use when we need fast convergence for testing new code. Thus, the control parameters we use for fast testing are:</p>
@@ -459,6 +459,8 @@ took_how_long &lt;- final_time - initial_time
 
 #Save
 save(tb_topic_model, file = paste(&quot;./Output/&quot;, which_texts, &quot;_tmp_topic_model_tibble.RDATA&quot;, sep = &quot;&quot;))</code></pre>
+<pre class="r"><code>(took_how_long)</code></pre>
+<pre><code>## Time difference of 3.731911 days</code></pre>
 </div>
 </div>
 <div id="plots---model-evaluation" class="section level2">
@@ -487,6 +489,27 @@ plot_evaluation &lt;- function(origin) {
 #Plot
 plot_evaluation(&quot;catalogues&quot;)
 #plot_evaluation(&quot;manuals&quot;)</code></pre>
+</div>
+<div id="best-model" class="section level2">
+<h2>Best model</h2>
+<p>We extract the best model for the catalogues and use it to innitialise the the second run of LDA algorithm with mode burns and iterations</p>
+<pre class="r"><code>load(&quot;./Output/catalogues_tmp_topic_model_tibble.RDATA&quot;) #do not run this if knitted
+
+catalogue_dtm &lt;- tb_topic_model$DTM[[1]]
+catalogue_lda &lt;- tb_topic_model %&gt;% filter(n_topic == &quot;35&quot;) %&gt;% pull(Model) %&gt;%.[[1]]
+
+best_lda &lt;- LDA(x = catalogue_dtm, 
+                model = catalogue_lda, 
+                control =  list(
+                  nstart = 50,
+                  seed   = 1 : 50, #must have length nstart
+                  best   = TRUE,
+                  burnin = 100,
+                  iter   = 10000,
+                  thin   = 2000) 
+                )
+
+save(best_lda, file = &quot;./Output/catalogues_best_model.RDATA&quot;) </code></pre>
 </div>
 <div id="different-alphas-and-delta-prior-of-term-distributions-over-topics" class="section level2">
 <h2>Different alphas and delta (prior of term distributions over topics)</h2>

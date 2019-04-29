@@ -93,13 +93,13 @@ The control parameters we will use to train our LDA model are:
 ```{r controls, eval = TRUE}
 my_control <- list(
   
-  nstart = 10,
-  seed   = 1 : 10, #must have length nstart
+  nstart = 20,
+  seed   = 1 : 20, #must have length nstart
   best   = TRUE,
   
-  burnin = 100,
-  iter   = 2000,
-  thin   = 2000
+  burnin = 1000,
+  iter   = 6000,
+  thin   = 100
   
 )
 ```
@@ -254,6 +254,7 @@ tb_topic_model
 ###Training Models separately
 For time constrains, we sometimes need to train the model only on the manuals or the catalogues, for this we add an extra filtering step in the code that filters on `which_texts`.
 ```{r LDA fit separate, cache = TRUE, eval = TRUE}
+
 #Timing
 initial_time <- Sys.time()
 
@@ -320,6 +321,10 @@ save(tb_topic_model, file = paste("./Output/", which_texts, "_tmp_topic_model_ti
 
 ```
 
+```{r time print, eval = T} 
+(took_how_long)
+```
+
 ##Plots - Model Evaluation
 To evaluate how many topics are optimal, we graph the perplexity and log Likelihood of models against the number of topics.
 ```{r perplexity plots, eval = FALSE}
@@ -349,11 +354,11 @@ plot_evaluation("catalogues")
 ```
 ##Best model
 We extract the best model for the catalogues and use it to innitialise the the second run of LDA algorithm with mode burns and iterations
-```{r best model}
+```{r best model, eval = F}
 load("./Output/catalogues_tmp_topic_model_tibble.RDATA") #do not run this if knitted
 
 catalogue_dtm <- tb_topic_model$DTM[[1]]
-catalogue_lda <- tb_topic_model %>% filter(n_topic == "40") %>% pull(Model) %>%.[[1]]
+catalogue_lda <- tb_topic_model %>% filter(n_topic == "35") %>% pull(Model) %>%.[[1]]
 
 best_lda <- LDA(x = catalogue_dtm, 
                 model = catalogue_lda, 
@@ -365,6 +370,8 @@ best_lda <- LDA(x = catalogue_dtm,
                   iter   = 10000,
                   thin   = 2000) 
                 )
+
+save(best_lda, file = "./Output/catalogues_best_model.RDATA") 
 ```
 ##Different alphas and delta (prior of term distributions over topics)
 To evaluate the impact of the initial alpha and beta on our model, we train the model using different inizialization values for alpha and delta. Note that this is only an inizialisation and the algorithm will try to extimate alpha and beta.
