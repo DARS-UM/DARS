@@ -3,6 +3,7 @@ library(tidytext)
 library(stringr)
 library(hunspell) #for stemming
 library(glmnet)   #for grade prediction
+library(seewave)# KL distance
 
 
 #
@@ -375,7 +376,9 @@ function(input, output, session) {
   ###Set up
   use_past <- reactive({input$use_past})
  
-   # Helper function: Return student
+   # Helper functions:
+  
+  ##Return student
   student_courses <- function(d_student) {
     student_hist <- d_transcript %>%
         
@@ -386,7 +389,13 @@ function(input, output, session) {
         select(
           course = `Course ID`
         ) 
-    }
+  }
+  
+  ##KL distance
+  my_kl <- function(distribution, reference) {
+    kl.dist(reference, tibble(distribution), base = 2)[[1]]
+  }
+  
   
   #Reactive student function 
   student_past <- reactive({
@@ -426,11 +435,11 @@ function(input, output, session) {
 
     key_words            <- c(input$key_words, key_words_additional)
     
-    #Student profiles
+    #Student profiles align with courses
     student <- list()
     student$topic_score <- beta_distribution %>%
       
-      # Topic score
+      # Interest profile
       filter(
         term %in% key_words
       ) %>%
@@ -440,33 +449,35 @@ function(input, output, session) {
       summarize(
         topic_score = sum(beta)
       ) %>%
-      ungroup %>%
-      
-      # Course score
-      full_join(
-        gamma_distribution,
-        by = "topic"
-      ) %>%
-      group_by(
-        document
-      ) %>%
-      summarise(
-        course_score = sum(gamma * topic_score)
-      ) %>%
-      ungroup %>%
-      
+      ungroup %>% ############### NORMALIZE
+      mutate(student_interest = topic_score/sum(topic_score)) %>%
+      select(-topic_score) %>% 
+      full_join(gamma_distribution %>% 
+                  spread(key = document, value = gamma),
+                by = "topic")
+    
+    #KL distance
+    ref <- student$topic_score %>% select(student_interest)
+    
+    kl_dist <- student$topic_score %>% 
+      select(-topic) %>% 
+      map_dbl(my_kl, reference = ref) %>%
+      tibble(course = names(.), distance = .) %>%
+      arrange((distance))
+    
+    #recommendations
+    recommendations <- kl_dist %>% 
+      filter(course != "student_interest") %>%   
       # Recommendations
       top_n(
-        n  = 20,
-        wt = course_score
+        n  = -20,
+        wt = distance
       ) %>%
-      
-      arrange(desc(course_score)) %>%
       
       # Key words per recommendation
       left_join(
         gamma_distribution,
-        by = "document"
+        by = c("course" = "document")
       ) %>%
       
       left_join(
@@ -480,21 +491,21 @@ function(input, output, session) {
       
       group_by(
         term,
-        document
+        course
       ) %>%
       summarize(
         word_contribution_to_document = sum(gamma * beta)
       ) %>%
       
       group_by(
-        document
+        course
       ) %>%
       top_n(
         n  = 3,
         wt = word_contribution_to_document
       ) %>%
       arrange(desc(word_contribution_to_document)) %>% 
-      group_by(document) %>% 
+      group_by(course) %>% 
       summarize(
         key_words = paste(term, collapse = ", "),
         doc_score = sum(word_contribution_to_document)
@@ -504,9 +515,10 @@ function(input, output, session) {
       # Editing
       left_join(
         course_titles,
-        by = c("document" = "Course ID")
+        by = c("course" = "Course ID")
       ) %>%
-      arrange(desc(doc_score))})
+      arrange(desc(doc_score))
+
   
   ##OUTPUTS
   ###Choice buttons
@@ -559,7 +571,7 @@ function(input, output, session) {
     recommendations_data() %>%
 
       transmute(
-        Code = document,
+        Code = course,
         Course = `Course Title`,
         `because you selected` = key_words
         )
@@ -567,5 +579,4 @@ function(input, output, session) {
     
   })
   
-
 }
