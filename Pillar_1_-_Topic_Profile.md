@@ -1,7 +1,7 @@
 Pillar 1 - Student Topic Profile
 ================
 DARS
-2019-04-16
+2019-04-29
 
 -   [Course topic profile](#course-topic-profile)
 -   [Student topic profile](#student-topic-profile)
@@ -23,7 +23,8 @@ DARS
     -   GPA (per concentration)
 
 ``` r
-load("App/Recommender System/topic_model_gb.RDATA")
+#load("App/Recommender System/topic_model_gb.RDATA")
+load("App/Recommender System/data_topic_models.RDATA")
 load("Output/data_pillar_1.RDATA")
 load("Output/course_current.RDATA")
 
@@ -35,10 +36,15 @@ Course topic profile
 ====================
 
 ``` r
-gamma        <- topic_model_gb$g_overview[[15]] %>% mutate(topic = topic %>% str_replace(" ", "_"))
+gamma        <- app_model$Gamma %>% .[[1]] %>% mutate(topic = topic %>% str_replace(" ", "_"))  #topic_model_gb$g_overview[[15]] %>% mutate(topic = topic %>% str_replace(" ", "_"))
+```
+
+    ## Warning: package 'bindrcpp' was built under R version 3.4.4
+
+``` r
 gamma_spread <- gamma %>% spread(topic, gamma)
 
-beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
+beta <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta) #topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
 ```
 
 Student topic profile
@@ -66,7 +72,11 @@ student_TP <- d_transcript_augmented %>%
   arrange(`Student ID`)
 ```
 
-Raphael's topic profile is coherent: topics with a high value correspond to my academic focus and topics with a low score to themes I never covered (i.e. law, literature).
+Raphael's topic profile is coherent: topics with a high value correspond to my academic focus and topics with a low score to themes I never covered (i.e. law, literature). \#Save
+
+``` r
+save(student_TP, file = "./App/Recommender System/student_TP.RDATA")
+```
 
 Student GPA
 ===========
@@ -228,10 +238,14 @@ fit_lasso <- fit_lasso %>%
 ```
 
 ``` r
+save(fit_lasso, file = "Output/CV.RDATA")
+```
+
+``` r
 hist(fit_lasso$cv_error)
 ```
 
-![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-2-1.png)
+![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-3-1.png)
 
 ``` r
 mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
@@ -244,7 +258,8 @@ mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
 Topic chosen by model are related to the course.
 
 ``` r
-beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
+beta <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta)
+#beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
 
 i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Contemporary Classical Sociology: topic ~ law, foreign policy, culture
 ```
@@ -296,49 +311,52 @@ i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Contemporary Classical Soc
 beta %>% filter(topic == "Topic 18")
 ```
 
-    ## # A tibble: 15 x 3
+    ## # A tibble: 17 x 3
     ## # Groups:   topic [1]
-    ##    topic    term           beta
-    ##    <chr>    <chr>         <dbl>
-    ##  1 Topic 18 art         0.0507 
-    ##  2 Topic 18 century     0.0347 
-    ##  3 Topic 18 modern      0.0245 
-    ##  4 Topic 18 temporary   0.0195 
-    ##  5 Topic 18 artistic    0.0153 
-    ##  6 Topic 18 performance 0.0127 
-    ##  7 Topic 18 london      0.00936
-    ##  8 Topic 18 familiarize 0.00852
-    ##  9 Topic 18 20th        0.00852
-    ## 10 Topic 18 enable      0.00767
-    ## 11 Topic 18 maastricht  0.00683
-    ## 12 Topic 18 stance      0.00683
-    ## 13 Topic 18 ha          0.00683
-    ## 14 Topic 18 reality     0.00599
-    ## 15 Topic 18 initiate    0.00599
+    ##    topic    term              beta
+    ##    <chr>    <chr>            <dbl>
+    ##  1 Topic 18 plant          0.0336 
+    ##  2 Topic 18 animal         0.0291 
+    ##  3 Topic 18 environment    0.0269 
+    ##  4 Topic 18 understand     0.0224 
+    ##  5 Topic 18 environmental  0.0195 
+    ##  6 Topic 18 adaptation     0.0157 
+    ##  7 Topic 18 characteristic 0.0157 
+    ##  8 Topic 18 ecology        0.0150 
+    ##  9 Topic 18 gain           0.0142 
+    ## 10 Topic 18 provide        0.0135 
+    ## 11 Topic 18 physiological  0.0135 
+    ## 12 Topic 18 specie         0.0120 
+    ## 13 Topic 18 programme      0.0105 
+    ## 14 Topic 18 major          0.0105 
+    ## 15 Topic 18 exam           0.00976
+    ## 16 Topic 18 feature        0.00976
+    ## 17 Topic 18 tropical       0.00976
 
 ``` r
 beta %>% filter(topic == "Topic 8" )
 ```
 
-    ## # A tibble: 15 x 3
+    ## # A tibble: 16 x 3
     ## # Groups:   topic [1]
-    ##    topic   term           beta
-    ##    <chr>   <chr>         <dbl>
-    ##  1 Topic 8 study       0.0590 
-    ##  2 Topic 8 cultural    0.0490 
-    ##  3 Topic 8 culture     0.0270 
-    ##  4 Topic 8 gender      0.0245 
-    ##  5 Topic 8 identity    0.0230 
-    ##  6 Topic 8 humanity    0.0170 
-    ##  7 Topic 8 class       0.0155 
-    ##  8 Topic 8 differences 0.0140 
-    ##  9 Topic 8 perspective 0.0135 
-    ## 10 Topic 8 visual      0.0125 
-    ## 11 Topic 8 critical    0.0110 
-    ## 12 Topic 8 examine     0.0110 
-    ## 13 Topic 8 diversity   0.0105 
-    ## 14 Topic 8 shape       0.0100 
-    ## 15 Topic 8 historical  0.00955
+    ##    topic   term          beta
+    ##    <chr>   <chr>        <dbl>
+    ##  1 Topic 8 human      0.0638 
+    ##  2 Topic 8 body       0.0375 
+    ##  3 Topic 8 physiology 0.0356 
+    ##  4 Topic 8 anatomy    0.0209 
+    ##  5 Topic 8 system     0.0191 
+    ##  6 Topic 8 ease       0.0185 
+    ##  7 Topic 8 nutrition  0.0185 
+    ##  8 Topic 8 knowledge  0.0166 
+    ##  9 Topic 8 life       0.0160 
+    ## 10 Topic 8 function   0.0154 
+    ## 11 Topic 8 written    0.0117 
+    ## 12 Topic 8 metabolism 0.0117 
+    ## 13 Topic 8 biology    0.0111 
+    ## 14 Topic 8 library    0.0111 
+    ## 15 Topic 8 cell       0.00987
+    ## 16 Topic 8 control    0.00987
 
 ``` r
 i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Business Administration: topic ~ business
@@ -393,23 +411,23 @@ beta %>% filter(topic == "Topic 19")
 
     ## # A tibble: 15 x 3
     ## # Groups:   topic [1]
-    ##    topic    term             beta
-    ##    <chr>    <chr>           <dbl>
-    ##  1 Topic 19 trade         0.0278 
-    ##  2 Topic 19 international 0.0226 
-    ##  3 Topic 19 negotiate     0.0174 
-    ##  4 Topic 19 economic      0.0166 
-    ##  5 Topic 19 strategy      0.0148 
-    ##  6 Topic 19 country       0.0148 
-    ##  7 Topic 19 wto           0.0131 
-    ##  8 Topic 19 rule          0.0122 
-    ##  9 Topic 19 tail          0.00963
-    ## 10 Topic 19 simulate      0.00876
-    ## 11 Topic 19 numb          0.00789
-    ## 12 Topic 19 text          0.00703
-    ## 13 Topic 19 crisis        0.00703
-    ## 14 Topic 19 negotiations  0.00703
-    ## 15 Topic 19 organization  0.00616
+    ##    topic    term            beta
+    ##    <chr>    <chr>          <dbl>
+    ##  1 Topic 19 philosophy    0.0632
+    ##  2 Topic 19 philosophical 0.0290
+    ##  3 Topic 19 philosopher   0.0236
+    ##  4 Topic 19 text          0.0229
+    ##  5 Topic 19 read          0.0175
+    ##  6 Topic 19 political     0.0169
+    ##  7 Topic 19 nature        0.0169
+    ##  8 Topic 19 humanity      0.0162
+    ##  9 Topic 19 western       0.0148
+    ## 10 Topic 19 idea          0.0142
+    ## 11 Topic 19 religion      0.0142
+    ## 12 Topic 19 introduction  0.0128
+    ## 13 Topic 19 century       0.0122
+    ## 14 Topic 19 ethic         0.0122
+    ## 15 Topic 19 mind          0.0122
 
 ``` r
 i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Culture, Politics and SOciety in Contemporary Asia: topic ~ law, international, policy
@@ -462,51 +480,51 @@ i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Culture, Politics and SOci
 beta %>% filter(topic == "Topic 21") 
 ```
 
-    ## # A tibble: 17 x 3
+    ## # A tibble: 15 x 3
     ## # Groups:   topic [1]
-    ##    topic    term             beta
-    ##    <chr>    <chr>           <dbl>
-    ##  1 Topic 21 law           0.0963 
-    ##  2 Topic 21 legal         0.0434 
-    ##  3 Topic 21 european      0.0298 
-    ##  4 Topic 21 international 0.0272 
-    ##  5 Topic 21 reason        0.0169 
-    ##  6 Topic 21 eu            0.0136 
-    ##  7 Topic 21 common        0.0110 
-    ##  8 Topic 21 institute     0.00911
-    ##  9 Topic 21 integrate     0.00911
-    ## 10 Topic 21 national      0.00717
-    ## 11 Topic 21 study         0.00717
-    ## 12 Topic 21 ion           0.00653
-    ## 13 Topic 21 govern        0.00653
-    ## 14 Topic 21 understand    0.00588
-    ## 15 Topic 21 press         0.00588
-    ## 16 Topic 21 court         0.00588
-    ## 17 Topic 21 principle     0.00588
+    ##    topic    term            beta
+    ##    <chr>    <chr>          <dbl>
+    ##  1 Topic 21 student       0.0530
+    ##  2 Topic 21 study         0.0530
+    ##  3 Topic 21 portfolio     0.0349
+    ##  4 Topic 21 goal          0.0296
+    ##  5 Topic 21 skill         0.0282
+    ##  6 Topic 21 reflect       0.0262
+    ##  7 Topic 21 learn         0.0255
+    ##  8 Topic 21 reflection    0.0195
+    ##  9 Topic 21 apply         0.0162
+    ## 10 Topic 21 meet          0.0162
+    ## 11 Topic 21 mentor        0.0155
+    ## 12 Topic 21 career        0.0135
+    ## 13 Topic 21 personal      0.0128
+    ## 14 Topic 21 progress      0.0128
+    ## 15 Topic 21 intercultural 0.0128
 
 ``` r
 beta %>% filter(topic == "Topic 23")
 ```
 
-    ## # A tibble: 15 x 3
+    ## # A tibble: 17 x 3
     ## # Groups:   topic [1]
     ##    topic    term            beta
     ##    <chr>    <chr>          <dbl>
-    ##  1 Topic 23 policy       0.0927 
-    ##  2 Topic 23 public       0.0470 
-    ##  3 Topic 23 foreign      0.0359 
-    ##  4 Topic 23 analysis     0.0353 
-    ##  5 Topic 23 evaluate     0.0216 
-    ##  6 Topic 23 heal         0.0190 
-    ##  7 Topic 23 role         0.0144 
-    ##  8 Topic 23 section      0.0131 
-    ##  9 Topic 23 process      0.00985
-    ## 10 Topic 23 basic        0.00985
-    ## 11 Topic 23 american     0.00789
-    ## 12 Topic 23 issue        0.00724
-    ## 13 Topic 23 familiar     0.00724
-    ## 14 Topic 23 policymaking 0.00724
-    ## 15 Topic 23 opine        0.00659
+    ##  1 Topic 23 skill        0.191  
+    ##  2 Topic 23 student      0.167  
+    ##  3 Topic 23 train        0.0508 
+    ##  4 Topic 23 written      0.0257 
+    ##  5 Topic 23 introduction 0.0170 
+    ##  6 Topic 23 acquire      0.0153 
+    ##  7 Topic 23 assignment   0.0148 
+    ##  8 Topic 23 require      0.0142 
+    ##  9 Topic 23 guide        0.0131 
+    ## 10 Topic 23 academic     0.00933
+    ## 11 Topic 23 familiarize  0.00933
+    ## 12 Topic 23 regard       0.00878
+    ## 13 Topic 23 personal     0.00878
+    ## 14 Topic 23 coordinator  0.00824
+    ## 15 Topic 23 note         0.00769
+    ## 16 Topic 23 aim          0.00769
+    ## 17 Topic 23 acquaint     0.00769
 
 ``` r
 i <- 9; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of Western Political Thought: GPA_HUM and topic ~ natural science
@@ -561,23 +579,23 @@ beta %>% filter(topic == "Topic 7")
 
     ## # A tibble: 15 x 3
     ## # Groups:   topic [1]
-    ##    topic   term           beta
-    ##    <chr>   <chr>         <dbl>
-    ##  1 Topic 7 physic      0.0226 
-    ##  2 Topic 7 chemistry   0.0218 
-    ##  3 Topic 7 science     0.0201 
-    ##  4 Topic 7 natural     0.0143 
-    ##  5 Topic 7 learn       0.0134 
-    ##  6 Topic 7 organic     0.0134 
-    ##  7 Topic 7 base        0.0126 
-    ##  8 Topic 7 action      0.0126 
-    ##  9 Topic 7 physical    0.0109 
-    ## 10 Topic 7 ects        0.0101 
-    ## 11 Topic 7 maastricht  0.0101 
-    ## 12 Topic 7 basis       0.0101 
-    ## 13 Topic 7 chemical    0.0101 
-    ## 14 Topic 7 advance     0.00926
-    ## 15 Topic 7 participant 0.00759
+    ##    topic   term             beta
+    ##    <chr>   <chr>           <dbl>
+    ##  1 Topic 7 science       0.151  
+    ##  2 Topic 7 scientific    0.0814 
+    ##  3 Topic 7 technology    0.0558 
+    ##  4 Topic 7 critical      0.0208 
+    ##  5 Topic 7 knowledge     0.0203 
+    ##  6 Topic 7 society       0.0143 
+    ##  7 Topic 7 develop       0.0137 
+    ##  8 Topic 7 technological 0.0137 
+    ##  9 Topic 7 lecture       0.0121 
+    ## 10 Topic 7 aim           0.0121 
+    ## 11 Topic 7 production    0.0121 
+    ## 12 Topic 7 challenge     0.0115 
+    ## 13 Topic 7 establish     0.0110 
+    ## 14 Topic 7 perspective   0.00989
+    ## 15 Topic 7 scientist     0.00989
 
 Preparatory courses
 ===================
@@ -616,8 +634,23 @@ fit_lasso_topic <- fit_lasso_topic %>%
   
   select(target, topic, weight)
 
-View(fit_lasso_topic)
+print(fit_lasso_topic)
 ```
+
+    ## # A tibble: 3,960 x 3
+    ##    target  topic      weight
+    ##    <chr>   <chr>       <dbl>
+    ##  1 HUM2003 Topic_1   0.275  
+    ##  2 HUM2003 Topic_10  0.0644 
+    ##  3 HUM2003 Topic_11  0.150  
+    ##  4 HUM2003 Topic_12  0.156  
+    ##  5 HUM2003 Topic_13  0.0412 
+    ##  6 HUM2003 Topic_14 -0.0349 
+    ##  7 HUM2003 Topic_15 -0.00695
+    ##  8 HUM2003 Topic_16  0.102  
+    ##  9 HUM2003 Topic_17 -0.0238 
+    ## 10 HUM2003 Topic_18  0.172  
+    ## # ... with 3,950 more rows
 
 ``` r
 d_prep <- fit_lasso_topic %>% 
@@ -645,8 +678,24 @@ d_prep <- fit_lasso_topic %>%
   top_n(15, prep_score) %>%
   arrange(target, desc(prep_score))
 
-View(d_prep)
+print(d_prep)
 ```
+
+    ## # A tibble: 1,980 x 3
+    ## # Groups:   target [132]
+    ##    target  `Preparatory Courses`                                 prep_score
+    ##    <chr>   <chr>                                                      <dbl>
+    ##  1 CAP3000 SSC1025                                                   0.252 
+    ##  2 CAP3000 SCI2040                                                   0.200 
+    ##  3 CAP3000 Sleep and Sleep Disorders                                 0.199 
+    ##  4 CAP3000 COR1004                                                   0.154 
+    ##  5 CAP3000 Comparative Politics and Government                       0.140 
+    ##  6 CAP3000 International Relations: Contemporary Issues and Act~     0.105 
+    ##  7 CAP3000 Power and Democracy                                       0.0927
+    ##  8 CAP3000 HUM1012                                                   0.0924
+    ##  9 CAP3000 SSC1006                                                   0.0914
+    ## 10 CAP3000 VSC3101                                                   0.0803
+    ## # ... with 1,970 more rows
 
 Save
 ====
@@ -713,8 +762,8 @@ Best alpha turns out to be 1 (lasso). Good, because predictor regularization als
 
 ``` r
 n_alpha <- 101
-mae   <- numeric(n_alpha)
-alphas <- seq(0, 1, length.out = n_alpha)
+mae     <- numeric(n_alpha)
+alphas  <- seq(0, 1, length.out = n_alpha)
 
 for(i in 1 : n_alpha){
   
@@ -740,7 +789,7 @@ plot(alphas, mae)
 abline(m, col = "red")
 ```
 
-![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-9-1.png)
+![](Pillar_1_-_Topic_Profile_files/figure-markdown_github/unnamed-chunk-10-1.png)
 
 ``` r
 m %>% summary
