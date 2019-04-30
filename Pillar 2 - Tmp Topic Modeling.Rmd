@@ -566,6 +566,6 @@ app_model <- app_topic_model #%>%
 ## Saving files for APP
 We save all requirements for the app.
 ```{r app files, eval = T}
-save(app_model, file = "App/Recommender System/data_topic_models.RDATA")
+save(app_model, file = "App/Recommender System/app_model.RDATA")
 save(app_model, file = "./Output/app_model.RDATA")
 ```

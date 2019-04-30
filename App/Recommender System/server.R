@@ -9,7 +9,7 @@ library(seewave)# KL distance
 #
 #General set up ---------------------------------------------------------------------------------
 load("data_pillar_1.RDATA")
-load("data_topic_models.RDATA") #contains app_model and full dataframe of topic models
+load("app_model.RDATA") #contains app_model and full dataframe of topic models
 load("rules_clean.RDATA")
 load("grade_prediction.RDATA")
 load("student_TP.RDATA")
