@@ -27,8 +27,7 @@ library(tidyverse)
 ```
 
 ```{r load, cache.lazy = TRUE}
-#load("App/Recommender System/topic_model_gb.RDATA")
-load("App/Recommender System/data_topic_models.RDATA")
+load("App/Recommender System/app_model.RDATA")
 load("Output/data_pillar_1.RDATA")
 load("Output/course_current.RDATA")
 
