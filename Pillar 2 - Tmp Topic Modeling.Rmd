@@ -354,7 +354,7 @@ plot_evaluation("catalogues")
 ```
 ##Best model
 We extract the best model for the catalogues and use it to innitialise the the second run of LDA algorithm with mode burns and iterations
-```{r best model, eval = F}
+```{r best model, eval = T}
 load("./Output/catalogues_tmp_topic_model_tibble.RDATA") #do not run this if knitted
 
 catalogue_dtm <- tb_topic_model$DTM[[1]]
