@@ -354,7 +354,7 @@ plot_evaluation("catalogues")
 ```
 ##Best model
 We extract the best model for the catalogues and use it to innitialise the the second run of LDA algorithm with mode burns and iterations
-```{r best model, eval = T}
+```{r best model, eval = F}
 load("./Output/catalogues_tmp_topic_model_tibble.RDATA") #do not run this if knitted
 
 catalogue_dtm <- tb_topic_model$DTM[[1]]
@@ -558,14 +558,14 @@ app_topic_model <- app_topic_model %>%
          `Sample semester` = list(course_following_semester),
          `Course Titles`   = list(course_titles) )
 
-app_model <- app_topic_model %>%
-  filter(n_topic == 65)
+app_model <- app_topic_model #%>%
+  #filter(n_topic == 65)
 
 #rm(course_all, course_following_semester)
 ```
 ## Saving files for APP
 We save all requirements for the app.
 ```{r app files, eval = T}
-save(app_topic_model, app_model, file = "App/Recommender System/data_topic_models.RDATA")
+save(app_model, file = "App/Recommender System/data_topic_models.RDATA")
 save(app_model, file = "./Output/app_model.RDATA")
 ```
