@@ -496,7 +496,7 @@ plot_evaluation(&quot;catalogues&quot;)
 <pre class="r"><code>load(&quot;./Output/catalogues_tmp_topic_model_tibble.RDATA&quot;) #do not run this if knitted
 
 catalogue_dtm &lt;- tb_topic_model$DTM[[1]]
-catalogue_lda &lt;- tb_topic_model %&gt;% filter(n_topic == &quot;35&quot;) %&gt;% pull(Model) %&gt;%.[[1]]
+catalogue_lda &lt;- tb_topic_model %&gt;% filter(n_topic == &quot;65&quot;) %&gt;% pull(Model) %&gt;%.[[1]]
 
 best_lda &lt;- LDA(x = catalogue_dtm, 
                 model = catalogue_lda, 
