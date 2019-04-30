@@ -81,18 +81,18 @@ course_data %>%
 ```{r}
 grViz("digraph flowchart{
 
-      node [fontname = Helvetica, shape = rectangle]
+      fontname = Helvetica
+      size = 15
 
-      subgraph cluster_input {
-      label = '';
-      style = filled;
-		  color = white;
+      node [fontname = Helvetica, shape = rectangle, style = filled, color = black, fillcolor = white]
 
-      subgraph cluster_input_data {
+      edge [fontname = Helvetica, decorate = TRUE]
+
+      subgraph cluster_data {
       label = 'Data';
       style = filled;
 		  color = lightgrey;
-		  node [style = filled, color = black, fillcolor = white, shape = cylinder];
+		  node [shape = cylinder];
       CD [label = 'Course Data']
       SD [label = 'Student Data']
       }
@@ -101,28 +101,31 @@ grViz("digraph flowchart{
       label = 'User Input';
       style = filled;
 		  color = coral;
-		  node [style = filled, color = black, fillcolor = white];
+
       ID [label = 'Student ID']
       KW [label = 'Selected Key Words']
       CS [label = 'Selected Courses']
       }
 
-
-      }
-
-      subgraph cluster_inter_first{
-      label = '';
+      subgraph cluster_model_fitting{
+      label = 'Model Fitting';
       style = filled;
-		  color = white;
-      AP [label = 'Academic Performance']
-      TR [label = 'Student´s Transcript']
+		  color = LavenderBlush;
+
       TE [label = 'Topic Expertise']
+      AP [label = 'Academic Performance']
+
+      PM [label = 'Predictive Models']
+      x1 [shape = circle, width = .01, height = .01, label = '']
+      TM [label = 'Topic Model']
+
       }
 
       subgraph cluster_inter_last{
-      label = '';
+      label = 'Intermediate Results';
       style = filled;
-		  color = white;
+		  color = Tan;
+
       GP [label = 'Grade Prediction']
       AI [label = 'Student´s Academic Interests']
       }
@@ -132,50 +135,39 @@ grViz("digraph flowchart{
       label = 'System Output';
       style = filled;
 		  color = lightCyan;
-		  node [style = filled, color = black, fillcolor = white];
-      rank = same;
+
       SUG [label = 'Course Suggestions']
       WAR [label = 'Warnings']
       PRE [label = 'Preparatory Coursework']
       }
 
-
-      # Intermediate nodes
-      node [color = black]
-      TM [label = 'Topic Model']
-      PM [label = 'Predictive Models']
+      TR [label = 'Student´s Transcript']
 
       # Invisible node
-      node [shape = circle, width = .01, height = .01, label = '']
-      x1 x2 x3
+      x2 [shape = circle, width = .01, height = .01, label = '']
+      x3 [shape = circle, width = .01, height = .01, label = '']
+
 
       # edges
 
-      SD -> AP;
+      SD -> AP [weight = 2];
       {SD, TM} -> TE;
-      {TR, KW} -> AI;
-      {ID, SD} -> TR;
+      {TM, KW} -> AI;
+      ID -> TR;
       {PM, CS, TR} -> GP;
       GP -> WAR;
 		  WAR -> PRE;
 
-      edge[label = 'LDA', decorate = TRUE]
-      CD -> TM;
+      CD -> TM [label = '  LDA'];
 
-      edge[label = '']
       {AP, TE} -> x1 [arrowhead = none]
-      edge[label = ' Lasso', decorate = TRUE]
-      x1 -> PM;
+      x1 -> PM [label = '  Lasso'];
       
-      edge[label = '']
       {TM, AI} -> x2 [arrowhead = none]
-      edge[label = 'KL distance', decorate = TRUE]
-      x2 -> SUG;
+      x2 -> SUG [label = '  KL distance'];
 
-      edge[label = '']
       {TM, PM} -> x3 [arrowhead = none]
-      edge[label = 'KL distance', decorate = TRUE]
-      x3 -> PRE;
+      x3 -> PRE [label = '  KL distance'];
 
       }
       ")
@@ -198,7 +190,7 @@ df_logLike_catalogue %>%
   geom_line(linetype = "dashed") +
   geom_point() +
   
-  labs(title = "Model Selection", subtitle = "The maximum-likelihood model has 80 topics", x = "Number of Topics", y = "Log-Likelihood") +
+  labs(title = "Model Selection", subtitle = str_c("The maximum-likelihood model has ", max_LL, " topics"), x = "Number of Topics", y = "Log-Likelihood") +
 
   ggsave(filename = str_c("Model Selection.jpeg"), path = output_folder,
          width = plot_width, height = plot_height)

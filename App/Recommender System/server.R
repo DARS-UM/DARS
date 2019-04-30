@@ -378,17 +378,15 @@ function(input, output, session) {
  
    # Helper functions:
   
-  ##Return student
-  student_courses <- function(d_student) {
-    student_hist <- d_transcript %>%
-        
-        filter(
-          `Student ID` == d_student
-        ) %>%
-        
-        select(
-          course = `Course ID`
-        ) 
+  ##Return student topic profile
+  student_topics <- function(d_student){
+    
+    student_TP %>% filter(`Student ID` == d_student) %>% top_n(1, time) %>%
+      select(-time, -`Student ID`) %>%
+      gather(key = topic, value = weight) %>%
+      mutate(topic = str_replace(topic, "_", " "),
+             weight = weight/sum(weight))
+    
   }
   
   ##KL distance
@@ -398,8 +396,8 @@ function(input, output, session) {
   
   
   #Reactive student function 
-  student_past <- reactive({
-    student_courses(input$student_rec)
+  student_tp <- reactive({
+    student_topics(input$student_rec)
   })
   
     
@@ -518,6 +516,7 @@ function(input, output, session) {
         by = c("course" = "Course ID")
       ) %>%
       arrange(desc(doc_score))
+    })
 
   
   ##OUTPUTS
@@ -531,18 +530,17 @@ function(input, output, session) {
     gamma_distribution <- app_model$Gamma[[1]] 
     course_titles      <- app_model$`Course Titles`[[1]]
     
-    with_guess <- student_past()%>% 
-      left_join(gamma_distribution, by = c("course" = "document"))%>%
-      group_by(topic) %>%
-      summarise(topic_score = sum(gamma)) %>%
-      ungroup()%>%
-      arrange(desc(topic_score)) %>%
-      top_n(5, topic_score) %>%
+    with_guess <- student_tp() %>%
+      top_n(10, weight) %>%
       left_join(beta_distribution, by = "topic") %>%
-      filter(topic !="Topic 3" | topic !="Topic 13" |topic !="Topic 28" | topic !="Topic 15" |topic !="Topic 20" ) %>%
-      group_by(term) %>%
-      summarize(topic_score = sum(beta)) %>%
-      top_n(100, topic_score) %>% pull(term)
+      group_by(topic) %>%
+      top_n(3, beta) %>% pull(term)
+      # top_n(5, weight) %>%
+      # left_join(beta_distribution, by = "topic") %>%
+      # #group_by(term) %>%
+      # #summarize(topic_score = sum(beta)) %>%
+      # #top_n(100, topic_score) %>% 
+      # pull(term)
     
     kw_select <- if(use_past()){
       intersect(with_guess, kw_used)
