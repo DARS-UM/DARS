@@ -7,7 +7,7 @@ library(shinythemes)
 #General set up---------------------------------------------------------------------------------
 
 load("data_pillar_1.RDATA")
-load("data_topic_models.RDATA") #contains distribution, kw, course_all, course_following_semester.
+load("app_model.RDATA") #contains distribution, kw, course_all, course_following_semester.
 load("rules_clean.RDATA")
 
 kw_used <- app_model$kw[[1]]
