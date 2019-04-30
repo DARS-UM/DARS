@@ -373,6 +373,51 @@ best_lda <- LDA(x = catalogue_dtm,
 
 save(best_lda, file = "./Output/catalogues_best_model.RDATA") 
 ```
+##Best model pass to app
+```{r}
+load("./Output/catalogues_tmp_topic_model_tibble.RDATA")
+load("./Output/catalogues_best_model.RDATA")
+
+best_model <- tibble( 
+  n_topic = 65
+  ) %>%
+  
+  mutate(Origin     = "catalogues",
+         `Topic ID` = paste(Origin, n_topic, sep = "_"),
+         
+         #Document Term Matrix
+         DTM        = pmap(.l = list(Origin), .f = extract_dtm),
+  
+         #Fit Model
+         Model  = list(best_lda),
+         
+         #Gamma distribution
+         Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
+
+         #Beta distribution
+         Beta = pmap(.l = list(Model),  .f = get_distributions, distrib_str = "beta"),
+
+         #Perplexity
+         Perplexity = pmap_dbl(.l = list(Model, DTM), .f = my_perplexity),
+
+         #Loglikelihood
+         LogLikelihood = pmap_dbl(.l = list(Model), .f = logLik), #this removes the degrees of freedom data
+
+         #
+         ##Inspect
+
+         #top words per topic
+         top_terms_topic = map(Beta, .f = get_top_terms_topic),
+
+         #top topics per course
+         top_topic_course = map(Gamma, .f = get_top_topics_course),
+
+         #Select keywords
+         kw = map(Beta, .f = get_kw)
+         )
+
+
+```
 ##Different alphas and delta (prior of term distributions over topics)
 To evaluate the impact of the initial alpha and beta on our model, we train the model using different inizialization values for alpha and delta. Note that this is only an inizialisation and the algorithm will try to extimate alpha and beta.
 ###Alpha
@@ -471,7 +516,7 @@ clean_kw <- function(kw_list) {
 ```
 On our `topic_model` tibble we filter only information relevant for the app, and apply `clean_kw` on our `kw` column
 ```{r crop and clean TM for App, eval = T}
-app_topic_model <- tb_topic_model %>% 
+app_topic_model <- best_model %>% #tb_topic_model %>% 
   select(`Topic ID`, n_topic, Origin, Gamma, Beta, kw) %>%
   mutate(kw = map(kw, .f = clean_kw))
 ```
