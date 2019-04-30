@@ -11,7 +11,8 @@ library(seewave)# KL distance
 load("data_pillar_1.RDATA")
 load("data_topic_models.RDATA") #contains app_model and full dataframe of topic models
 load("rules_clean.RDATA")
-load("grade_prediction.RDATA") 
+load("grade_prediction.RDATA")
+load("student_TP.RDATA")
 
 course_all <- app_model$`All Courses`[[1]]
 course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
@@ -535,12 +536,6 @@ function(input, output, session) {
       left_join(beta_distribution, by = "topic") %>%
       group_by(topic) %>%
       top_n(3, beta) %>% pull(term)
-      # top_n(5, weight) %>%
-      # left_join(beta_distribution, by = "topic") %>%
-      # #group_by(term) %>%
-      # #summarize(topic_score = sum(beta)) %>%
-      # #top_n(100, topic_score) %>% 
-      # pull(term)
     
     kw_select <- if(use_past()){
       intersect(with_guess, kw_used)
