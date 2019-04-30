@@ -17,7 +17,7 @@ library(DiagrammeR)
 knitr::opts_chunk$set(echo = FALSE)
 theme_set(theme_light())
 
-load("Output/_catalogues_tmp_topic_model_tibble.RDATA")
+load("Output/catalogues_best_model.RDATA")
 load("Output/data_pillar_1.Rdata")
 load("Output/d_text.RDATA")
 load("Output/df_logLike_catalogue.RDATA")
@@ -29,9 +29,9 @@ plot_height <- plot_width / 1.6
 ```
 
 ```{r TM}
-d     <- tb_topic_model
-gamma <- d$Gamma[[1]]
-beta  <- d$Beta[[1]]
+d     <- best_lda
+gamma <- best_lda$Gamma
+beta  <- best_lda$Beta
 ```
 
 ```{r student_data}
