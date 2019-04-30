@@ -17,7 +17,7 @@ __Considerations__:
 * consider following predictors:
      * GPA (per concentration)
 
-```{r setup, include = FALSE}
+```{r setup, include = FALSE} 
 knitr::opts_chunk$set(cache.path = "Cache/Pillar 1/")
 
 library(magrittr)
@@ -26,7 +26,7 @@ library(leaps)
 library(tidyverse)
 ```
 
-```{r load, cache.lazy = TRUE}
+```{r load, cache.lazy = TRUE} 
 load("App/Recommender System/app_model.RDATA")
 load("Output/data_pillar_1.RDATA")
 load("Output/course_current.RDATA")
@@ -36,7 +36,7 @@ course_target <- union(course_target, str_subset(course_current, "COR"))# includ
 ```
 
 # Course topic profile
-```{r gamma_spread}
+```{r gamma_spread} 
 gamma        <- app_model$Gamma %>% .[[1]] %>% mutate(topic = topic %>% str_replace(" ", "_"))  #topic_model_gb$g_overview[[15]] %>% mutate(topic = topic %>% str_replace(" ", "_"))
 gamma_spread <- gamma %>% spread(topic, gamma)
 
@@ -44,7 +44,7 @@ beta <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta) #topic
 ```
 
 # Student topic profile
-```{r student_TP}
+```{r student_TP} 
 student_TP <- d_transcript_augmented %>% 
   
   left_join(gamma_spread, by = c("Course ID" = "document")) %>%
@@ -68,13 +68,13 @@ student_TP <- d_transcript_augmented %>%
 
 Raphael's topic profile is coherent: topics with a high value correspond to my academic focus and topics with a low score to themes I never covered (i.e. law, literature).
 #Save
-```{r save student_TP}
+```{r save student_TP} 
 save(student_TP, file = "./App/Recommender System/student_TP.RDATA")
 ```
 
 # Student GPA
 
-```{r grade_ECTS}
+```{r grade_ECTS} 
 d_transcript_augmented <- d_transcript_augmented %>%
   
   mutate(is_HUM = `Course ID` %>% str_detect("HUM|SAH"),
@@ -114,7 +114,7 @@ d_transcript_augmented <- d_transcript_augmented %>%
          grade_ECTS_PRO = grade_PRO * ECTS_PRO)
 ```
 
-```{r student_GPA, cache = TRUE}
+```{r student_GPA, cache = TRUE} 
 student_GPA <- d_transcript_augmented %>%
   
   group_by(`Student ID`, time) %>%
@@ -143,7 +143,7 @@ student_GPA <- d_transcript_augmented %>%
 ```
 
 # Join student TP and GPA
-```{r student_profile, cache = TRUE}
+```{r student_profile, cache = TRUE} 
 student_profile <- d_transcript_augmented %>%
   
   left_join(student_GPA, by = c("Student ID", "time")) %>%
@@ -151,7 +151,7 @@ student_profile <- d_transcript_augmented %>%
   left_join(student_TP , by = c("Student ID", "time"))
 ```
 
-```{r}
+```{r} 
 student_profile_nest <- student_profile %>%
   
   nest(.key = profile, matches("GPA|Topic")) %>%
@@ -161,12 +161,12 @@ student_profile_nest <- student_profile %>%
 
 # Regressing grade on TP and GPA
 
-```{r find_df}
+```{r find_df} 
 find_df <- function(course)  student_profile %>% filter(`Course ID` == course)
 ```
 
 ## Lasso
-```{r my_cv.glmnet}
+```{r my_cv.glmnet} 
 my_cv.glmnet <- function(df, alpha = 1, predictors){
   
   df <- df %>% select(Grade, matches(predictors))
@@ -181,7 +181,7 @@ my_cv.glmnet <- function(df, alpha = 1, predictors){
 }
 ```
 
-```{r fit_lasso, cache = TRUE}
+```{r fit_lasso, cache = TRUE} 
 fit_lasso <- tibble(target = course_target) %>%
   
   mutate(d = target %>% map(find_df),
@@ -194,7 +194,7 @@ fit_lasso <- tibble(target = course_target) %>%
   select(-d)
 ```
 
-```{r fit_lasso extract}
+```{r fit_lasso extract} 
 fit_lasso <- fit_lasso %>%
   
   # Results from CV
@@ -225,17 +225,17 @@ fit_lasso <- fit_lasso %>%
   arrange(cv_error)
 ```
 
-```{r}
+```{r} 
 save(fit_lasso, file = "Output/CV.RDATA")
 ```
 
-```{r}
+```{r} 
 hist(fit_lasso$cv_error)
 mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
 ```
 
 Topic chosen by model are related to the course.
-```{r}
+```{r} 
 beta <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta)
 #beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
 
@@ -256,7 +256,7 @@ beta %>% filter(topic == "Topic 7")
 
 # Preparatory courses
 
-```{r}
+```{r} 
 fit_lasso_topic <- tibble(target = course_target) %>%
   
   mutate(d = target %>% map(find_df),
@@ -269,7 +269,7 @@ fit_lasso_topic <- tibble(target = course_target) %>%
   select(-d)
 ```
 
-```{r}
+```{r} 
 fit_lasso_topic <- fit_lasso_topic %>%
   
   # Results from CV
@@ -293,7 +293,7 @@ fit_lasso_topic <- fit_lasso_topic %>%
 print(fit_lasso_topic)
 ```
 
-```{r}
+```{r} 
 d_prep <- fit_lasso_topic %>% 
   
   left_join(gamma, by = "topic") %>%
@@ -324,7 +324,7 @@ print(d_prep)
 
 # Save
 
-```{r}
+```{r} 
 fit_lasso_app <- fit_lasso %>% select(target, cv)
 
 student_profile_nest_app <- student_profile_nest %>%
@@ -341,7 +341,7 @@ save(fit_lasso_app, student_profile_nest_app, d_prep, file = "APP/Recommender Sy
 
 # Predict
 
-```{r my_predict}
+```{r my_predict} 
 my_predict <- function(model, profile){
   
   predict.cv.glmnet(object = model, newx = profile, s = "lambda.min")
@@ -349,7 +349,7 @@ my_predict <- function(model, profile){
 }
 ```
 
-```{r}
+```{r} 
 course_ID  <- c("COR1005", "HUM2005") # input$course
 student_ID <- "6087587" # input$student
 
@@ -376,7 +376,7 @@ fit_lasso_app %>%
 
 Best alpha turns out to be 1 (lasso). Good, because predictor regularization also serves as predictor selection.
 
-```{r, cache = T}
+```{r, cache = T} 
 n_alpha <- 101
 mae     <- numeric(n_alpha)
 alphas  <- seq(0, 1, length.out = n_alpha)
