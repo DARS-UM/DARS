@@ -50,7 +50,7 @@ function(input, output, session) {
           inputId  = "course_chosen",
           label    = "Tentative Courses for following period",
           choices  = course_all,
-          selected = course_all,
+          #selected = course_all,
           inline   = TRUE
         ))
   })
@@ -284,12 +284,13 @@ function(input, output, session) {
       
     }else if(nrow(rules) == 0){
       
-      tibble(`Red Flag` = "No red flag")
+      tibble(`Warning` = "No warning")
       
     }else{
       
        rules  %>%
-         select(`Red Flag`, Reason)
+         select(`Red Flag`, Reason) %>%
+        rename(`Warning for` = `Red Flag`)
       
     }
     
@@ -361,12 +362,19 @@ function(input, output, session) {
 
       mutate(prediction = cv %>% map_dbl(my_predict, student_prof)) %>%
 
-      mutate(flag_red    = prediction < 5.5,
-             flag_orange = prediction %>% between(5.5, 7),
-             flag_green  = prediction > 7) %>%
-      mutate_at(vars(flag_red, flag_orange, flag_green), funs(ifelse(.,., " ")))%>%
-      select(-cv) %>%
-     left_join(preparatory, by = "target")
+      mutate(Red    = prediction < 5.5,
+             Orange = prediction %>% between(5.5, 7),
+             Green  = prediction > 7) %>%
+      #gathered
+      gather(key = Warning, value = Truth, Red:Green) %>% 
+      filter(Truth == TRUE, Warning != "Green") %>% 
+      select(-Truth, -cv, -prediction) %>%
+      
+      #expanded
+      #mutate_at(vars(flag_red, flag_orange, flag_green), funs(ifelse(.,., " ")))%>%
+      #select(-cv) %>%
+     left_join(preparatory, by = "target") %>%
+      rename(Course = target, `Preparatory Coursework` = Preparation)
   
   })
   
@@ -469,7 +477,7 @@ function(input, output, session) {
       filter(course != "student_interest") %>%   
       # Recommendations
       top_n(
-        n  = -20,
+        n  = -10,
         wt = distance
       ) %>%
       
@@ -567,7 +575,15 @@ function(input, output, session) {
         Code = course,
         Course = `Course Title`,
         `because you selected` = key_words
-        )
+        ) %>%
+      mutate(c_title = case_when(is.na(Course) ~ `Code`,
+                                T ~ Course),
+             length = str_length(Code),
+             
+             Code     = case_when(length == 7 ~ Code,
+                                     T ~ "unknown"),
+            Course   = c_title
+    ) %>% select(-c_title, -length)
     
     
   })

@@ -43,7 +43,7 @@ navbarPage(
           ),
         
         uiOutput('resetable_input'),
-        tags$head(tags$style("#resetable_input{color: black; font-size: 19px;}")),
+        tags$head(tags$style("#resetable_input{color: black; font-size: 14px;}")),
         tags$hr(),
         actionButton("reset_input", "Reset inputs")
         
