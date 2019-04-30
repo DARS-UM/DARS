@@ -9,6 +9,8 @@ editor_options:
   chunk_output_type: console
 ---
 
+# Set up
+
 ```{r setup, include = FALSE}
 library(tidyverse)
 library(kableExtra)
@@ -17,7 +19,7 @@ library(DiagrammeR)
 knitr::opts_chunk$set(echo = FALSE)
 theme_set(theme_light())
 
-load("Output/catalogues_best_model.RDATA")
+load("Output/app_model.RDATA")
 load("Output/data_pillar_1.Rdata")
 load("Output/d_text.RDATA")
 load("Output/df_logLike_catalogue.RDATA")
@@ -29,9 +31,8 @@ plot_height <- plot_width / 1.6
 ```
 
 ```{r TM}
-d     <- best_lda
-gamma <- best_lda$Gamma
-beta  <- best_lda$Beta
+gamma <- app_model$Gamma[[1]]
+beta  <- app_model$Beta[[1]]
 ```
 
 ```{r student_data}
@@ -55,7 +56,9 @@ course_data <- d_text$catalogues %>%
   
   slice(50005:50014) %>%
   
-  select(`Course ID`, `Course Title`, Department = department, word) 
+  select(`Course ID`, `Course Title`, Department = department, word) %>%
+  
+  print
 ```
 
 # Student data
@@ -190,7 +193,7 @@ df_logLike_catalogue %>%
   geom_line(linetype = "dashed") +
   geom_point() +
   
-  labs(title = "Model Selection", subtitle = str_c("The maximum-likelihood model has ", max_LL, " topics"), x = "Number of Topics", y = "Log-Likelihood") +
+  labs(title = NULL, subtitle = NULL, x = "Number of Topics", y = "Log-Likelihood") +
 
   ggsave(filename = str_c("Model Selection.jpeg"), path = output_folder,
          width = plot_width, height = plot_height)
@@ -199,7 +202,7 @@ df_logLike_catalogue %>%
 # Beta
 
 ```{r plot_beta}
-plot_beta <- function(topic = 1, sub = NULL, resize_factor = 1){
+plot_beta <- function(topic = 1, resize_factor = 1){
   
   top <-  str_c("Topic ", topic)
   
@@ -214,11 +217,10 @@ plot_beta <- function(topic = 1, sub = NULL, resize_factor = 1){
     
     theme(axis.text.y = element_text(size = 11)) +
     
-    labs(title = str_c("Main Terms of ", top),
-         subtitle = sub,
+    labs(title = str_c("Topic ", topic),
          x = "Terms",
          y = "Beta"
-    )
+         )
   
   ggsave(filename = str_c("Beta - topic ", topic, ".jpeg"), path = output_folder,
          width = plot_width / resize_factor, height = plot_height / resize_factor)
@@ -227,18 +229,13 @@ plot_beta <- function(topic = 1, sub = NULL, resize_factor = 1){
 ```
 
 ```{r fig_beta}
-# topic 1: engineering",
-plot_beta(1, sub = "Topic 1 corresponds to the theme of engineering")
-# topic 9: computer science, topic 
-# Topic 20: psychology
-# topic 25: history
-# topic 26: literature 
+plot_beta(1)
 ```
 
 # Gamma
 
 ```{r plot_gamma}
-plot_gamma <- function(course = "COR1002", sub = NULL, course_title = course){
+plot_gamma <- function(course = "COR1002"){
   
   gamma %>%
     filter(document == course) %>% 
@@ -249,8 +246,7 @@ plot_gamma <- function(course = "COR1002", sub = NULL, course_title = course){
     
     coord_flip() +
     
-    labs(title    = str_c("Main Topics of Course ", course_title),
-         subtitle = sub,
+    labs(title = course,
          x = "Topics",
          y = "Gamma"
          )
@@ -262,27 +258,28 @@ plot_gamma <- function(course = "COR1002", sub = NULL, course_title = course){
 ```
 
 ```{r fig_gamma}
-plot_gamma("HUM1014", sub = "HUM1014 is dominated by topics 43 (philosophy) and 26 (literature)", course_title = "HUM1014 Great Novels 1850 - Present")
+plot_gamma("COR1004")
 
 resize_factor <- 1.6
 
-plot_beta(43, sub = "Theme of philosophy", resize_factor = resize_factor)
-
-plot_beta(26, sub = "Theme of literature", resize_factor = resize_factor)
+plot_beta(4, resize_factor = resize_factor)
+plot_beta(19, resize_factor = resize_factor)
 ```
 
 
 # Topic Expertise
 ```{r}
-transcript <- tibble(Course    = paste("Course", 1:3),
+courses <- paste("Course", 1 : 3)
+
+transcript <- tibble(Course    = courses,
                      Grade     = c(6  , 9  , 2.5))
 
-gamma <- tibble(Course    = paste("Course", 1:3),
-                `Topic 1` = c(0  , 0.2, 0.6),
-                `Topic 2` = c(0.4, 0.2, 0.3),
-                `Topic 3` = c(0  , 0.2, 0  ),
-                `Topic 4` = c(0.4, 0.2, 0.1),
-                `Topic 5` = c(0.2, 0.2, 0  ))
+gamma <- tibble(Course    = courses,
+                `Topic 1` = c(0  , 0.2, 0  ),
+                `Topic 2` = c(0.7, 0.2, 0.4),
+                `Topic 3` = c(0.2, 0.2, 0.2),
+                `Topic 4` = c(0.1, 0.2, 0.1),
+                `Topic 5` = c(0  , 0.2, 0.2))
 
 df1 <- gamma %>% 
   gather(key = Topic, value = gamma, -Course) %>% 
@@ -319,7 +316,7 @@ topic_expertise %>%
 df1 %>% 
   ggplot(aes(x = Topic, y = contribution, fill = Course)) +
   geom_col() +
-  labs(x = "Topics", y = "Topic Expertise", title = "Course Contribution towards Topic Expertise")
+  labs(x = "Topics", y = "Topic Expertise")
 
 ggsave(filename = str_c("toy Topic Expertise.jpeg"), path = output_folder,
        width = plot_width, height = plot_height)
@@ -331,16 +328,17 @@ ggsave(filename = str_c("toy Topic Expertise.jpeg"), path = output_folder,
 fit_lasso %>%
   ggplot(aes(y = cv_error, group = 1)) +
   geom_boxplot() +
-  theme(axis.ticks.x = element_line(color = "white"),
-        axis.text.x = element_text(color = "white"),
+  theme(axis.ticks.y = element_line(color = "white"),
+        axis.text.y  = element_text(color = "white"),
         panel.border = element_rect(color = "white"),
-        panel.grid = element_line(color = "white")
+        panel.grid   = element_line(color = "white")
         ) +
   
-  labs(title = "Distribution of Prediction Error", y = "Cross-Validation \n Mean Absolute Error")
+  labs(y = "Cross-Validation Mean Absolute Error") +
+  coord_flip()
 
 ggsave(filename = str_c("CV.jpeg"), path = output_folder,
-         width = plot_width/1.9, height = plot_height/1.2)
+         width = plot_width/1.5, height = plot_height/3.5)
 
 fit_lasso %>%
   summarize(Mean = mean(cv_error),
@@ -354,4 +352,3 @@ fit_lasso %>%
   kable_styling(latex_options = c("striped", "scale_down")) %>%
   as_image(file = str_c(output_folder, "/CV.pdf"))
 ```
-
