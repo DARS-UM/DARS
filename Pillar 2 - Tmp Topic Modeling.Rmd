@@ -514,7 +514,7 @@ app_topic_model <- app_topic_model %>%
          `Course Titles`   = list(course_titles) )
 
 app_model <- app_topic_model %>%
-  filter(n_topic == 55)
+  filter(n_topic == 65)
 
 #rm(course_all, course_following_semester)
 ```
@@ -522,4 +522,5 @@ app_model <- app_topic_model %>%
 We save all requirements for the app.
 ```{r app files, eval = T}
 save(app_topic_model, app_model, file = "App/Recommender System/data_topic_models.RDATA")
+save(app_model, file = "./Output/app_model.RDATA")
 ```

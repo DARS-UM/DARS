@@ -27,7 +27,8 @@ library(tidyverse)
 ```
 
 ```{r load, cache.lazy = TRUE}
-load("App/Recommender System/topic_model_gb.RDATA")
+#load("App/Recommender System/topic_model_gb.RDATA")
+load("App/Recommender System/data_topic_models.RDATA")
 load("Output/data_pillar_1.RDATA")
 load("Output/course_current.RDATA")
 
@@ -37,10 +38,10 @@ course_target <- union(course_target, str_subset(course_current, "COR"))# includ
 
 # Course topic profile
 ```{r gamma_spread}
-gamma        <- topic_model_gb$g_overview[[15]] %>% mutate(topic = topic %>% str_replace(" ", "_"))
+gamma        <- app_model$Gamma %>% .[[1]] %>% mutate(topic = topic %>% str_replace(" ", "_"))  #topic_model_gb$g_overview[[15]] %>% mutate(topic = topic %>% str_replace(" ", "_"))
 gamma_spread <- gamma %>% spread(topic, gamma)
 
-beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
+beta <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta) #topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
 ```
 
 # Student topic profile
@@ -67,6 +68,10 @@ student_TP <- d_transcript_augmented %>%
 ```
 
 Raphael's topic profile is coherent: topics with a high value correspond to my academic focus and topics with a low score to themes I never covered (i.e. law, literature).
+#Save
+```{r save student_TP}
+save(student_TP, file = "./App/Recommender System/student_TP.RDATA")
+```
 
 # Student GPA
 
@@ -232,7 +237,8 @@ mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
 
 Topic chosen by model are related to the course.
 ```{r}
-beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
+beta <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta)
+#beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
 
 i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Contemporary Classical Sociology: topic ~ law, foreign policy, culture
 beta %>% filter(topic == "Topic 18")
