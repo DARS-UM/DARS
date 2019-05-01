@@ -18,6 +18,20 @@ course_all <- app_model$`All Courses`[[1]]
 course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
 kw_used <- app_model$kw[[1]] #is the same as in ui
 
+titles <-  d_text$catalogues %>%
+  select(`Course ID`, `Course Title`, department) %>% 
+  distinct %>% mutate(`c_title`= case_when(is.na(`Course Title`) ~ `Course ID`,
+                                           T ~ `Course Title`),
+                      `Course_id` = case_when(str_length(`Course ID`) == 7 ~ `Course ID`,
+                                              T ~ "XXX0000")) %>% 
+  transmute(`Course ID` = `Course ID`, course_and_title = paste(`Course_id`, `c_title`, sep = " - "))
+
+# titles <-  d_text$catalogues %>%
+#   select(`Course ID`, `Course Title`, department) %>% 
+#   distinct %>% transmute(`Course ID`= `Course ID`,
+#                          c_title= case_when(is.na(`Course Title`) ~ `Course ID`,
+#                                             T ~ `Course Title`))
+
 #
 #server ---------------------------------------------------------------------------------
 function(input, output, session) {
@@ -342,11 +356,20 @@ function(input, output, session) {
     course_ID <- course_ID_traffic()
     
   
-    preparatory <- d_prep %>%
+    # preparatory <- d_prep %>%
+    #   filter(target %in% course_ID) %>%
+    #   group_by(target) %>%
+    #   top_n(5, prep_score) %>%
+    #   mutate(Preparation = paste(`Preparatory Courses`, collapse =" | ")) %>% 
+    #   select(target, Preparation) %>%
+    #   distinct
+    
+    preparatory <-  d_prep %>%
       filter(target %in% course_ID) %>%
       group_by(target) %>%
       top_n(5, prep_score) %>%
-      mutate(Preparation = paste(`Preparatory Courses`, collapse =" | ")) %>% 
+      left_join(titles, by = c("Preparatory Courses" = "Course ID")) %>%
+      mutate(Preparation = paste(course_and_title, collapse =" | ")) %>% 
       select(target, Preparation) %>%
       distinct
     
@@ -582,8 +605,8 @@ function(input, output, session) {
              
              Code     = case_when(length == 7 ~ Code,
                                      T ~ "unknown"),
-            Course   = c_title
-    ) %>% select(-c_title, -length)
+            Course   = c_title) %>% 
+      select(-c_title, -length)
     
     
   })
