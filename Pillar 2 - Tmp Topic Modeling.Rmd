@@ -39,6 +39,13 @@ course_titles <-  d_text$catalogues %>%
   select(`Course ID`, `Course Title`, department) %>% 
   distinct
 
+course_titles %>% mutate(`c_title`= case_when(is.na(`Course Title`) ~ `Course ID`,
+                                              T ~ `Course Title`),
+                         `Course ID` = case_when(str_length(`Course ID`) == 7 ~ `Course ID`,
+                                                 T ~ "unknown"),
+                         `Course Title` = c_title
+                         ) %>% select(-c_title)
+
 empty_titles <- course_titles %>% filter(`Course Title` == "")
 
 ```

@@ -398,7 +398,7 @@ function(input, output, session) {
       #mutate_at(vars(flag_red, flag_orange, flag_green), funs(ifelse(.,., " ")))%>%
       #select(-cv) %>%
      left_join(preparatory, by = "target") %>%
-      rename(Course = target, `Preparatory Coursework` = Preparation)
+      rename(Course = target, `Preparatory Courses` = Preparation)
   
   })
   
