@@ -13,6 +13,7 @@ load("app_model.RDATA") #contains app_model and full dataframe of topic models
 load("rules_clean.RDATA")
 load("grade_prediction.RDATA")
 load("student_TP.RDATA")
+load("d_text.RDATA")
 
 course_all <- app_model$`All Courses`[[1]]
 course_advanced <- course_all[!str_detect(course_all,"HUM10|SCI10|SSC10")]
@@ -500,7 +501,7 @@ function(input, output, session) {
       filter(course != "student_interest") %>%   
       # Recommendations
       top_n(
-        n  = -10,
+        n  = -20,
         wt = distance
       ) %>%
       
