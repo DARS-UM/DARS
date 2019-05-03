@@ -47,7 +47,7 @@ course_titles <-  d_text$catalogues %>%
 
 empty_titles <- course_titles %>% filter(`Course Title` == "")
 ```
-####Uniform titles
+####Uniform course labels
 We do not have the course codes for all courses, in that case we use the course titles as identifiers, for more pleasant display to the user, we will make course labels uniform, for unknown codes we give the label "unknown" and attatch the title as title. 
 ```{r attatch titles}
 uniform_course_labels <- course_titles %>% mutate(`c_title`= case_when(is.na(`Course Title`) ~ `Course ID`,
@@ -581,7 +581,8 @@ if(exists("manuals_topic_model") && exists("catalogues_topic_model")){
 save(tb_topic_model, file = "./Output/full_topic_model_tibble.RDATA")
 ```
 
-##Plots - Model Evaluation CHANGE TO CONFERENCE CODE
+##Model Evaluation CHANGE TO CONFERENCE CODE
+###Plots
 To evaluate how many topics are optiomal, we graph the perplexity and log Likelihood of models against the number of topics.
 ```{r perplexity plots, eval = TRUE}
 #Function
@@ -609,14 +610,24 @@ plot_evaluation("catalogues")
 plot_evaluation("manuals")
 ```
 
+###Value
+```{r best number of topics extraction}
+n_topics_best_manuals    <- manuals_topic_model    %>% top_n(1, LogLikelihood) %>% pull(n_topic)
+n_topics_best_catalogues <- catalogues_topic_model %>% top_n(1, LogLikelihood) %>% pull(n_topic)
+```
+
 ##Best model
 We extract the best model and use it to innitialise the the second run of LDA algorithm with more burns and iterations
-```{r best model, eval = T}
-catalogues_tm <- tb_topic_model %>% filter()
-catalogue_dtm <- tb_topic_model$DTM[[1]]
-catalogue_lda <- tb_topic_model %>% filter(n_topic == "65") %>% pull(Model) %>%.[[1]]
+###catalogues best model
+```{r best catalogues tm, eval = T}
+catalogues_tm <- tb_topic_model %>% filter(Origin == "catalogues")
 
-best_lda <- LDA(x = catalogue_dtm, 
+catalogue_dtm <- catalogues_tm$DTM[[1]]
+
+catalogue_lda <- catalogues_tm %>% filter(n_topic == n_topics_best_catalogues) %>% pull(Model) %>%.[[1]]
+
+#Train best model 
+catalogues_best_lda <- LDA(x = catalogue_dtm, 
                 model = catalogue_lda, 
                 control =  list(
                   nstart = 50,
@@ -627,25 +638,69 @@ best_lda <- LDA(x = catalogue_dtm,
                   thin   = 2000) 
                 )
 
-save(best_lda, file = "./Output/catalogues_best_model.RDATA") 
+save(catalogues_best_lda, file = "./Output/catalogues_best_model.RDATA") 
 ```
+###manuals best model
+NOTE: BEST MANUALS NUMBER OF TOPICS TO BE DETERMINED 
+```{r best manuals tp, eval = F}
+manuals_tm    <- tb_topic_model %>% filter(Origin == "manuals")
+
+manual_dtm <- manuals_tm$DTM[[1]]
+
+manual_lda <- manuals_tm %>% filter(n_topic == n_topics_best_manuals) %>% pull(Model) %>%.[[1]]
+
+#Train best model
+manuals_best_lda <- LDA(x = manual_dtm, 
+                model = manual_lda, 
+                control =  list(
+                  nstart = 50,
+                  seed   = 1 : 50, #must have length nstart
+                  best   = TRUE,
+                  burnin = 100,
+                  iter   = 10000,
+                  thin   = 2000) 
+                )
+
+save(manuals_best_lda, file = "./Output/manuals_best_model.RDATA") 
+```
+
 ##Best model pass to app
-```{r}
-load("./Output/catalogues_tmp_topic_model_tibble.RDATA")
+```{r load best models, eval = F}
+load("./Output/full_topic_model_tibble.RDATA") #contains both manuals and catalogues
+
+#Alternatively:
+#load("./Output/catalogues_topic_model_tibble.RDATA")
+
+#Best models:
 load("./Output/catalogues_best_model.RDATA")
+load("./Output/manuals_best_model.RDATA")
+```
+
+```{r best models clean for app, eval = TRUE}
+#helper function
+get_best_lda <- function(Origin){
+  if(Origin == "catalogues"){
+    
+    return (catalogues_best_lda[[1]])
+    
+  } else if(Origin == "manuals"){
+    
+      return(manuals_best_lda[[1]])
+    }
+}
 
 best_model <- tibble( 
-  n_topic = 65
+  n_topic = c(n_best_catalogues, n_best_manuals)
   ) %>%
   
-  mutate(Origin     = "catalogues",
+  mutate(Origin     = c("catalogues", "manuals"),
          `Topic ID` = paste(Origin, n_topic, sep = "_"),
          
          #Document Term Matrix
          DTM        = pmap(.l = list(Origin), .f = extract_dtm),
   
          #Fit Model
-         Model  = list(best_lda),
+         Model  = pmap(.l = list(Origin), .f = get_best_lda),
          
          #Gamma distribution
          Gamma = pmap(.l = list(Model), .f = get_distributions, distrib_str = "gamma"),
@@ -675,11 +730,16 @@ best_model <- tibble(
 
 ```
 
+###Save best model
+```{r save best model, eval = TRUE}
+save(best_model, file = "./Output/best_model.RDATA")
+```
+
 #App
 For our recommender system, we pass the distributions, number of topics, origin, and key words to the app.
 ##Distributions and Key words
 The function `clean_kw` removes stopwords from our key words.
-```{r function clean key words}
+```{r function clean key words, eval = TRUE}
 clean_kw <- function(kw_list){
 
   #stopwords
@@ -697,14 +757,14 @@ clean_kw <- function(kw_list){
 
 ```
 On our `topic_model` tibble we filter only information relevant for the app, and apply `clean_kw` on our `kw` column
-```{r crop and clean TM for App}
-app_topic_model <- test_topic_model %>% select(`Topic ID`, n_topic, Origin, Gamma, Beta, kw) %>%
+```{r crop and clean TM for App, eval = TRUE }
+app_topic_model <- best_model %>% select(`Topic ID`, n_topic, Origin, Gamma, Beta, kw) %>%
   mutate(kw = map(kw, .f = clean_kw))
 ```
 
 ##Convenience Vectors
 For the app we also need to have a list of all courses and an example of a prospective semester
-```{r for convenience}
+```{r for convenience, eval = TRUE}
 # set seed
 set.seed(1)
 
@@ -726,267 +786,23 @@ course_all <- d_course %>%
 
 #
 ##courses following_semester
-course_following_semester <- sample(
-  x       = course_all,
-  size    = 60,
-  replace = FALSE
-  ) %>% sort
+course_following_semester <- sample(x = course_all,
+                                    size    = 60,
+                                    replace = FALSE) %>% sort()
 
 ```
 
-```{r adding convenience vectors}
-app_topic_model <- app_topic_model %>%
-  mutate(`All Courses`     = course_all,
-         `Sample semester` = course_following_semester)
+```{r adding convenience vectors, eval = TRUE}
+app_model <- app_topic_model %>%
+  mutate(`All Courses`     = list(course_all),
+         `Sample semester` = list(course_following_semester),
+         `Course Titles`   = list(course_titles) )
+
 
 #rm(course_all, course_following_semester)
 ```
 ## Saving files for APP
-```{r app files}
-# save(app_topic_model, file = "App/Recommender System/data_topic_models.RDATA")
+```{r app files, eval = TRUE}
+save(app_model, file = "App/Recommender System/app_model.RDATA")
+save(app_model, file = "./Output/app_model.RDATA")
 ```
-# Visualization
-### Functions 
-This part is adapted 
-```{r LDA prepare, eval = F}
-prepare_data_LDA_beta <- function(d_beta){
-  
-  data.frame(d_beta) %>%
-    mutate(topic = paste("Topic", topic)) %>%
-      group_by(topic) %>%
-        top_n(10, beta) %>%
-      ungroup %>%
-      arrange(topic, desc(beta))
-  
-} #repetition??? of inspect topics?
-
-prepare_data_LDA_gamma <- function(d_gamma, level = Course){
-  
-  data_gamma <- data.frame(d_gamma) %>%
-    mutate(topic = paste("Topic", topic)) %>%
-    rename(`Course ID` = document)
-  
-  if(ensym(level) == sym("Course")) data_gamma <- data_gamma %>%
-                                      rename(facet = `Course ID`) 
-  
-  if(ensym(level) == sym("Cluster")) data_gamma <- data_gamma %>% 
-                                       left_join(select(d_course, `Course ID`, Cluster), by = "Course ID") %>%
-                                       filter(!is.na(Cluster)) %>%
-                                       rename(facet = Cluster)
-                                       
-  if(ensym(level) == sym("Concentration")) data_gamma <- data_gamma %>%
-                                             left_join(select(d_course, `Course ID`, Concentration, `Concentration (additional)`), by = "Course ID") %>%
-                                             gather(X, Concentration, Concentration, `Concentration (additional)`, na.rm = TRUE) %>%
-                                             rename(facet = Concentration)
-  
-  data_gamma <- data_gamma %>%
-    group_by(facet, topic) %>%
-      summarise(gamma = sum(gamma)) %>%
-    filter(gamma > 0.05) %>%
-    ungroup %>%
-    arrange(facet, desc(gamma))
-  
-  return(data_gamma)
-  
-}
-
-# Bet Distribution
-test <- list()
-
-a <-  names(distribution)[1]
-test[[a]] <- lapply(distribution[[a]],
-                      prepare_data_LDA_beta)
-
-# Gamma Distribution
-b <- names(distribution)[2]
-test[[b]] <- lapply(distribution[[b]],
-                    prepare_data_LDA_gamma)
-
-test <- test_topic_model %>%
-  mutate(preparedBeta = pmap(list(Beta), .f = prepare_data_LDA_beta),
-         preparededGamma = pmap(list(Gamma), .f = prepare_data_LDA_gamma)
-         )
-test[["preparedBeta"]]
-rm(a,b #,test
-   )
-```
-This part is not adapted
-```{r LDA visualize, eval = F}
-visualize_LDA_beta <- function(data_prepared, id_plot = "test"){
-  
-  data_prepared %>%
-  ggplot(aes(x = reorder_within(term,
-                                by = beta,
-                                within = topic),
-             y = beta,
-             fill = topic)) +
-    geom_col(show.legend = F) +
-    facet_wrap(~ topic, scales = "free") +
-    scale_x_reordered() +
-    labs(x = "Terms", y = "Beta", title = "Main Terms of each Topic") +
-    coord_flip() +
-    theme_light() +
-    theme(plot.title = element_text(hjust = 0.5))
-  
-  ggsave(paste(id_plot, "beta.jpeg"),
-         width = 16, height = 10, path = "Plots/Topic Model")
-  
-}
-
-visualize_LDA_gamma1 <- function(data_prepared, id_plot = "test"){
-  
-  data_prepared %>%
-    ggplot(aes(reorder_within(facet, 
-                              by = gamma, 
-                              within = topic), 
-               y = gamma, 
-               fill = topic)) +
-    geom_col(show.legend = F) +
-    facet_wrap(~ topic, 
-               scales = "free") +
-    scale_x_reordered() +
-    coord_flip() +
-   # labs(x = ensym(facet), y = "Gamma", title = paste("Main", ensym(facet), "of each Topic") +
-    theme_light() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 0),
-          plot.title = element_text(hjust = 0.5))
-  
-  ggsave(paste(id_plot, "gamma1.jpeg"),
-         width = 16, height = 10, path = "Plots/Topic Model")
-  
-}
-
-visualize_LDA_gamma2 <- function(data_prepared, id_plot = "test"){
-  
-  data_prepared %>%
-    ggplot(aes(reorder_within(topic, 
-                              by = gamma,
-                              within = facet), 
-               y = gamma, 
-               fill = topic)) +
-    geom_col(show.legend = F) +
-    facet_wrap(~ facet, 
-               scales = "free") +
-    scale_x_reordered() +
-    coord_flip() +
-  #  labs(x = "Topics", y = "Gamma", title = "Main Topics of each Courses/Cluster") +
-    theme_light() +
-    theme(axis.text.x = element_text(angle = 90, hjust = 0),
-          plot.title = element_text(hjust = 0.5))
-  
-  ggsave(paste(id_plot, "gamma2.jpeg"),
-         width = 16, height = 10, path = "Plots/Topic Model")
-    
-}
-```
-
-```{r LDA visualize all distrib, eval = F}
-visualize_LDA_all_distrib <- function(data, level = Course, id_plot = "test"){
-
-  # Beta distribution
-  data %>% 
-    prepare_data_LDA_beta %>%
-    visualize_LDA_beta(id_plot = id_plot)
-  
-  # Gamma 1 distribution
-  data %>% 
-    prepare_data_LDA_gamma(level = !!ensym(level)) %>%
-    visualize_LDA_gamma1(id_plot = id_plot)
-  
-  # Gamma 2 distribution
-  data %>% 
-    prepare_data_LDA_gamma(level = !!ensym(level)) %>%
-    visualize_LDA_gamma2(id_plot = id_plot)
-  
-}
-```
-
-```{r LDA visualize all level, eval = F}
-visualize_LDA_all_level <- function(data, id_plot = "test"){
-  
-  data %>% 
-    visualize_LDA_all_distrib(level = Course,
-                              id_plot = paste(id_plot, "_course"))
-  
-  data %>% 
-    visualize_LDA_all_distrib(level = Cluster,
-                              id_plot = paste(id_plot, "_cluster"))
-    
-  data %>% 
-    visualize_LDA_all_distrib(level = Concentration,
-                              id_plot = paste(id_plot, "_concentration"))
-  
-}
-```
-
-### Plots
-```{r LDA plot, cache = TRUE, eval = F}
-load("LDA.RDATA")
-
-LDA_description_5 %>% visualize_LDA_all_level(id_plot = "description_k5")
-
-LDA_overview_5 %>% visualize_LDA_all_level(id_plot = "overview_k5")
-
-LDA_manual_5 %>% visualize_LDA_all_level(id_plot = "manual_k5")
-```
-
-```{r label, eval = FALSE, eval = F}
-tidy(LDA_manual_10, "beta") %>%
-  filter(beta > 1e-3) %>%
-  bind_tf_idf(term = term, document = topic, n = beta) %>%
-  group_by(topic) %>%
-  top_n(10, tf_idf) %>%
-  arrange(topic, desc(tf_idf))
-
-
-  count(term, topic) %>%
-  arrange(desc(n)) %>%
-    
-  filter(beta > 1e-3) %>%
-  group_by(term) %>%
-    mutate(n_topic = n(),
-           beta = beta / n_topic) %>%
-  group_by(topic) %>%
-    top_n(10, beta)
-
-
-  count(topic, term, wt = beta) %>%
-  (term = term, document = topic, n = n) %>%
-  group_by(topic) %>%
-  top_n(10, tf_idf)
-
-
-  group_by(term) %>%
-  summarise(beta = sum(beta)) %>%
-  arrange(desc(beta))
-
-
-
-  
-
-
-labels <- list(
-  description_10 = "X"
-)
-```
-
-```{r label bis, eval = FALSE}
-visualize_LDA(LDA_cluster_10, id_plot = "Cluster, k = 10 with labelled topics", facet = T,
-              topic_names = c("Psychology & Information", "Economics and Development", "Biology", "Chemistry and Math",
-                              "Sociology", "Law", "Research", "International Politics",
-                              "Philosophy", "Humanities"))
-
-visualize_LDA(LDA_cluster_17, id_plot = "Cluster, k = 17 with labelled topics", facet = T,
-              topic_names = c("Science/Knowledge", "Psycho", "Biology", "Chemistry", "Culture",
-                              "Conflict", "Research", "Foreign Policy", "Arts", "Literature",
-                              "Communication Skills", "Law", "Humanities", "Computer", "Economics", 
-                              "Math", "Management and ?"))
-visualize_LDA(LDA_cluster_25, id_plot = "Cluster, k = 25 with labelled topics", facet = T,
-              topic_names = c(
-                "Information", "Psycho", "Bio", "Chem", "Sociology",
-                "History", "skills", "Europe", "Philosophy", "IR",
-                "Conference", "Law", "Media", "Philosophy", "Economics",
-                "Math", "Management and Literature", "Entrepreneurship", "Conflict", "Research",
-                "Arts", "Computer Science", "Policy?", "Physiology", "Qual. Res."))
-```
-
