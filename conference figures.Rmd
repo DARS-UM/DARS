@@ -141,7 +141,7 @@ grViz("digraph flowchart{
 
       SUG [label = 'Course Suggestions']
       WAR [label = 'Warnings']
-      PRE [label = 'Preparatory Coursework']
+      PRE [label = 'Preparatory Courses']
       }
 
       TR [label = 'Student´s Transcript']
