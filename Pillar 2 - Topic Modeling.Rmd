@@ -520,7 +520,7 @@ Note: The manuals take a long time to run, we keep the trainings of catalogues a
 
 #Input vectors
 which_texts <- "catalogues"
-topic_numbers <-seq(from = 5, to = 150, by = 5)
+topic_numbers <-seq(from = 5, to = 200, by = 5)
 
 #Intitial time
 initial_time <- Sys.time()
