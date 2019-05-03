@@ -566,21 +566,22 @@ save(manuals_topic_model, file = paste("./Output/", which_texts, "_topic_model_t
 #    get_top_terms_topic, get_top_topics_course, get_kw)
 ```
 
-If we trained separately but with the same number of topics, and wish to merge and save them:
+If we trained separately and wish to merge into a single tibble: 
 ```{r merge if trained separately, eval = TRUE}
-cata <- catalogues_topic_model$n_topic
-man  <- manuals_topic_model$n_topic
-
 tb_topic_model <- tibble()
 
-if(all(cata == man)){
+if(exists("manuals_topic_model") && exists("catalogues_topic_model")){
   tb_topic_model <- rbind(catalogues_topic_model, manuals_topic_model)
-}
+} else  if(exists("catalogues_topic_model")){
+  tb_topic_model <- catalogues_topic_model 
+  } else if (exists("manuals_topic_model")){
+    tb_topic_model <- catalogues_topic_model
+} 
 
 save(tb_topic_model, file = "./Output/full_topic_model_tibble.RDATA")
 ```
 
-##Plots - Model Evaluation
+##Plots - Model Evaluation CHANGE TO CONFERENCE CODE
 To evaluate how many topics are optiomal, we graph the perplexity and log Likelihood of models against the number of topics.
 ```{r perplexity plots, eval = TRUE}
 #Function
@@ -609,9 +610,9 @@ plot_evaluation("manuals")
 ```
 
 ##Best model
-We extract the best model for the catalogues and use it to innitialise the the second run of LDA algorithm with more burns and iterations
+We extract the best model and use it to innitialise the the second run of LDA algorithm with more burns and iterations
 ```{r best model, eval = T}
-catalogues_tm <- tb_topic_model %>% fil
+catalogues_tm <- tb_topic_model %>% filter()
 catalogue_dtm <- tb_topic_model$DTM[[1]]
 catalogue_lda <- tb_topic_model %>% filter(n_topic == "65") %>% pull(Model) %>%.[[1]]
 
