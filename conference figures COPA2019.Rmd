@@ -192,7 +192,7 @@ df_logLike_catalogue %>%
   
   labs(title = NULL, subtitle = NULL, x = "Number of Topics", y = "Log-Likelihood") +
 
-  ggsave(filename = str_c("Model Selection.jpeg"), path = output_folder,
+  ggsave(filename = str_c("model-selection.jpeg"), path = output_folder,
          width = plot_width, height = plot_height)
 ```
 
@@ -320,7 +320,7 @@ fit_lasso %>%
   labs(y = "Cross-Validation Mean Absolute Error") +
   coord_flip()
 
-ggsave(filename = str_c("CV.jpeg"), path = output_folder,
+ggsave(filename = str_c("cv-mae.jpeg"), path = output_folder,
          width = plot_width/1.5, height = plot_height/3.5)
 
 fit_lasso %>%
@@ -333,5 +333,5 @@ fit_lasso %>%
   gather(key = x, value = y) %>% 
   kable("latex", booktabs = TRUE, col.names = NULL) %>%
   kable_styling(latex_options = c("striped", "scale_down")) %>%
-  as_image(file = str_c(output_folder, "/CV.pdf"))
+  as_image(file = str_c(output_folder, "/cv-mae-table.pdf"))
 ```
