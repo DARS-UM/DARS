@@ -1,0 +1,10 @@
+
+\begin{tabular}{cccccc}
+\toprule
+Course & Topic 1 & Topic 2 & Topic 3 & Topic 4 & Topic 5\\
+\midrule
+Course 1 & 0.0 & 0.7 & 0.2 & 0.1 & 0.0\\
+Course 2 & 0.2 & 0.2 & 0.2 & 0.2 & 0.2\\
+Course 3 & 0.0 & 0.4 & 0.2 & 0.1 & 0.2\\
+\bottomrule
+\end{tabular}

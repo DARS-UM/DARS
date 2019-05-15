@@ -1,0 +1,10 @@
+
+\begin{tabular}{cc}
+\toprule
+Course & Grade\\
+\midrule
+Course 1 & 6/10\\
+Course 2 & 9/10\\
+Course 3 & 2.5/10\\
+\bottomrule
+\end{tabular}

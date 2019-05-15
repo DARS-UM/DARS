@@ -1,0 +1,168 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\bibstyle{plainnat}
+\providecommand \oddpage@label [2]{}
+\jmlr@workshop{}
+\jmlr@title{Conformal Prediction for Students' Grades}{Conformal Prediction for Students' Grades in a Course Recommender System}
+\jmlr@author{\Name {Rapha\"{e}l Morsomme\nametag {\thanks {with a note}}} \Email {raphael.morsomme@maastrichtuniversity.nl}\\ \addr Zwingelput 4, 6211 KH Maastricht, the Netherlands \AND \Name {Evgueni Smirnov} \Email {smirnov@maastrichtuniversity.nl}\\ \addr DKE's address, 6211 KH Maastricht, the Netherlands}{\Name {Rapha\"{e}l Morsomme\nametag {\thanks {with a note}}} \Email {raphael.morsomme@maastrichtuniversity.nl}\\ \addr Zwingelput 4, 6211 KH Maastricht, the Netherlands \AND \Name {Evgueni Smirnov} \Email {smirnov@maastrichtuniversity.nl}\\ \addr DKE's address, 6211 KH Maastricht, the Netherlands}
+\newlabel{jmlrstart}{{}{1}{}{Doc-Start}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.0.1}}
+\newlabel{sec:intro}{{1}{1}{Introduction}{section.0.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related Work (Evgueni)}{2}{section.0.2}}
+\newlabel{sec:related}{{2}{2}{Related Work (Evgueni)}{section.0.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Data}{2}{section.0.3}}
+\newlabel{sec:data}{{3}{2}{Data}{section.0.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Example of Student Data}}{3}{table.1}}
+\newlabel{tab:student-data}{{1}{3}{Example of Student Data}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Example of Course Data}}{3}{table.2}}
+\newlabel{tab:course-data}{{2}{3}{Example of Course Data}{table.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Methodology}{3}{section.0.4}}
+\newlabel{sec:methodology}{{4}{3}{Methodology}{section.0.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}The Course Recommender System}{3}{subsection.0.4.1}}
+\newlabel{sec:crs}{{4.1}{3}{The Course Recommender System}{subsection.0.4.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Overview}{3}{subsubsection.0.4.1.1}}
+\newlabel{sec:overview}{{4.1.1}{3}{Overview}{subsubsection.0.4.1.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Flowchart of the Course Recommender System}}{4}{figure.1}}
+\newlabel{fig:flowchart}{{1}{4}{Flowchart of the Course Recommender System}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.2}Topic Model}{4}{subsubsection.0.4.1.2}}
+\newlabel{sec:tm}{{4.1.2}{4}{Topic Model}{subsubsection.0.4.1.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Topic Distribution in the course COR1004 Political Philosophy.}}{5}{figure.2}}
+\newlabel{fig:gamma}{{2}{5}{Topic Distribution in the course COR1004 Political Philosophy}{figure.2}{}}
+\newlabel{fig:beta-4}{{\@subfigurelabel {3}{a}}{5}{Topic Model}{subfigure.3.1}{}}
+\newlabel{fig:beta-19}{{\@subfigurelabel {3}{b}}{5}{Topic Model}{subfigure.3.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Word Distribution in the main two topics of COR1004 Political Philosophy. Topic 4 corresponds to international politics and Topic 19 to philosophy.}}{5}{figure.3}}
+\newlabel{fig:beta}{{3}{5}{Word Distribution in the main two topics of COR1004 Political Philosophy. Topic 4 corresponds to international politics and Topic 19 to philosophy}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.3}Student Model}{5}{subsubsection.0.4.1.3}}
+\newlabel{sec:sm}{{4.1.3}{5}{Student Model}{subsubsection.0.4.1.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Maximum Likelihood Model Selection: we choose the model with 65 topics.}}{6}{figure.4}}
+\newlabel{fig:ll}{{4}{6}{Maximum Likelihood Model Selection: we choose the model with 65 topics}{figure.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Toy Example of Topic Expertise}}{6}{table.3}}
+\newlabel{tab:toy}{{3}{6}{Toy Example of Topic Expertise}{table.3}{}}
+\newlabel{tab:toy-gamma}{{\@subtablelabel {3}{a}}{6}{Toy Example of Topic Expertise}{subtable.3.1}{}}
+\newlabel{tab:toy-grade}{{\@subtablelabel {3}{b}}{6}{Toy Example of Topic Expertise}{subtable.3.2}{}}
+\newlabel{tab:toy-contribution}{{\@subtablelabel {3}{c}}{6}{Toy Example of Topic Expertise}{subtable.3.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Contribution of Individual Courses towards a Student's Topic Expertise Profile.}}{7}{figure.5}}
+\newlabel{fig:toy-expertise}{{5}{7}{Contribution of Individual Courses towards a Student's Topic Expertise Profile}{figure.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.4}Underlying Algorithm: Sparse Regression Model}{7}{subsubsection.0.4.1.4}}
+\newlabel{sec:sm}{{4.1.4}{7}{Underlying Algorithm: Sparse Regression Model}{subsubsection.0.4.1.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Distribution of Cross-Validation Error}}{7}{figure.6}}
+\newlabel{fig:cv-mae}{{6}{7}{Distribution of Cross-Validation Error}{figure.6}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.5}Prediction Region for Grade}{7}{subsubsection.0.4.1.5}}
+\newlabel{sec:warning}{{4.1.5}{7}{Prediction Region for Grade}{subsubsection.0.4.1.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}The Inductive Confidence Machine (Evgueni)}{8}{subsection.0.4.2}}
+\newlabel{sec:icm}{{4.2}{8}{The Inductive Confidence Machine (Evgueni)}{subsection.0.4.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{8}{section.0.5}}
+\newlabel{sec:results}{{5}{8}{Results}{section.0.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{8}{section.0.6}}
+\newlabel{sec:conclusion}{{6}{8}{Conclusion}{section.0.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Comments to Evgueni}{8}{section.0.7}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}others}{8}{section.0.8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Sub-sections}{8}{subsection.0.8.1}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {8.1.1}Sub-sub-sections}{8}{subsubsection.0.8.1.1}}
+\@writefile{toc}{\contentsline {paragraph}{Sub-sub-sub-sections}{8}{section*.1}}
+\@writefile{toc}{\contentsline {subparagraph}{Sub-sub-sub-sub-sections}{8}{section*.2}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Cross-Referencing}{9}{section.0.9}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Equations}{9}{section.0.10}}
+\newlabel{sec:math}{{10}{9}{Equations}{section.0.10}{}}
+\newlabel{eq:trigrule}{{1}{9}{Equations}{equation.0.10.1}{}}
+\newlabel{eq:f}{{2}{9}{Equations}{equation.0.10.2}{}}
+\newlabel{eq:df}{{3}{9}{Equations}{equation.0.10.3}{}}
+\newlabel{eq:y}{{4}{10}{Equations}{equation.0.10.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}Operator Names}{10}{subsection.0.10.1}}
+\newlabel{sec:op}{{10.1}{10}{Operator Names}{subsection.0.10.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Predefined Operator Names (taken from \textsf  {amsmath} documentation)}}{10}{table.4}}
+\newlabel{tab:operatornames}{{4}{10}{Predefined Operator Names (taken from \textsf {amsmath} documentation)}{table.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {11}Vectors and Sets}{10}{section.0.11}}
+\newlabel{sec:vec}{{11}{10}{Vectors and Sets}{section.0.11}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12}Floats}{10}{section.0.12}}
+\newlabel{sec:floats}{{12}{10}{Floats}{section.0.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Student Data }}{11}{table.5}}
+\newlabel{tab:}{{5}{11}{Student Data}{table.5}{}}
+\newlabel{tab:data-student}{{5}{11}{Student Data}{table.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {12.1}Tables}{11}{subsection.0.12.1}}
+\newlabel{sec:tables}{{12.1}{11}{Tables}{subsection.0.12.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces An Example Table}}{11}{table.6}}
+\newlabel{tab:example}{{6}{11}{An Example Table}{table.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces A Table With Horizontal Lines}}{12}{table.7}}
+\newlabel{tab:example-booktabss}{{7}{12}{A Table With Horizontal Lines}{table.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces A Table With Horizontal and Vertical Lines}}{12}{table.8}}
+\newlabel{tab:example-hline}{{8}{12}{A Table With Horizontal and Vertical Lines}{table.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces A Table With Numbers Aligned on the Decimal Point}}{12}{table.9}}
+\newlabel{tab:example-siunitx}{{9}{12}{A Table With Numbers Aligned on the Decimal Point}{table.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {12.2}Figures}{12}{subsection.0.12.2}}
+\newlabel{sec:figures}{{12.2}{12}{Figures}{subsection.0.12.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Example Image}}{13}{figure.7}}
+\newlabel{fig:nodess}{{7}{13}{Example Image}{figure.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Image Created Using \LaTeX  \ Code}}{13}{figure.8}}
+\newlabel{fig:teximage}{{8}{13}{Image Created Using \LaTeX \ Code}{figure.8}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {12.2.1}Sub-Figures}{13}{subsubsection.0.12.2.1}}
+\newlabel{sec:subfigures}{{12.2.1}{13}{Sub-Figures}{subsubsection.0.12.2.1}{}}
+\newlabel{fig:circle}{{\@subfigurelabel {9}{a}}{14}{Sub-Figures}{subfigure.9.1}{}}
+\newlabel{fig:square}{{\@subfigurelabel {9}{b}}{14}{Sub-Figures}{subfigure.9.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces An Example With Sub-Figures.}}{14}{figure.9}}
+\newlabel{fig:subfigex}{{9}{14}{An Example With Sub-Figures}{figure.9}{}}
+\newlabel{fig:circle2}{{\@subfigurelabel {10}{a}}{14}{Sub-Figures}{subfigure.10.1}{}}
+\newlabel{fig:square2}{{\@subfigurelabel {10}{b}}{14}{Sub-Figures}{subfigure.10.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Another Example With Sub-Figures.}}{14}{figure.10}}
+\newlabel{fig:subfigex2}{{10}{14}{Another Example With Sub-Figures}{figure.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {12.3}Sub-Tables}{14}{subsection.0.12.3}}
+\newlabel{sec:subtables}{{12.3}{14}{Sub-Tables}{subsection.0.12.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces An Example With Sub-Tables}}{14}{table.10}}
+\newlabel{tab:subtabex}{{10}{14}{An Example With Sub-Tables}{table.10}{}}
+\newlabel{tab:ab}{{\@subtablelabel {10}{a}}{14}{An Example With Sub-Tables}{subtable.10.1}{}}
+\newlabel{tab:cd}{{\@subtablelabel {10}{b}}{14}{An Example With Sub-Tables}{subtable.10.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Another Example With Sub-Tables}}{15}{table.11}}
+\newlabel{tab:subtabex2}{{11}{15}{Another Example With Sub-Tables}{table.11}{}}
+\newlabel{tab:ab2}{{\@subtablelabel {11}{a}}{15}{Another Example With Sub-Tables}{subtable.11.1}{}}
+\newlabel{tab:cd2}{{\@subtablelabel {11}{b}}{15}{Another Example With Sub-Tables}{subtable.11.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {12.4}Algorithms}{15}{subsection.0.12.4}}
+\newlabel{sec:algorithms}{{12.4}{15}{Algorithms}{subsection.0.12.4}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces The Gauss-Seidel Algorithm}}{15}{algocf.1}}
+\newlabel{alg:gauss}{{1}{15}{The Gauss-Seidel Algorithm}{algocf.1}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces Moore's Shortest Path}}{15}{algocf.2}}
+\newlabel{alg:moore}{{2}{15}{Moore's Shortest Path}{algocf.2}{}}
+\newlabel{step:locate}{{3}{15}{Moore's Shortest Path}{Item.7}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Computing Net Activation}}{16}{algocf.3}}
+\newlabel{alg:net}{{3}{16}{Algorithms}{algocf.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {13}Description Lists}{16}{section.0.13}}
+\@writefile{toc}{\contentsline {section}{\numberline {14}Theorems, Lemmas etc}{16}{section.0.14}}
+\newlabel{sec:theorems}{{14}{16}{Theorems, Lemmas etc}{section.0.14}{}}
+\newlabel{thm:eigenpow}{{1}{16}{Eigenvalue Powers}{theorem.0.14.1}{}}
+\citation{guyon-elisseeff-03}
+\citation{guyon2007causalreport}
+\citation{guyon-elisseeff-03,guyon2007causalreport}
+\newlabel{lem:sample}{{2}{17}{A Sample Lemma}{theorem.0.14.2}{}}
+\newlabel{rem:sample}{{3}{17}{A Sample Remark}{theorem.0.14.3}{}}
+\newlabel{cor:sample}{{4}{17}{A Sample Corollary}{theorem.0.14.4}{}}
+\newlabel{def:sample}{{5}{17}{A Sample Definition}{theorem.0.14.5}{}}
+\newlabel{con:sample}{{6}{17}{A Sample Conjecture}{theorem.0.14.6}{}}
+\newlabel{ax:sample}{{7}{17}{A Sample Axiom}{theorem.0.14.7}{}}
+\newlabel{ex:sample}{{1}{17}{An Example}{example.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {15}Color vs Grayscale}{17}{section.0.15}}
+\newlabel{sec:color}{{15}{17}{Color vs Grayscale}{section.0.15}{}}
+\bibdata{jmlr-sample}
+\bibcite{guyon-elisseeff-03}{{1}{2003}{{Guyon and Elisseeff}}{{}}}
+\bibcite{guyon2007causalreport}{{2}{2007}{{Guyon et~al.}}{{Guyon, Aliferis, and Elisseeff}}}
+\@writefile{toc}{\contentsline {section}{\numberline {16}Citations and Bibliography}{18}{section.0.16}}
+\newlabel{sec:cite}{{16}{18}{Citations and Bibliography}{section.0.16}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}First Appendix}{18}{section.0.A}}
+\newlabel{apd:first}{{A}{18}{First Appendix}{section.0.A}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}Second Appendix}{18}{section.0.B}}
+\newlabel{apd:second}{{B}{18}{Second Appendix}{section.0.B}{}}
+\newlabel{jmlrend}{{B}{18}{end of Conformal Prediction for Students' Grades}{section*.5}{}}

@@ -1,0 +1,19 @@
+\begin{thebibliography}{2}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Guyon and Elisseeff(2003)]{guyon-elisseeff-03}
+I.~Guyon and A.~Elisseeff.
+\newblock An introduction to variable and feature selection.
+\newblock \emph{JMLR}, 3:\penalty0 1157--1182, March 2003.
+
+\bibitem[Guyon et~al.(2007)Guyon, Aliferis, and
+  Elisseeff]{guyon2007causalreport}
+I.~Guyon, C.~Aliferis, and A.~Elisseeff.
+\newblock Causal feature selection.
+\newblock Technical report, Clopinet, 2007.
+
+\end{thebibliography}
