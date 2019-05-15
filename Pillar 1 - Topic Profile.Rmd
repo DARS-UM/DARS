@@ -12,10 +12,13 @@ editor_options:
 __Considerations__:
 
 * extract course descriptions from courses not offer in 2018-2019 e.g. SCI2012.
+
 * give more weight to 3000-level courses
 
 * consider following predictors:
      * GPA (per concentration)
+     
+# Set up
 
 ```{r setup, include = FALSE} 
 knitr::opts_chunk$set(cache.path = "Cache/Pillar 1/")
@@ -27,23 +30,23 @@ library(tidyverse)
 ```
 
 ```{r load, cache.lazy = TRUE} 
-load("App/Recommender System/app_model.RDATA")
-load("Output/data_pillar_1.RDATA")
+load("Output/app_model.RDATA")
+load("Output/data_student.RDATA")
 load("Output/course_current.RDATA")
 
 course_target <- course_current[! str_detect(course_current, "...10..")]
 course_target <- union(course_target, str_subset(course_current, "COR"))# include core courses
 ```
 
-# Course topic profile
-```{r gamma_spread} 
-gamma        <- app_model$Gamma %>% .[[1]] %>% mutate(topic = topic %>% str_replace(" ", "_"))  #topic_model_gb$g_overview[[15]] %>% mutate(topic = topic %>% str_replace(" ", "_"))
+# Topic Model
+```{r gamma_spread}
+gamma <- app_model$Gamma[[1]] %>%  mutate(topic = topic %>% str_replace(" ", "_"))
 gamma_spread <- gamma %>% spread(topic, gamma)
-
-beta <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta) #topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
+beta  <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta)
+remove(app_model)
 ```
 
-# Student topic profile
+# Students' Topic Expertise
 ```{r student_TP} 
 student_TP <- d_transcript_augmented %>% 
   
@@ -67,12 +70,8 @@ student_TP <- d_transcript_augmented %>%
 ```
 
 Raphael's topic profile is coherent: topics with a high value correspond to my academic focus and topics with a low score to themes I never covered (i.e. law, literature).
-#Save
-```{r save student_TP} 
-save(student_TP, file = "./App/Recommender System/student_TP.RDATA")
-```
 
-# Student GPA
+# Students' Academic Performance
 
 ```{r grade_ECTS} 
 d_transcript_augmented <- d_transcript_augmented %>%
@@ -151,21 +150,22 @@ student_profile <- d_transcript_augmented %>%
   left_join(student_TP , by = c("Student ID", "time"))
 ```
 
-```{r} 
-student_profile_nest <- student_profile %>%
-  
-  nest(.key = profile, matches("GPA|Topic")) %>%
-  
-  mutate(profile = profile %>% map(as.matrix))
+Remove course enrolments from 2007 from the model because we have no information on the previous course enrolment of these students, hence no data on their previous academic performance and skills acquired in previous courses.
+```{r}
+student_profile <- student_profile %>% filter(Year_numerical != 2007)
 ```
 
+## Save
+```{r save student_TP} 
+save(student_profile, file = "Output/student_profile.RDATA")
+```
 # Regressing grade on TP and GPA
 
 ```{r find_df} 
 find_df <- function(course)  student_profile %>% filter(`Course ID` == course)
 ```
 
-## Lasso
+
 ```{r my_cv.glmnet} 
 my_cv.glmnet <- function(df, alpha = 1, predictors){
   
@@ -174,13 +174,14 @@ my_cv.glmnet <- function(df, alpha = 1, predictors){
   y <- df[names(df) == "Grade"] %>% as.matrix
   x <- df[names(df) != "Grade"] %>% as.matrix
   
-  nfold <- min(10, floor(nrow(df) / 3))
+  nfold <- min(10, floor(nrow(df) / 3)) # try nfold = 10
   
   cv.glmnet(x, y, nfolds = nfold, type.measure = "mae", alpha = alpha)
   
 }
 ```
 
+## Model fit
 ```{r fit_lasso, cache = TRUE} 
 fit_lasso <- tibble(target = course_target) %>%
   
@@ -194,6 +195,7 @@ fit_lasso <- tibble(target = course_target) %>%
   select(-d)
 ```
 
+## Extract results
 ```{r fit_lasso extract} 
 fit_lasso <- fit_lasso %>%
   
@@ -235,23 +237,18 @@ mean(fit_lasso$cv_error); weighted.mean(fit_lasso$cv_error, fit_lasso$n)
 ```
 
 Topic chosen by model are related to the course.
-```{r} 
-beta <- app_model$Beta %>% .[[1]] %>% group_by(topic) %>% top_n(15, beta)
-#beta <- topic_model_gb$b_overview[[15]] %>% group_by(topic) %>% top_n(15, beta)
-
-i <- 2; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Contemporary Classical Sociology: topic ~ law, foreign policy, culture
-beta %>% filter(topic == "Topic 18")
-beta %>% filter(topic == "Topic 8" )
-
-i <- 12; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Business Administration: topic ~ business
-beta %>% filter(topic == "Topic 19")
+```{r}
+i <- 1; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Contemporary Classical Sociology: topic ~ law, foreign policy, culture
+beta %>% filter(topic == "Topic 27")
+beta %>% filter(topic == "Topic 62")
 
 i <- 3; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # Culture, Politics and SOciety in Contemporary Asia: topic ~ law, international, policy
-beta %>% filter(topic == "Topic 21") 
-beta %>% filter(topic == "Topic 23")
+beta %>% filter(topic == "Topic 29") 
+beta %>% filter(topic == "Topic 64")
 
-i <- 9; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of Western Political Thought: GPA_HUM and topic ~ natural science
-beta %>% filter(topic == "Topic 7") 
+i <- 5; fit_lasso$coefi[[i]]; fit_lasso$target[[i]] # history of Western Political Thought: GPA_HUM and topic ~ natural science
+beta %>% filter(topic == "Topic 16")
+beta %>% filter(topic == "Topic 4")
 ```
 
 # Preparatory courses
@@ -293,6 +290,7 @@ fit_lasso_topic <- fit_lasso_topic %>%
 print(fit_lasso_topic)
 ```
 
+
 ```{r} 
 d_prep <- fit_lasso_topic %>% 
   
@@ -327,7 +325,11 @@ print(d_prep)
 ```{r} 
 fit_lasso_app <- fit_lasso %>% select(target, cv)
 
-student_profile_nest_app <- student_profile_nest %>%
+student_profile_nest_app <- student_profile %>%
+  
+  nest(.key = profile, matches("GPA|Topic")) %>%
+  
+  mutate(profile = profile %>% map(as.matrix)) %>%
   
   group_by(`Student ID`) %>% # only keep most recent profile of each student
   arrange(desc(time)) %>%
