@@ -1,0 +1,295 @@
+---
+title: "Pillar 1 - Conformal Prediction"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# Set up
+
+```{r setup, include = FALSE}
+set.seed(1)
+
+knitr::opts_chunk$set(fig.width = 3, fig.height = 2,
+                      echo = FALSE, warning = FALSE)
+
+library(tidyverse)
+library(glmnet)
+
+load("Output/CV.RDATA")
+load("Output/data_student.RDATA")
+load("Output/student_profile.RDATA")
+```
+
+# Course selection
+I select courses with large and small n, and large and small CV error. I do not select courses whose lasso model contains less than 3 non-zero coefficients (df).
+
+* COR1002: large n
+* COR1004: large n and smaller CV error (mean absolute error) than COR1002
+
+* SCI3003: small n and large CV error
+* SCI2040: small n and small CV erro
+
+* SSC3044: small CV error
+* SSC3038: small CV error and n twice as large as SSC3044
+
+* SCI2018: large CV error
+* SCI2010: large CV error and n twice as large as SCI2018
+
+
+```{r}
+course_selection <- c("COR1002", "COR1004", "SCI3003", "SCI2040", "SSC3044", "SSC3038", "SCI2018", "SCI2010")
+
+fit_lasso %>% 
+  filter(target %in% course_selection) %>% 
+  select(target, n, cv_error, df)
+```
+
+# Conformal Prediction setp by step
+
+## Cross-validation
+
+```{r CV helper}
+create_Z <- function(course){
+  
+  student_profile %>%
+    filter(`Course ID` == course) %>%
+    select(Y = Grade, matches("GPA|Topic"))
+ 
+}
+
+add_fold <- function(df, n_fold = 10){
+  
+  n         <- nrow(df)
+  fold_size <- ceiling(n / n_fold)
+  folds     <- rep(1 : 10, fold_size) %>% sample %>% .[1 : n]
+  
+  df %>% mutate(fold = folds)
+  
+}
+```
+
+## Training, callibration and test sets
+
+```{r split helper}
+create_test <- function(df, fold_current) df %>% filter(fold == fold_current)
+
+create_training_temp <- function(df, fold_current) df %>% filter(fold != fold_current)
+
+add_allocation <- function(df){
+  
+  n <- nrow(df)
+  n_training      <- floor(0.67 * n) # 2/3
+  n_callibration  <- n - n_training  # 1/3
+  
+  allocation <- rep(x     = c("training", "callibration"), 
+                    times = c(n_training, n_callibration)) %>%
+  sample
+  
+  df %>% mutate(allocation = allocation)
+  
+}
+
+create_training     <- function(df) df %>% filter(allocation == "training")
+
+create_callibration <- function(df) df %>% filter(allocation == "callibration")
+```
+
+## Fit lasso on training set
+```{r,lasso helper}
+fit_target_model <- function(df){
+  
+  X <- df %>% select(matches("GPA|Topic"))
+  Y <- df %>% pull(Y)
+  
+  cv.glmnet(x = as.matrix(X), y = Y, type.measure = "mae") # lasso by default
+  
+}
+
+predict_grade <- function(df, model){
+  
+  X <- df %>% select(matches("GPA|Topic"))
+  
+  Y_hat <- predict.cv.glmnet(model, newx = as.matrix(X), s = "lambda.min")
+  
+  df %>% mutate(Y_hat = as.vector(Y_hat),
+                error = abs(Y_hat - Y))
+  
+}
+
+fit_error_model <- function(df){
+  
+  X <- df %>% select(matches("GPA|Topic"))
+  error <- df %>% pull(error)
+  
+  cv.glmnet(x = as.matrix(X), y = error, type.measure = "mae") # lasso by default
+  
+}
+
+predict_error <- function(df, model){
+  
+  X <- df %>% select(matches("GPA|Topic"))
+  
+  error_hat <- predict.cv.glmnet(model, newx = as.matrix(X), s = "lambda.min")
+  
+  df %>% mutate(error_hat = as.vector(error_hat))
+  
+}
+```
+
+## Compute non-conformity scores on callibration test
+```{r}
+compute_ncs <- function(df) df %>% mutate(alpha = abs(Y - Y_hat) / error_hat )
+
+compute_confidence <- function(df) df %>% mutate(confidence = rank(alpha) / nrow(.) )
+```
+
+## Evaluate coverage on test set
+
+```{r}
+compute_width <- function(df, confidence_given){
+  
+  df <- df %>% 
+    distinct(alpha, confidence) %>%
+    filter(confidence >= confidence_given)
+  
+  min(df$alpha)
+  
+}
+
+compute_interval <- function(df, ncs){
+  
+  df %>% mutate(
+    width       = ncs * error_hat,
+    border_low  = Y_hat - width,
+    border_high = Y_hat + width
+    )
+}
+
+compute_hit <- function(df){
+  df %>% mutate(hit = (border_low <= Y) & (Y <= border_high))
+}
+```
+
+# Loop through all courses
+
+```{r, echo = FALSE}
+for(course in course_selection){
+  
+  # Set up
+  callibration <- list()
+  coverage     <- list()
+  
+  confidence <- seq(0.01, 0.99, 0.01)
+  df_coverage <- tibble::tibble(
+    confidence = confidence,
+    width_mean = NA,
+    coverage   = NA
+    )
+  
+  # data
+  Z <- create_Z(course)
+  Z <- add_fold(Z)
+  
+  for(iteration in 1 : 10){
+    
+    # training, callibration and test sets
+    Z_test          <- create_test(Z, fold_current = iteration)
+    Z_training_temp <- create_training_temp(Z, fold_current = iteration) %>% add_allocation
+    Z_training      <- create_training(Z_training_temp)
+    Z_callibration  <- create_callibration(Z_training_temp)
+    
+    # fit target and error model to training set
+    model_target <- fit_target_model(Z_training)
+    Z_training   <- predict_grade(Z_training, model_target)
+    model_error  <- fit_error_model(Z_training)
+    
+    # non-conformity scores on callibration
+    Z_callibration <- Z_callibration %>% 
+      predict_grade(model_target) %>%
+      predict_error(model_error) %>%
+      compute_ncs %>%
+      compute_confidence
+    
+    # coverage on test set
+    Z_test <- Z_test %>% 
+      predict_grade(model_target) %>%
+      predict_error(model_error)
+  
+    for(i in 1 : nrow(df_coverage)){ # loop through confidence levels
+      
+      confidence_i <- df_coverage$confidence[i]
+      ncs          <- compute_width(Z_callibration, confidence_i)
+
+      Z_test <- Z_test %>% compute_interval(ncs = ncs) %>% compute_hit
+      
+      coverage_i   <- mean(Z_test$hit)
+      width_mean_i <- mean(Z_test$width)
+      
+      df_coverage$width_mean[i] <- width_mean_i
+      df_coverage$coverage[i]   <- coverage_i
+      
+    }
+    
+    # Output fold
+    callibration[[iteration]] <- Z_callibration %>% mutate(iteration = iteration) %>% select(iteration, confidence, alpha)
+    coverage[[iteration]]     <- df_coverage %>% mutate(iteration = iteration)
+    
+  } # end CV fold
+  
+  # Output
+  
+  callibration <- bind_rows(callibration) %>% 
+    mutate(iteration = as.factor(iteration))
+  coverage     <- bind_rows(coverage) %>%
+    mutate(iteration = as.factor(iteration))
+  
+  title_course <-  str_c(course, " (n = ", nrow(Z), ")")
+  subtitle     <- "A line per CV test sets"
+  
+  print(ggplot(data = coverage) +
+          geom_hline(yintercept = 1, linetype = "dashed") +
+          geom_line(aes(confidence, width_mean, group = iteration, col = iteration), size = .5) +
+          labs(title = title_course,
+               subtitle = subtitle) +
+    theme(legend.position = "none"))
+  
+  print(ggplot(data = coverage) +
+          geom_abline(slope = 1, linetype = "dashed") +
+          geom_line(aes(confidence, coverage, group = iteration, col = iteration), size = .5) +
+          labs(title = title_course,
+               subtitle = subtitle) +
+    theme(legend.position = "none"))
+}
+```
+
+Illustration of the effect of error_hat on interval's width (for confidence of 99%):
+```{r, fig.height=4}
+Z_test %>% select(Y, Y_hat, error, error_hat, width, border_low, border_high, hit)
+plot(Z_test$error, Z_test$error_hat)
+```
+
+Correlation between the actual errors and the predicted errors (error_hat):
+```{r}
+cor(Z_test$error, Z_test$error_hat)
+```
+
+```{r, echo = FALSE, eval = F}
+ggplot(data = Z_callibration) + geom_histogram(aes(Y), bins = 15)
+
+ggplot(data = Z_callibration) + geom_histogram(aes(Y_hat), bins = 15)
+
+ggplot(data = Z_callibration) + geom_histogram(aes(alpha), bins = 15)
+```
+
+```{r, echo = FALSE, eval = F}
+ggplot(data = Z_callibration) + geom_point(aes(Y, Y_hat))
+
+ggplot(data = Z_callibration) + geom_point(aes(Y, alpha))
+
+ggplot(data = Z_callibration) + geom_point(aes(Y_hat, alpha))
+```
