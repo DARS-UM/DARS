@@ -1,0 +1,7 @@
+@inproceedings{morsomme2012master,
+  title={Content-based Course Recommender System for Liberal Arts Education},
+  author={Morsomme, Raphaëland Vazquez, Sofia},
+  journal={International Educational Data Mining Society},
+  year={2019},
+  organization={IOS Press}
+}
