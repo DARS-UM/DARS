@@ -1,0 +1,14 @@
+
+\begin{tabular}{ccc}
+\toprule
+target & n & cv\_error\\
+\midrule
+SSC3044 & 136 & 0.38\\
+SSC3038 & 272 & 0.40\\
+COR1004 & 1998 & 0.67\\
+COR1002 & 2067 & 1.00\\
+SCI2010 & 417 & 1.41\\
+\addlinespace
+SCI2018 & 198 & 1.62\\
+\bottomrule
+\end{tabular}
