@@ -1,0 +1,18 @@
+
+\begin{tabular}{cccc}
+\toprule
+Course ID & Course Title & Department & word\\
+\midrule
+HUM3034 & World History & UCM & understand\\
+HUM3034 & World History & UCM & major\\
+HUM3034 & World History & UCM & issue\\
+HUM3034 & World History & UCM & episode\\
+HUM3034 & World History & UCM & shape\\
+\addlinespace
+HUM3034 & World History & UCM & history\\
+HUM3034 & World History & UCM & mankind\\
+HUM3034 & World History & UCM & focus\\
+HUM3034 & World History & UCM & theme\\
+HUM3034 & World History & UCM & topic\\
+\bottomrule
+\end{tabular}
