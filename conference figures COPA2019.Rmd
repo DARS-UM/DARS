@@ -24,10 +24,20 @@ load("Output/data_pillar_1.Rdata")
 load("Output/d_text.RDATA")
 load("Output/df_logLike_catalogue.RDATA")
 load("Output/CV.RDATA")
+load("Output/conformal.RDATA")
 
 output_folder <- "Conference/COPA2019/paper/figures"
 plot_width <- 6
 plot_height <- plot_width / 1.6 
+```
+
+```{r latex_table}
+latex_table <- function(df, filename = "test"){
+  
+  df %>%
+    kable("latex", booktabs = TRUE, align = "c") %>%
+    write(file = str_c(output_folder, "/", filename, ".txt"))
+}
 ```
 
 ```{r TM}
@@ -51,7 +61,7 @@ student_data <- d_transcript_augmented %>%
   print
 ```
 
-```{r}
+```{r course_data}
 course_data <- d_text$catalogues %>% 
   
   slice(50005:50014) %>%
@@ -62,15 +72,6 @@ course_data <- d_text$catalogues %>%
 ```
 
 # Student data
-
-```{r}
-latex_table <- function(df, filename = "test"){
-  
-  df %>%
-    kable("latex", booktabs = TRUE, align = "c") %>%
-    write(file = str_c(output_folder, "/", filename, ".txt"))
-}
-```
 
 ```{r fig_student_data}
 student_data %>% latex_table("data-student")
@@ -84,6 +85,7 @@ course_data %>% latex_table("course-student")
 
 # Flow chart
 
+## EDM2019 style
 ```{r}
 grViz("digraph flowchart{
 
@@ -179,6 +181,89 @@ grViz("digraph flowchart{
 # File name: Conference/COPA2019/paper/figures/flowchart
 ```
 
+## 2 pillar style
+```{r}
+grViz("digraph flowchart{
+
+      fontname = Helvetica
+      size = 15
+      newrank = true;
+
+      node [fontname = Helvetica, shape = rectangle, style = filled, fillcolor = white]
+      edge [fontname = Helvetica, decorate = TRUE]
+
+      subgraph cluster_input_kw {
+      label = 'User Input';
+      penwidth = 2;
+
+      KW [label = 'Selected Key Words']
+      }
+
+      subgraph cluster_data {
+      label = 'Data';
+      penwidth = 2;
+
+		  node [shape = cylinder];
+      SD [label = 'Student Data', group = 2]
+      CD [label = 'Course Data' , group = 1]
+      }
+
+      subgraph cluster_input_course {
+      label = 'User Input';
+      penwidth = 2;
+
+      CS [label = 'Selected Courses']
+      }
+
+      subgraph cluster_pillar_1{
+      label = 'Pillar 1: Course Suggestion';
+      penwidth = 2;
+
+      TM  [label = 'Topic Model \nof the Courses', group = 1]
+      AI  [label = 'Model of \nStudent´s Academic Interests']
+      x1  [shape = circle, width = .01, height = .01, label = '']
+      SUG [label = 'Course Suggestions', ]
+
+      } # close pillar 1
+
+      subgraph cluster_pillar_2{
+      label = 'Pillar 2: Warning Issuance';
+      penwidth = 2;
+
+      SM  [label = 'Student Model'    , group = 2]
+      PM  [label = 'Predictive Models', group = 2]
+      GP  [label = 'Point Prediction \nfor Grade' , group = 2]
+      WAR [label = 'Warning'          , group = 2]
+      PR  [label = 'Prediction Region', color = red, fontcolor = red]
+
+      } # close pillar 2
+
+		  { rank=same; KW; CD; SD; CS}
+		  { rank=same; TM; SM}
+      { rank=same; PR; WAR; SUG}
+
+
+      # edges
+      CD -> TM [label = '  LDA'];
+      {TM, KW} -> AI;
+      {TM, AI} -> x1 [arrowhead = none]
+      x1 -> SUG [label = '  KL distance'];
+
+      SD -> SM;
+      TM -> SM;
+      SM -> PM [label = '  Lasso'];
+      {PM, CS} -> GP;
+      GP -> WAR;
+      GP -> PR [label = ' Conformal Prediction', color = red, fontcolor = red];
+
+      }
+      ")
+
+# Save by hand
+# File name: Conference/COPA2019/paper/figures/flowchart
+```
+
+
 # Model Selection (topic model)
 
 ```{r}
@@ -198,29 +283,49 @@ df_logLike_catalogue %>%
 
 # Beta
 
+
+```{r reorder_within}
+reorder_within <- function(x, by, within, fun = mean, sep = "___", ...) {
+  new_x <- paste(x, within, sep = sep)
+  stats::reorder(new_x, by, FUN = fun)
+}
+
+scale_x_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_x_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+
+scale_y_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_y_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+```
+
+
 ```{r plot_beta}
 plot_beta <- function(topic = 1, resize_factor = 1){
   
-  top <-  str_c("Topic ", topic)
+  top <- str_c("Topic ", topic)
   
   beta %>%
-    filter(topic == top) %>% 
-    top_n(10, beta) %>%
+    filter(topic %in% top) %>% 
+    group_by(topic) %>%
+    top_n(9, beta) %>%
     
     ggplot() +
-    geom_col(aes(x = reorder(term, beta), y = beta)) +
+    geom_col(aes(x = reorder_within(term, beta, topic), y = beta)) +
     
     coord_flip() +
     
     theme(axis.text.y = element_text(size = 11)) +
     
-    labs(title = NULL,
-         x = "Terms",
-         y = "Beta"
-         )
+    labs(title = NULL, x = "Terms", y = "Beta") +
+    
+    facet_wrap( ~ topic, scales = "free_y") +
+    scale_x_reordered()
   
-  ggsave(filename = str_c("Beta-", topic, ".jpeg"), path = output_folder,
-         width = plot_width / resize_factor, height = plot_height / resize_factor)
+  ggsave(filename = "beta.jpeg", path = output_folder,
+         width = 1.5 * plot_width / resize_factor, height = plot_height / resize_factor)
   
 }
 ```
@@ -253,10 +358,9 @@ plot_gamma <- function(course = "COR1002"){
 ```{r fig_gamma}
 plot_gamma("COR1004")
 
-resize_factor <- 2
+resize_factor <- 1.8
 
-plot_beta(4, resize_factor = resize_factor)
-plot_beta(19, resize_factor = resize_factor)
+plot_beta(c(4,19), resize_factor = resize_factor)
 ```
 
 # Topic Expertise
@@ -264,7 +368,7 @@ plot_beta(19, resize_factor = resize_factor)
 courses <- paste("Course", 1 : 3)
 
 transcript <- tibble(Course    = courses,
-                     Grade     = c(6  , 9  , 2.5))
+                     Grade     = c(6  , 9  , 2))
 
 gamma <- tibble(Course    = courses,
                 `Topic 1` = c(0  , 0.2, 0  ),
@@ -281,8 +385,9 @@ df1 <- gamma %>%
   mutate(contribution = Grade/10 * gamma)
 
 topic_expertise <- df1 %>%
-  select(-gamma, - Grade) %>% 
-  spread(key = Topic, value = contribution)
+  select(-gamma, - Grade)%>% 
+  spread(key = Topic, value = contribution) %>%
+  add_row(Course = "Total", `Topic 1` = 0.18, `Topic 2` = 0.68, `Topic 3` = 0.34, `Topic 4` = 0.26, `Topic 5` = 0.22)
 
 # Table
 
@@ -296,6 +401,7 @@ topic_expertise %>% latex_table("toy-contribution")
 
 # Plot
 df1 %>% 
+  mutate(Topic = factor(Topic, levels = str_c("Topic ", 5:1))) %>%
   ggplot(aes(x = Topic, y = contribution, fill = Course)) +
   geom_col() +
   coord_flip() +
@@ -335,3 +441,83 @@ fit_lasso %>%
   kable_styling(latex_options = c("striped", "scale_down")) %>%
   as_image(file = str_c(output_folder, "/cv-mae-table.pdf"))
 ```
+
+# Conformal
+
+## course table
+
+```{r}
+course_table %>%
+  select(- df) %>%
+  mutate(cv_error = cv_error %>% round(2)) %>%
+  latex_table("conformal-course")
+```
+
+
+
+## width
+
+```{r}
+d_width <- conformal_results %>%
+  group_by(course, significance) %>%
+  summarise(q_50 = quantile(width, 0.5), # median
+            q_10 = quantile(width, 0.1),
+            q_90 = quantile(width, 0.9))
+```
+
+```{r}
+d_width %>%
+  ggplot() +
+  geom_errorbar(aes(significance, ymax = q_90, ymin = q_10), size = .5) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_line(aes(significance, q_50, group = 1)) +
+  geom_point(aes(significance, q_50)) +
+  facet_wrap( ~ course) +
+  labs(y = "Width",
+       x = "Significance Level") +
+  scale_x_continuous(breaks = c(0.05, 0.2, 0.4, 0.6, 0.8))
+
+ggsave(filename = "conformal-width.jpeg", path = output_folder,
+       width = plot_width, height = plot_height)
+```
+
+## Error
+
+```{r}
+d_error <- conformal_results %>%
+  group_by(course, significance) %>%
+  summarise(error = mean(!hit))
+```
+
+```{r}
+d_error %>%
+  ggplot(aes(x = significance, y = error)) +
+  geom_abline(slope = 1, linetype = "longdash") +
+  geom_line(aes(group = 1)) +
+  geom_point() +
+  facet_wrap( ~ course) +
+  labs(y = "Error Rate",
+       x = "Significance Level") +
+  scale_x_continuous(breaks = c(0.05, 0.2, 0.4, 0.6, 0.8))
+
+ggsave(filename = "conformal-error.jpeg", path = output_folder,
+       width = plot_width, height = plot_height)
+```
+
+## Table
+```{r}
+conformal_results %>%
+  filter(significance %in% c(0.05, 0.1, 0.2)) %>%
+  group_by(course, significance) %>%
+  summarize(width_med  = median(width),
+            error_rate = mean(!hit)) %>%
+  
+  gather(key = "measure", value = "output", width_med, error_rate) %>%
+  mutate(output = round(output, 2)) %>%
+  unite(id, measure, significance, sep = "-") %>%
+  spread(key = id, value = output) %>%
+  
+  select(course, matches("med"), matches("error")) %>%
+  latex_table("conformal-table")
+```
+
