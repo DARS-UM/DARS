@@ -14,6 +14,8 @@ editor_options:
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(cache.path = "Cache/Data Preparation/")
 
+load("Output/useful functions.RDATA")
+
 library(tidyverse)
 ```
 
@@ -35,7 +37,7 @@ read_csv_own_parsing <- function(file) file %>% read_csv(col_types = col_parsing
 ```
 
 ```{r d_transcript, cache = TRUE}
-d_transcript <- paste0("Input/Raw Grades/grades", 1 : 2, ".csv") %>%
+d_transcript <- str_c("Input/Raw Grades/grades", 1 : 2, ".csv") %>%
   
   map(read_csv_own_parsing) %>%
   
@@ -55,7 +57,7 @@ Our dataframe contains many variables and rows that are either empty or meaningl
 The data set `d_transcript` contains both the failed grades and the grade of the resit, and does not distinguish between them (same student, same course, same yera, same period, but different grade).
 
 ```{r d_transcript helper}
-course_letter_UCM <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>% paste(collapse = "|")
+course_letter_UCM <- c("COR", "HUM", "SCI", "SSC", "SKI", "PRO", "UGR", "CAP") %>% collapse_or
 
 is_UCM      <- function(course_code) course_code %>% str_detect(course_letter_UCM)
 is_elective <- function(course_code) course_code %>% str_detect("HUM|SCI|SSC")

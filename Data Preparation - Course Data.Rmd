@@ -18,6 +18,8 @@ library(gsheet) # import spreadsheets from google drive
 library(tm)
 library(hunspell) # Stemmer
 library(magrittr)
+
+load("Output/useful functions.RDATA")
 ```
 
 # Helper functions
@@ -25,9 +27,6 @@ library(magrittr)
 ```{r helpers}
 extract_id_pdf    <- function(string) string %>% str_sub(start = 1, end = - 5)
 extract_id_course <- function(string) string %>% str_sub(start = 1, end =   7)
-
-collapse_or       <- function(string) string %>% str_c(collapse = "|")
-collapse_space    <- function(string) string %>% str_c(collapse = " ")
 
 symbol_to_line    <- c("\r\n", "\n") %>% collapse_or
 split             <- function(string) string %>% str_split(pattern = symbol_to_line) %>% .[[1]]

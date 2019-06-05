@@ -18,6 +18,8 @@ library(gsheet) # import spreadsheets from google drive
 library(tm)
 library(hunspell) # Stemmer
 library(magrittr)
+
+load("Output/useful functions.RDATA")
 ```
 
 # Import Data
@@ -243,7 +245,7 @@ d_course <- d_course %>%
   print
 ```
 
-## Ttarget courses
+## Target courses
 ```{r}
 d_course <- d_course %>%
   mutate(target = Number > 2000 & Type == "Elective" & (! str_detect(`Course ID`, "SA")))
