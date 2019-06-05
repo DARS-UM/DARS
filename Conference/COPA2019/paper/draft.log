@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (MiKTeX 2.9.6300 64-bit) (preloaded format=pdflatex 2017.8.14)  22 MAY 2019 13:22
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (MiKTeX 2.9.6300 64-bit) (preloaded format=pdflatex 2017.8.14)  1 JUN 2019 00:45
 entering extended mode
 **./draft.tex
 (draft.tex
@@ -2126,56 +2126,56 @@ File: figures/flowchart.jpg Graphic file (type jpg)
 
 <use figures/flowchart.jpg>
 Package pdftex.def Info: figures/flowchart.jpg used on input line 184.
-(pdftex.def)             Requested size: 216.81pt x 182.73816pt.
+(pdftex.def)             Requested size: 286.19078pt x 241.21828pt.
  [4 <./figures/flowchart.jpg>]
-<figures/model-selection.jpeg, id=200, 433.62pt x 271.0125pt>
+<figures/model-selection.jpeg, id=199, 289.08pt x 180.675pt>
 File: figures/model-selection.jpeg Graphic file (type jpg)
 
 <use figures/model-selection.jpeg>
 Package pdftex.def Info: figures/model-selection.jpeg used on input line 200.
 (pdftex.def)             Requested size: 216.81pt x 135.5059pt.
 
-<figures/gamma-COR1004.jpeg, id=201, 433.62pt x 271.0125pt>
+<figures/gamma-COR1004.jpeg, id=200, 289.08pt x 180.675pt>
 File: figures/gamma-COR1004.jpeg Graphic file (type jpg)
 
 <use figures/gamma-COR1004.jpeg>
 Package pdftex.def Info: figures/gamma-COR1004.jpeg used on input line 207.
 (pdftex.def)             Requested size: 216.81pt x 135.5059pt.
 
-<figures/beta.jpeg, id=202, 361.35pt x 150.5625pt>
+<figures/beta.jpeg, id=201, 240.6591pt x 100.2144pt>
 File: figures/beta.jpeg Graphic file (type jpg)
  <use figures/beta.jpeg>
 Package pdftex.def Info: figures/beta.jpeg used on input line 214.
-(pdftex.def)             Requested size: 325.215pt x 135.50728pt.
+(pdftex.def)             Requested size: 325.215pt x 135.4258pt.
 
 [5 <./figures/model-selection.jpeg>] [6 <./figures/gamma-COR1004.jpeg> <./figur
-es/beta.jpeg>] <figures/toy-expertise.jpeg, id=234, 433.62pt x 271.0125pt>
+es/beta.jpeg>] [7] <figures/toy-expertise.jpeg, id=243, 289.08pt x 180.675pt>
 File: figures/toy-expertise.jpeg Graphic file (type jpg)
 
 <use figures/toy-expertise.jpeg>
 Package pdftex.def Info: figures/toy-expertise.jpeg used on input line 295.
 (pdftex.def)             Requested size: 216.81pt x 135.5059pt.
- [7] [8 <./figures/toy-expertise.jpeg>]
-<figures/cv-mae.jpeg, id=254, 289.08pt x 77.3289pt>
+ [8]
+<figures/cv-mae.jpeg, id=256, 192.72pt x 51.5526pt>
 File: figures/cv-mae.jpeg Graphic file (type jpg)
  <use figures/cv-mae.jpeg>
 Package pdftex.def Info: figures/cv-mae.jpeg used on input line 308.
-(pdftex.def)             Requested size: 216.81pt x 57.99652pt.
+(pdftex.def)             Requested size: 216.81pt x 57.9965pt.
 
-[9 <./figures/cv-mae.jpeg>] [10] [11] [12]
-<figures/conformal-error.jpeg, id=309, 433.62pt x 271.0125pt>
+[9 <./figures/toy-expertise.jpeg> <./figures/cv-mae.jpeg>] [10] [11] [12]
+<figures/conformal-error.jpeg, id=309, 289.08pt x 180.675pt>
 File: figures/conformal-error.jpeg Graphic file (type jpg)
 
 <use figures/conformal-error.jpeg>
 Package pdftex.def Info: figures/conformal-error.jpeg used on input line 428.
-(pdftex.def)             Requested size: 346.89731pt x 216.8227pt.
+(pdftex.def)             Requested size: 346.89731pt x 216.82268pt.
 
-<figures/conformal-width.jpeg, id=310, 433.62pt x 271.0125pt>
+<figures/conformal-width.jpeg, id=310, 289.08pt x 180.675pt>
 File: figures/conformal-width.jpeg Graphic file (type jpg)
 
 <use figures/conformal-width.jpeg>
 Package pdftex.def Info: figures/conformal-width.jpeg used on input line 435.
-(pdftex.def)             Requested size: 346.89731pt x 216.8227pt.
+(pdftex.def)             Requested size: 346.89731pt x 216.82268pt.
  [13] [14 <./figures/conformal-error.jpeg> <./figures/conformal-width.jpeg>] (d
 raft.bbl [15])
 Package atveryend Info: Empty hook `BeforeClearDocument' on input line 450.
@@ -2190,7 +2190,7 @@ Package rerunfilecheck Info: File `draft.out' has not changed.
 Here is how much of TeX's memory you used:
  21107 strings out of 493324
  398042 string characters out of 3129169
- 523120 words of memory out of 3000000
+ 520120 words of memory out of 3000000
  24377 multiletter control sequences out of 15000+200000
  539449 words of font info for 56 fonts, out of 3000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -2211,7 +2211,7 @@ JeanLuc/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmsy8.
 pfb><C:/Users/JeanLuc/AppData/Local/Programs/MiKTeX 2.9/fonts/type1/public/amsf
 onts/cm/cmti10.pfb><C:/Users/JeanLuc/AppData/Local/Programs/MiKTeX 2.9/fonts/ty
 pe1/public/amsfonts/symbols/msbm10.pfb>
-Output written on draft.pdf (16 pages, 1185235 bytes).
+Output written on draft.pdf (16 pages, 894935 bytes).
 PDF statistics:
  401 PDF objects out of 1000 (max. 8388607)
  85 named destinations out of 1000 (max. 500000)
