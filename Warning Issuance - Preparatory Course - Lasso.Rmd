@@ -1,0 +1,142 @@
+---
+title: "Pillar 1 - Student Topic Profile"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+__Considerations__:
+
+* extract course descriptions from courses not offer in 2018-2019 e.g. SCI2012.
+
+* give more weight to 3000-level courses
+
+* restrict prep courses to UCM courses
+     
+# Set up
+
+```{r setup, include = FALSE} 
+knitr::opts_chunk$set(cache.path = "Cache/Warning Issuance/")
+knitr::opts_chunk$set(fig.path = "Cache/Figures/")
+
+library(glmnet)
+library(tidyverse)
+
+load("Output/useful functions.RDATA")
+
+load("Output/student_model.RDATA")
+load("Output/course_current.RDATA")
+load("Output/app_model.RDATA")
+```
+
+# Data
+
+Remove course enrollments from 2007 from the student model because we have no information on the previous course enrolment of these students, hence no data on their previous academic performance and skills acquired in previous courses.
+
+```{r}
+d_student_model <- d_student_model %>% filter(Year_numerical != 2007)
+```
+
+```{r find_df} 
+find_df <- function(course)  d_student_model %>% filter(`Course ID` == course)
+```
+
+Consider courses currently on offer and with at least 20 enrollments since 2008 
+```{r}
+d_lasso_course <- tibble(target = course_current) %>%
+  
+  mutate(student_model = target        %>% map(find_df),
+         n             = student_model %>% map_dbl(nrow)) %>%
+  
+  filter(n > 20)
+```
+
+Beta of topic model to inspect results
+```{r}
+beta  <- app_model$Beta[[1]] %>% group_by(topic) %>% top_n(10, beta)
+gamma <- app_model$Gamma[[1]] %>%  mutate(topic = topic %>% str_replace(" ", "_"))
+remove(app_model)
+```
+
+# Lasso for Preparatory courses
+
+```{r d_lasso prep, cache = TRUE} 
+d_lasso_topic <- d_lasso_course %>%
+  mutate(lasso_cv = student_model %>% map(my_cv.glmnet, predictors = "Topic", alpha = 0)) %>%
+  select(-student_model)
+```
+
+```{r d_lasso extract prep} 
+d_lasso_topic <- d_lasso_topic %>%
+  
+  # Results from CV
+  mutate(m_lasso     = lasso_cv %>% map    (~ .[["glmnet.fit"]]),
+         lambda_min  = lasso_cv %>% map_dbl(~ .[["lambda.min"]]),
+         lambda_1se  = lasso_cv %>% map_dbl(~ .[["lambda.1se"]]),
+         index_best  = lasso_cv %>% map_dbl(~ which.min(.[["cvm"]])),
+         cv_error    = list(lasso_cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]),
+         cv_error_sd = list(lasso_cv, index_best) %>% pmap_dbl(~ ..1[["cvsd"]][..2])) %>%
+  
+  # Best model
+  mutate(intercept   = list(m_lasso, index_best) %>% pmap_dbl(~ ..1[["a0"]][..2]),
+         coefi       = list(m_lasso, index_best) %>% pmap(~ ..1[["beta"]][,..2]),
+         coefi       = coefi %>% map(~ tibble(topic = names(.), coefi = .)),
+         coefi_clean = list(m_lasso, lambda_min) %>% pmap(coef),
+         df        = list(m_lasso, index_best) %>% pmap_dbl(~ ..1[["df"]][..2]),
+         
+         dev_null  = m_lasso %>% map_dbl(~ .[["nulldev"]]),
+         dev_left  = list(m_lasso, index_best) %>% pmap_dbl(~deviance.glmnet(..1)[..2]),
+         dev_expl  = dev_null - dev_left,
+         dev_ratio = list(m_lasso, index_best) %>% pmap_dbl(~ ..1[["dev.ratio"]][..2])) %>%
+  
+  select(- m_lasso, - lasso_cv) %>%
+  
+  arrange(cv_error) %>% 
+  
+  # extract coefficients
+  unnest(coefi) %>%
+  select(target, topic, coefi)
+```
+
+## Explore results
+```{r}
+d_lasso_prep <- d_lasso_topic %>% 
+  
+  left_join(gamma, by = "topic") %>%
+  rename(`Preparatory Courses` = document) %>%
+  filter(target != `Preparatory Courses`) %>%
+  
+  # exclude 3000 (advanced) courses from preparation courses
+  filter(! `Preparatory Courses` %>% str_detect("^...30")) %>% 
+  
+  # double prep_score of intro courses
+  mutate(is_intro = `Preparatory Courses` %>% str_detect("^...10")) %>%
+  mutate(weight = coefi * (1 + is_intro)) %>%
+  
+  # prep_score
+  mutate(prep_score = weight * gamma) %>%
+  
+  # aggregate prep_score
+  group_by(target, `Preparatory Courses`) %>%
+  summarize(prep_score = sum(prep_score)) %>%
+  
+  # identify top 15 preparation courses for each course
+  group_by(target) %>%
+  top_n(10, prep_score) %>%
+  arrange(target, desc(prep_score))
+
+head(d_lasso_prep, 20)
+```
+
+## Save results
+```{r} 
+save(d_lasso_topic, file = "Output/d_lasso_topic.RDATA")
+save(d_lasso_topic, file = "APP/Recommender System/d_lasso_topic.RDATA")
+
+save(d_lasso_prep, file = "Output/d_lasso_prep.RDATA")
+save(d_lasso_prep, file = "APP/Recommender System/d_lasso_prep.RDATA")
+```

@@ -1,0 +1,227 @@
+---
+title: "Pillar 1 - Student Topic Profile"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+__Considerations__:
+
+* extract course descriptions from courses not offer in 2018-2019 e.g. SCI2012.
+
+* give more weight to 3000-level courses
+
+* restrict prep courses to UCM courses
+     
+# Set up
+
+```{r setup, include = FALSE}
+
+knitr::opts_chunk$set(cache.path = "Cache/Warning Issuance/")
+knitr::opts_chunk$set(fig.path = "Cache/Figures/")
+
+library(glmnet)
+library(tidyverse)
+
+load("Output/useful functions.RDATA")
+
+load("Output/student_model.RDATA")
+load("Output/course_current.RDATA")
+load("Output/app_model.RDATA")
+```
+
+# Data
+
+Remove course enrollments from 2007 from the student model because we have no information on the previous course enrolment of these students, hence no data on their previous academic performance and skills acquired in previous courses.
+
+```{r}
+d_student_model <- d_student_model %>% filter(Year_numerical != 2007)
+```
+
+```{r find_df} 
+find_df <- function(course)  d_student_model %>% filter(`Course ID` == course)
+```
+
+Consider courses currently on offer and with at least 20 enrollments since 2008 
+```{r}
+d_lasso_course <- tibble(target = course_current) %>%
+  
+  mutate(student_model = target        %>% map(find_df),
+         n             = student_model %>% map_dbl(nrow)) %>%
+  
+  filter(n > 20)
+```
+
+Beta of topic model to inspect results
+```{r}
+beta  <- app_model$Beta[[1]] %>% group_by(topic) %>% top_n(10, beta)
+gamma <- app_model$Gamma[[1]] %>%  mutate(topic = topic %>% str_replace(" ", "_"))
+remove(app_model)
+```
+
+# Lasso
+
+## Learn lambda with cross-validation
+
+```{r fit_lasso, cache = TRUE} 
+d_lasso <- d_lasso_course %>%
+  mutate(lasso_cv = student_model %>% map(my_cv.glmnet, predictors = "GPA|Topic")) %>%
+  select(-student_model)
+```
+
+## Extract results
+```{r fit_lasso extract} 
+d_lasso <- d_lasso %>%
+  
+  # Results from CV
+  mutate(m_lasso     = lasso_cv %>% map    (~ .[["glmnet.fit"]]),
+         lambda_min  = lasso_cv %>% map_dbl(~ .[["lambda.min"]]),
+         lambda_1se  = lasso_cv %>% map_dbl(~ .[["lambda.1se"]]),
+         index_best  = lasso_cv %>% map_dbl(~ which.min(.[["cvm"]])),
+         cv_error    = list(lasso_cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]),
+         cv_error_sd = list(lasso_cv, index_best) %>% pmap_dbl(~ ..1[["cvsd"]][..2])) %>%
+  
+  # Best model
+  mutate(intercept = list(m_lasso, index_best) %>% pmap_dbl(~ ..1[["a0"]][..2]),
+         coefi     = list(m_lasso, lambda_min) %>% pmap(coef), # clearer output than pmap_dbl(~ ..1[["beta"]][,..2])
+         df        = list(m_lasso, index_best) %>% pmap_dbl(~ ..1[["df"]][..2]),
+         
+         dev_null  = m_lasso %>% map_dbl(~ .[["nulldev"]]),
+         dev_left  = list(m_lasso, index_best) %>% pmap_dbl(~deviance.glmnet(..1)[..2]),
+         dev_expl  = dev_null - dev_left,
+         dev_ratio = list(m_lasso, index_best) %>% pmap_dbl(~ ..1[["dev.ratio"]][..2])) %>%
+  
+  arrange(cv_error)
+```
+
+## Save results
+```{r} 
+save(d_lasso, file = "Output/lasso.RDATA")
+
+d_lasso_app <- d_lasso %>% select(target, lasso_cv)
+save(d_lasso_app, file = "APP/Recommender System/d_lasso_app.RDATA")
+```
+
+## Explore results
+
+### CV MAE
+```{r}
+d_lasso %>%
+  ggplot() +
+  geom_histogram(aes(cv_error), bins = 14) +
+  labs(x = "CV mae", caption = "red: mean\ngreen: median") +
+  geom_vline(xintercept = c(mean(d_lasso$cv_error)), col = "red", alpha = 0.5) +
+  geom_vline(xintercept = c(median(d_lasso$cv_error)), col = "green", alpha = 0.5)
+```
+
+meand, median and weighted mean
+```{r}
+mean(d_lasso$cv_error)
+median(d_lasso$cv_error)
+weighted.mean(d_lasso$cv_error, d_lasso$n)
+```
+
+### Predictors
+Topic chosen by model are related to the course.
+
+Show results for good (largest deviance ratio):
+SCI2040 Microbiology,
+SCI1004 Introduction to Chemistry,
+SSC2066 Protection of Civilians in Armed Conflicts
+
+
+```{r}
+show_predictors <- function(course){
+  
+  coefi <- d_lasso %>% filter(target == course) %>%
+    pull(coefi) %>% .[[1]] %>%
+    as.matrix %>% as_tibble(rownames = "id") %>% rename(coefi = `1`)
+  
+  coefi %>% filter(id %>% str_detect("GPA")) %>% print # GPA
+  
+  coefi_topic <- coefi %>% filter(id %>% str_detect("Topic")) %>%
+    filter(coefi != 0) %>%
+    filter(coefi > 0 ) %>%
+    top_n(3, coefi)
+  print(coefi_topic) # Topic
+  
+  main_topics <- coefi_topic %>% pull(id) %>% str_replace("_", " ")
+  
+  beta %>% filter(topic %in% main_topics) %>% head(30) 
+  
+}
+
+show_predictors("SCI2040")
+show_predictors("SCI1004")
+show_predictors("SSC2066")
+```
+
+
+## Prediction
+
+```{r my_predict} 
+my_predict <- function(model, profile){
+  
+  predict.cv.glmnet(object = model, newx = profile, s = "lambda.min")
+  
+}
+```
+
+```{r} 
+course_ID  <- c("COR1005", "HUM2005") # input$course
+student_ID <- "6087587" # input$student
+
+load("APP/Recommender System/student_model_nest_app.RDATA")
+load("APP/Recommender System/d_lasso_app.RDATA")
+
+student_model <- student_model_nest_app %>% 
+  
+  filter(`Student ID` == student_ID) %>%
+  
+  pull(model) %>% .[[1]]
+
+
+d_lasso_app %>%
+  
+  filter(target %in% course_ID) %>%
+  
+  mutate(prediction = lasso_cv %>% map_dbl(my_predict, student_model))
+```
+
+## Extra: find best alpha
+
+Best alpha turns out to be 1 (lasso). Good, because predictor regularization also serves as predictor selection.
+
+```{r, eval = F, cache = T} 
+n_alpha <- 101
+mae     <- numeric(n_alpha)
+alphas  <- seq(0, 1, length.out = n_alpha)
+
+for(i in 1 : n_alpha){
+  
+  fit_lasso <- tibble(target = course_target) %>%
+  
+    mutate(d = target %>% map(find_df),
+           n = d      %>% map_dbl(nrow)) %>%
+    
+    filter(n > 20) %>%
+    
+    mutate(cv = d %>% map(my_cv.glmnet, alpha = alphas[i], predictors = "GPA|Topic")) %>%
+    
+    mutate(index_best = cv                   %>% map_dbl (~ which.min(.[["cvm"]])),
+           cv_error   = list(cv, index_best) %>% pmap_dbl(~ ..1[["cvm"]][..2]    ))
+    
+  mae[i] <- weighted.mean(fit_lasso$cv_error, fit_lasso$n)
+  
+}
+
+# slight decrease in mae as alpha increase. Set alpha = 1 in my_cv.glmnet().
+m <- lm(mae ~ alphas)
+plot(alphas, mae)
+abline(m, col = "red")
+m %>% summary
+```
