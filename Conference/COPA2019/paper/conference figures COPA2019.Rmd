@@ -1,0 +1,527 @@
+---
+title: "Figures for conference paper"
+author: "DARS"
+date: "`r Sys.Date()`"
+output: 
+  github_document:
+    toc: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+# Set up
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(kableExtra)
+library(DiagrammeR)
+
+# TODO: set working directory to project directory
+setwd("C:/Users/JeanLuc/Desktop/Job/DARS/DARS")
+
+knitr::opts_chunk$set(echo = FALSE)
+theme_set(theme_light())
+knitr::opts_chunk$set(fig.path = "figures/")
+
+load("Output/app_model.RDATA")
+load("Output/data_pillar_1.Rdata")
+load("Output/d_text.RDATA")
+load("Output/df_logLike_catalogue.RDATA")
+load("Output/CV.RDATA")
+load("Output/conformal.RDATA")
+
+output_folder <- "figures"
+plot_width <- 4
+plot_height <- plot_width / 1.6 
+```
+
+```{r latex_table}
+latex_table <- function(df, filename = "test"){
+  
+  df %>%
+    kable("latex", booktabs = TRUE, align = "c") %>%
+    write(file = str_c(output_folder, "/", filename, ".txt"))
+}
+```
+
+```{r TM}
+gamma <- app_model$Gamma[[1]]
+beta  <- app_model$Beta[[1]]
+```
+
+```{r student_data}
+set.seed(2019)
+
+student_data <- d_transcript_augmented %>%
+  
+  select(`Student ID`, `Course ID`, `Academic Year`, Period = period_numerical, Grade) %>%
+  
+  mutate(`Student ID` = ((as.numeric(`Student ID`) + 2019) * as.numeric(`Student ID`)) %% 1e5  %>% as.character) %>% # anonymization
+  
+  sample_n(10) %>%
+  
+  arrange(`Academic Year`) %>%
+  
+  print
+```
+
+```{r course_data}
+course_data <- d_text$catalogues %>% 
+  
+  slice(50005:50014) %>%
+  
+  select(`Course ID`, `Course Title`, Department = department, word) %>%
+  
+  print
+```
+
+# Student data
+
+```{r fig_student_data}
+student_data %>% latex_table("data-student")
+```
+
+# Course data
+
+```{r fig_course_data}
+course_data %>% latex_table("course-student")
+```
+
+# Flow chart
+
+## EDM2019 style
+```{r}
+grViz("digraph flowchart{
+
+      fontname = Helvetica
+      size = 15
+
+      node [fontname = Helvetica, shape = rectangle, style = filled, color = black, fillcolor = white]
+
+      edge [fontname = Helvetica, decorate = TRUE]
+
+      subgraph cluster_input {
+		  color = white;
+
+      subgraph cluster_data {
+      label = 'Data';
+      style = filled;
+		  color = lightgrey;
+		  node [shape = cylinder];
+      CD [label = 'Course Data']
+      SD [label = 'Student Data']
+      }
+
+      subgraph cluster_input_user {
+      label = 'User Input';
+      style = filled;
+		  color = coral;
+
+      ID [label = 'Student ID']
+      KW [label = 'Selected Key Words']
+      CS [label = 'Selected Courses']
+      }
+
+      } #close input subgraph
+
+      subgraph cluster_model_fitting{
+      label = 'Model Fitting';
+      style = filled;
+		  color = LavenderBlush;
+
+      SM [label = 'Student Model']
+
+      PM [label = 'Predictive Models']
+      x1 [shape = circle, width = .01, height = .01, label = '']
+      TM [label = 'Topic Model']
+
+      }
+
+      subgraph cluster_inter_last{
+      label = 'Intermediate Results';
+      style = filled;
+		  color = Tan;
+
+      GP [label = 'Grade Prediction']
+      AI [label = 'Student´s Academic Interests']
+      }
+
+      # Ouput
+      subgraph cluster_ouput {
+      label = 'System Output';
+      style = filled;
+		  color = lightCyan;
+
+      SUG [label = 'Course Suggestions']
+      PR [label = 'Prediction Region']
+      }
+
+      TR [label = 'Student´s Transcript']
+
+      # Invisible node
+      x2 [shape = circle, width = .01, height = .01, label = '']
+      x3 [shape = circle, width = .01, height = .01, label = '']
+
+
+      # edges
+
+      {SD, TM} -> SM;
+      {TM, KW} -> AI;
+      ID -> TR;
+      {PM, CS, TR} -> GP;
+      GP -> PR [label = '  Conformal Prediction'];
+
+      CD -> TM [label = '  LDA'];
+
+      SM -> PM [label = '  Lasso'];
+      
+      {TM, AI} -> x2 [arrowhead = none]
+      x2 -> SUG [label = '  KL distance'];
+
+      }
+      ")
+
+# Save by hand
+# File name: Conference/COPA2019/paper/figures/flowchart
+```
+
+## 2 pillar style
+```{r}
+grViz("digraph flowchart{
+
+      fontname = Helvetica
+      size = 15
+      newrank = true;
+
+      node [fontname = Helvetica, shape = rectangle, style = filled, fillcolor = white]
+      edge [fontname = Helvetica, decorate = TRUE]
+
+      subgraph cluster_input_kw {
+      label = 'User Input';
+      penwidth = 2;
+
+      KW [label = 'Selected Key Words']
+      }
+
+      subgraph cluster_data {
+      label = 'Data';
+      penwidth = 2;
+
+		  node [shape = cylinder];
+      SD [label = 'Student Data', group = 2]
+      CD [label = 'Course Data' , group = 1]
+      }
+
+      subgraph cluster_input_course {
+      label = 'User Input';
+      penwidth = 2;
+
+      CS [label = 'Selected Courses']
+      }
+
+      subgraph cluster_pillar_1{
+      label = 'Pillar 1: Course Suggestion';
+      penwidth = 2;
+
+      TM  [label = 'Topic Model \nof the Courses', group = 1]
+      AI  [label = 'Model of \nStudent´s Academic Interests']
+      x1  [shape = circle, width = .01, height = .01, label = '']
+      SUG [label = 'Course Suggestions', ]
+
+      } # close pillar 1
+
+      subgraph cluster_pillar_2{
+      label = 'Pillar 2: Warning Issuance';
+      penwidth = 2;
+
+      SM  [label = 'Student Model'    , group = 2]
+      PM  [label = 'Predictive Models', group = 2]
+      GP  [label = 'Point Prediction \nfor Grade' , group = 2]
+      WAR [label = 'Warning'          , group = 2]
+      PR  [label = 'Prediction Region', color = red, fontcolor = red]
+
+      } # close pillar 2
+
+		  { rank=same; KW; CD; SD; CS}
+		  { rank=same; TM; SM}
+      { rank=same; PR; WAR; SUG}
+
+
+      # edges
+      CD -> TM [label = '  LDA'];
+      {TM, KW} -> AI;
+      {TM, AI} -> x1 [arrowhead = none]
+      x1 -> SUG [label = '  KL distance'];
+
+      SD -> SM;
+      TM -> SM;
+      SM -> PM [label = '  Lasso'];
+      {PM, CS} -> GP;
+      GP -> WAR;
+      GP -> PR [label = ' Conformal Prediction', color = red, fontcolor = red];
+
+      }
+      ")
+
+# Save by hand
+# File name: Conference/COPA2019/paper/figures/flowchart
+```
+
+
+# Model Selection (topic model)
+
+```{r}
+max_LL <- df_logLike_catalogue$n_topic[which.max(df_logLike_catalogue$LogLikelihood)]
+
+df_logLike_catalogue %>%
+  ggplot(aes(x = n_topic, y = LogLikelihood)) +
+  geom_vline(xintercept = max_LL, col = "red", alpha = 0.5, linetype = "dashed", size = 1) +
+  geom_line(linetype = "dashed") +
+  geom_point() +
+  
+  labs(title = NULL, subtitle = NULL, x = "Number of Topics", y = "Log-Likelihood") +
+
+  ggsave(filename = str_c("model-selection.jpeg"), path = output_folder,
+         width = plot_width, height = plot_height)
+```
+
+# Beta
+
+
+```{r reorder_within}
+reorder_within <- function(x, by, within, fun = mean, sep = "___", ...) {
+  new_x <- paste(x, within, sep = sep)
+  stats::reorder(new_x, by, FUN = fun)
+}
+
+scale_x_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_x_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+
+scale_y_reordered <- function(..., sep = "___") {
+  reg <- paste0(sep, ".+$")
+  ggplot2::scale_y_discrete(labels = function(x) gsub(reg, "", x), ...)
+}
+```
+
+
+```{r plot_beta}
+plot_beta <- function(topic = 1, resize_factor = 1){
+  
+  top <- str_c("Topic ", topic)
+  
+  beta %>%
+    filter(topic %in% top) %>% 
+    group_by(topic) %>%
+    top_n(9, beta) %>%
+    
+    ggplot() +
+    geom_col(aes(x = reorder_within(term, beta, topic), y = beta)) +
+    
+    coord_flip() +
+    
+    theme(axis.text.y = element_text(size = 11)) +
+    
+    labs(title = NULL, x = "Terms", y = "Beta") +
+    
+    facet_wrap( ~ topic, scales = "free_y") +
+    scale_x_reordered()
+  
+  ggsave(filename = "beta.jpeg", path = output_folder,
+         width = 1.5 * plot_width / resize_factor, height = plot_height / resize_factor)
+  
+}
+```
+
+# Gamma
+
+```{r plot_gamma}
+plot_gamma <- function(course = "COR1002"){
+  
+  gamma %>%
+    filter(document == course) %>% 
+    top_n(10, gamma) %>%
+    
+    ggplot() +
+    geom_col(aes(x = reorder(topic, gamma), y = gamma)) +
+    
+    coord_flip() +
+    
+    labs(title = NULL,
+         x = "Topics",
+         y = "Gamma"
+         )
+  
+  ggsave(filename = str_c("gamma-", course, ".jpeg"), path = output_folder,
+         width = plot_width, height = plot_height)
+  
+}
+```
+
+```{r fig_gamma}
+plot_gamma("COR1004")
+
+resize_factor <- 1.8
+
+plot_beta(c(4,19), resize_factor = resize_factor)
+```
+
+# Topic Expertise
+```{r}
+courses <- paste("Course", 1 : 3)
+
+transcript <- tibble(Course    = courses,
+                     Grade     = c(6  , 9  , 2))
+
+gamma <- tibble(Course    = courses,
+                `Topic 1` = c(0  , 0.2, 0  ),
+                `Topic 2` = c(0.7, 0.2, 0.4),
+                `Topic 3` = c(0.2, 0.2, 0.2),
+                `Topic 4` = c(0.1, 0.2, 0.1),
+                `Topic 5` = c(0  , 0.2, 0.2))
+
+df1 <- gamma %>% 
+  gather(key = Topic, value = gamma, -Course) %>% 
+  arrange(Course) %>%
+  
+  left_join(transcript, by = "Course") %>%
+  mutate(contribution = Grade/10 * gamma)
+
+topic_expertise <- df1 %>%
+  select(-gamma, - Grade)%>% 
+  spread(key = Topic, value = contribution) %>%
+  add_row(Course = "Total", `Topic 1` = 0.18, `Topic 2` = 0.68, `Topic 3` = 0.34, `Topic 4` = 0.26, `Topic 5` = 0.22)
+
+# Table
+
+transcript %>% 
+  mutate(Grade = str_c(Grade, "/10")) %>%
+  latex_table("toy-transcript")
+
+gamma %>% latex_table("toy-gamma")
+
+topic_expertise %>% latex_table("toy-contribution")
+
+# Plot
+df1 %>% 
+  mutate(Topic = factor(Topic, levels = str_c("Topic ", 5:1))) %>%
+  ggplot(aes(x = Topic, y = contribution, fill = Course)) +
+  geom_col() +
+  coord_flip() +
+  labs(x = "Topics", y = "Topic Expertise")
+
+ggsave(filename = str_c("toy-expertise.jpeg"), path = output_folder,
+       width = plot_width, height = plot_height)
+```
+
+
+# CV
+```{r}
+fit_lasso %>%
+  ggplot(aes(y = cv_error, group = 1)) +
+  geom_boxplot() +
+  theme(axis.ticks.y = element_line(color = "white"),
+        axis.text.y  = element_text(color = "white"),
+        panel.border = element_rect(color = "white"),
+        panel.grid   = element_line(color = "white")
+        ) +
+  
+  labs(y = "Cross-Validation Mean Absolute Error") +
+  coord_flip()
+
+ggsave(filename = str_c("cv-mae.jpeg"), path = output_folder,
+         width = plot_width/1.5, height = plot_height/3.5)
+
+fit_lasso %>%
+  summarize(Mean = mean(cv_error),
+            `Weighted mean` = weighted.mean(cv_error, n),
+            Median = median(cv_error),
+            `Standard Deviation` = sd(cv_error),
+            Minimum = min(cv_error),
+            Maximum = max(cv_error)) %>%
+  gather(key = x, value = y) %>% 
+  kable("latex", booktabs = TRUE, col.names = NULL) %>%
+  kable_styling(latex_options = c("striped", "scale_down")) %>%
+  as_image(file = str_c(output_folder, "/cv-mae-table.pdf"))
+```
+
+# Conformal
+
+## course table
+
+```{r}
+course_table %>%
+  select(- df) %>%
+  mutate(cv_error = cv_error %>% round(2)) %>%
+  latex_table("conformal-course")
+```
+
+
+
+## width
+
+```{r}
+d_width <- conformal_results %>%
+  group_by(course, significance) %>%
+  summarise(q_50 = quantile(width, 0.5), # median
+            q_10 = quantile(width, 0.1),
+            q_90 = quantile(width, 0.9))
+```
+
+```{r}
+d_width %>%
+  ggplot() +
+  geom_errorbar(aes(significance, ymax = q_90, ymin = q_10), size = .5) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_line(aes(significance, q_50, group = 1)) +
+  geom_point(aes(significance, q_50)) +
+  facet_wrap( ~ course) +
+  labs(y = "Width",
+       x = "Significance Level") +
+  scale_x_continuous(breaks = c(0.05, 0.2, 0.4, 0.6, 0.8))
+
+ggsave(filename = "conformal-width.jpeg", path = output_folder,
+       width = plot_width, height = plot_height)
+```
+
+## Error
+
+```{r}
+d_error <- conformal_results %>%
+  group_by(course, significance) %>%
+  summarise(error = mean(!hit))
+```
+
+```{r}
+d_error %>%
+  ggplot(aes(x = significance, y = error)) +
+  geom_abline(slope = 1, linetype = "longdash") +
+  geom_line(aes(group = 1)) +
+  geom_point() +
+  facet_wrap( ~ course) +
+  labs(y = "Error Rate",
+       x = "Significance Level") +
+  scale_x_continuous(breaks = c(0.05, 0.2, 0.4, 0.6, 0.8))
+
+ggsave(filename = "conformal-error.jpeg", path = output_folder,
+       width = plot_width, height = plot_height)
+```
+
+## Table
+```{r}
+conformal_results %>%
+  filter(significance < 0.2) %>%
+  group_by(course, significance) %>%
+  summarize(width_med  = median(width),
+            error_rate = mean(!hit)) %>%
+  
+  gather(key = "measure", value = "output", width_med, error_rate) %>%
+  mutate(output = round(output, 2)) %>%
+  unite(id, measure, significance, sep = "-") %>%
+  spread(key = id, value = output) %>%
+  
+  select(course, matches("med"), matches("error")) %>%
+  latex_table("conformal-table")
+```
+
