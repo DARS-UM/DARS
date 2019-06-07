@@ -41,13 +41,9 @@ Remove course enrollments from 2007 from the student model because we have no in
 d_student_model <- d_student_model %>% filter(Year_numerical != 2007)
 ```
 
-```{r find_df} 
-find_df <- function(course)  d_student_model %>% filter(`Course ID` == course)
-```
-
 Consider courses currently on offer and with at least 20 enrollments since 2008 
 ```{r}
-d_lasso_course <- tibble(target = course_current) %>%
+d_course <- tibble(target = course_current) %>%
   
   mutate(student_model = target        %>% map(find_df),
          n             = student_model %>% map_dbl(nrow)) %>%
@@ -62,9 +58,137 @@ gamma <- app_model$Gamma[[1]] %>%  mutate(topic = topic %>% str_replace(" ", "_"
 remove(app_model)
 ```
 
-# Random forest
+# Random Forest
 
 ```{r}
+## Regression:
+data(airquality)
+ozone.rf <- randomForest(Ozone ~ ., data=airquality, mtry=3, ntree = 1e3,
+                         importance=TRUE, na.action=na.omit)
+print(ozone.rf)
+## Show "importance" of variables: higher value mean more important:
+round(importance(ozone.rf), 2)
+varImpPlot(ozone.rf)
+
+# margin
+plot(randomForest::margin(iris.rf), F)
+plot(randomForest::margin(iris.rf), T)
+
+# MDSplot
+MDSplot(iris.rf, iris$Species)
+
+# Looping over variables ranked by importance:
+airquality <- na.omit(airquality)
+ozone.rf <- randomForest(Ozone ~ ., airquality, importance=TRUE)
+imp <- importance(ozone.rf)
+impvar <- rownames(imp)[order(imp[, 1], decreasing=TRUE)]
+op <- par(mfrow=c(2, 3))
+
+for (i in seq_along(impvar))
+  partialPlot(ozone.rf, 
+              airquality,
+              impvar[i], 
+              xlab=impvar[i], main=paste("Partial Dependence on", impvar[i]), ylim=c(30, 70))
+par(op)
+
+# predict
+
+ind <- sample(2, nrow(iris), replace = TRUE, prob=c(0.8, 0.2))
+iris.rf <- randomForest(Species ~ ., data=iris[ind == 1,])
+
+iris.pred <- predict(iris.rf, iris[ind == 2,])
+table(observed = iris[ind==2, "Species"], predicted = iris.pred)
+
+## Get prediction for all trees.
+predict(iris.rf, iris[ind == 2,], predict.all=TRUE)
+
+# Tune randomForest for the optimal mtry parameter
+data(fgl, package="MASS")
+fgl.res <- tuneRF(fgl[,-10], fgl[,10], ntreeTry = 1000, stepFactor=1.5)
+
+# CV for for feature selection
+myiris <- cbind(iris[1:4], matrix(runif(96 * nrow(iris)), nrow(iris), 96))
+result <- rfcv(myiris, iris$Species, cv.fold=3)
+with(result, plot(n.var, error.cv, log="x", type="o", lwd=2))
+
+## The following can take a while to run, so if you really want to try
+## it, copy and paste the code into R.
+
+## Not run: 
+result <- replicate(5, rfcv(myiris, iris$Species), simplify=FALSE)
+error.cv <- sapply(result, "[[", "error.cv")
+matplot(result[[1]]$n.var, cbind(rowMeans(error.cv), error.cv), type="l",
+        lwd=c(2, rep(1, ncol(error.cv))), col=1, lty=1, log="x",
+        xlab="Number of variables", ylab="CV Error")
+
+## End(Not run)
+
+# tree size
+hist(treesize(iris.rf))
+```
+
+TODO: combine RF of all courses to evaluate feature importance
+
+# Random forest trial
+```{r randomForest}
+## Classification:
+data(iris)
+iris.rf <- randomForest(Species ~ ., data=iris, importance=TRUE,
+                        proximity=TRUE)
+print(iris.rf)
+## Look at variable importance:
+round(importance(iris.rf), 2)
+## Do MDS on 1 - proximity:
+iris.mds <- cmdscale(1 - iris.rf$proximity, eig=TRUE)
+op <- par(pty="s")
+pairs(cbind(iris[,1:4], iris.mds$points), cex=0.6, gap=0,
+      col=c("red", "green", "blue")[as.numeric(iris$Species)],
+      main="Iris Data: Predictors and MDS of Proximity Based on RandomForest")
+par(op)
+print(iris.mds$GOF)
+
+## The `unsupervised' case:
+set.seed(17)
+iris.urf <- randomForest(iris[, -5])
+MDSplot(iris.urf, iris$Species)
+
+## stratified sampling: draw 20, 30, and 20 of the species to grow each tree.
+(iris.rf2 <- randomForest(iris[1:4], iris$Species, 
+                          sampsize=c(20, 30, 20)))
+
+## Regression:
+data(airquality)
+ozone.rf <- randomForest(Ozone ~ ., data=airquality, mtry=3,
+                         importance=TRUE, na.action=na.omit)
+print(ozone.rf)
+## Show "importance" of variables: higher value mean more important:
+round(importance(ozone.rf), 2)
+
+## "x" can be a matrix instead of a data frame:
+set.seed(17)
+x <- matrix(runif(5e2), 100)
+y <- gl(2, 50)
+(myrf <- randomForest(x, y))
+(predict(myrf, x))
+
+## "complicated" formula:
+(swiss.rf <- randomForest(sqrt(Fertility) ~ . - Catholic + I(Catholic < 50),
+                          data=swiss))
+(predict(swiss.rf, swiss))
+## Test use of 32-level factor as a predictor:
+set.seed(1)
+x <- data.frame(x1=gl(53, 10), x2=runif(530), y=rnorm(530))
+(rf1 <- randomForest(x[-3], x[[3]], ntree=10))
+
+## Grow no more than 4 nodes per tree:
+(treesize(randomForest(Species ~ ., data=iris, maxnodes=4, ntree=30)))
+
+## test proximity in regression
+iris.rrf <- randomForest(iris[-1], iris[[1]], ntree=101, proximity=TRUE, oob.prox=FALSE)
+str(iris.rrf$proximity)
+```
+
+```{r classCenter}
 data(iris)
 
 iris.rf <- randomForest(iris[,-5], iris[,5], prox=TRUE)
@@ -72,53 +196,179 @@ iris.rf <- randomForest(iris[,-5], iris[,5], prox=TRUE)
 iris.p <- classCenter(iris[,-5], iris[,5], iris.rf$prox)
 
 plot(iris[,3], iris[,4], pch=21, xlab=names(iris)[3], ylab=names(iris)[4],
-bg=c("red", "blue", "green")[as.numeric(factor(iris$Species))],
-main="Iris Data with Prototypes")
+     bg=c("red", "blue", "green")[as.numeric(factor(iris$Species))],
+     main="Iris Data with Prototypes")
 
 points(iris.p[,3], iris.p[,4], pch=21, cex=2, bg=c("red", "blue", "green"))
 ```
 
-```{r}
+```{r randomForest::combine}
 rf1 <- randomForest(Species ~ ., iris, ntree=50, norm.votes=FALSE)
 
 rf2 <- randomForest(Species ~ ., iris, ntree=50, norm.votes=FALSE)
 
 rf3 <- randomForest(Species ~ ., iris, ntree=50, norm.votes=FALSE)
 
-rf.all <- combine(rf1, rf2, rf3)
+rf.all <- randomForest::combine(rf1, rf2, rf3)
 print(rf.all)
 ```
 
-```{r}
+```{r getTree}
 ## Look at the third trees in the forest.
-getTree(randomForest(iris[,-5], iris[,5], ntree=10), 3, labelVar=TRUE)
+getTree(randomForest(iris[,-5], iris[,5], ntree=10), k = 3, labelVar=TRUE)
 ```
 
-```{r}
+```{r grow}
 iris.rf <- randomForest(Species ~ ., iris, ntree=50, norm.votes=FALSE)
 iris.rf <- grow(iris.rf, 50)
 print(iris.rf)
 ```
 
-```{r}
+```{r importance}
 set.seed(4543)
 data(mtcars)
 mtcars.rf <- randomForest(mpg ~ ., data=mtcars, ntree=1000,
-keep.forest=FALSE, importance=TRUE)
+                          keep.forest=FALSE, importance=TRUE)
 
 importance(mtcars.rf)
 importance(mtcars.rf, type=1)
 ```
 
-```{r}
+```{r imports85}
 data(imports85)
 imp85 <- imports85[,-2] # Too many NAs in normalizedLosses.
 imp85 <- imp85[complete.cases(imp85), ]
 ## Drop empty levels for factors.
 imp85[] <- lapply(imp85, function(x) if (is.factor(x)) x[, drop=TRUE] else x)
 stopifnot(require(randomForest))
-price.rf <- randomForest(price ~ ., imp85, do.trace=10, ntree=100)
+
+price.rf <- randomForest(price ~ ., imp85, do.trace=10, ntree=100) # regression
 print(price.rf)
-numDoors.rf <- randomForest(numOfDoors ~ ., imp85, do.trace=10, ntree=100)
+
+numDoors.rf <- randomForest(numOfDoors ~ ., imp85, do.trace=10, ntree=100) # classification
 print(numDoors.rf)
+```
+
+```{r margin}
+iris.rf <- randomForest(Species ~ ., iris, keep.forest=FALSE)
+plot(randomForest::margin(iris.rf), F)
+plot(randomForest::margin(iris.rf), T)
+```
+
+```{r MDSplot}
+iris.rf <- randomForest(Species ~ ., iris, proximity=TRUE,
+                        keep.forest=FALSE)
+MDSplot(iris.rf, iris$Species)
+## Using different symbols for the classes:
+MDSplot(iris.rf, iris$Species, palette=rep(1, 3), pch=as.numeric(iris$Species))
+```
+
+```{r na.roughfix}
+## artificially drop some data values.
+iris.na <- iris
+for (i in 1:4) iris.na[sample(150, sample(20)), i] <- NA
+
+iris.roughfix <- na.roughfix(iris.na)
+iris.narf <- randomForest(Species ~ ., iris.na, na.action=na.roughfix)
+print(iris.narf)
+```
+
+```{r outlier}
+iris.rf <- randomForest(iris[,-5], iris[,5], proximity=TRUE)
+plot(outlier(iris.rf), type="h",
+     col=c("red", "green", "blue")[as.numeric(iris$Species)])
+```
+
+```{r partialPlot}
+iris.rf <- randomForest(Species~., iris)
+partialPlot(iris.rf, iris, Petal.Width, "versicolor")
+
+## Looping over variables ranked by importance:
+airquality <- na.omit(airquality)
+ozone.rf <- randomForest(Ozone ~ ., airquality, importance=TRUE)
+imp <- importance(ozone.rf)
+impvar <- rownames(imp)[order(imp[, 1], decreasing=TRUE)]
+op <- par(mfrow=c(2, 3))
+
+for (i in seq_along(impvar))
+  partialPlot(ozone.rf, 
+              airquality,
+              impvar[i], 
+              xlab=impvar[i], main=paste("Partial Dependence on", impvar[i]), ylim=c(30, 70))
+par(op)
+```
+
+```{r plot.randomForest}
+data(mtcars)
+plot(randomForest(mpg ~ ., mtcars, keep.forest=FALSE, ntree=100), log="y")
+```
+
+```{r predict.randomForest}
+ind <- sample(2, nrow(iris), replace = TRUE, prob=c(0.8, 0.2))
+iris.rf <- randomForest(Species ~ ., data=iris[ind == 1,])
+
+iris.pred <- predict(iris.rf, iris[ind == 2,])
+table(observed = iris[ind==2, "Species"], predicted = iris.pred)
+
+## Get prediction for all trees.
+predict(iris.rf, iris[ind == 2,], predict.all=TRUE)
+
+## Proximities.
+predict(iris.rf, iris[ind == 2,], proximity=TRUE)
+
+## Nodes matrix.
+str(attr(predict(iris.rf, iris[ind == 2,], nodes=TRUE), "nodes"))
+```
+
+```{r rfcv}
+myiris <- cbind(iris[1:4], matrix(runif(96 * nrow(iris)), nrow(iris), 96))
+result <- rfcv(myiris, iris$Species, cv.fold=3)
+with(result, plot(n.var, error.cv, log="x", type="o", lwd=2))
+
+## The following can take a while to run, so if you really want to try
+## it, copy and paste the code into R.
+
+## Not run: 
+result <- replicate(5, rfcv(myiris, iris$Species), simplify=FALSE)
+error.cv <- sapply(result, "[[", "error.cv")
+matplot(result[[1]]$n.var, cbind(rowMeans(error.cv), error.cv), type="l",
+        lwd=c(2, rep(1, ncol(error.cv))), col=1, lty=1, log="x",
+        xlab="Number of variables", ylab="CV Error")
+
+## End(Not run)
+```
+
+```{r rfImpute}
+iris.na <- iris
+set.seed(111)
+## artificially drop some data values.
+for (i in 1:4) iris.na[sample(150, sample(20)), i] <- NA
+
+set.seed(222)
+iris.imputed <- rfImpute(Species ~ ., iris.na)
+
+set.seed(333)
+iris.rf <- randomForest(Species ~ ., iris.imputed)
+
+print(iris.rf)
+```
+
+```{r treesize}
+iris.rf <- randomForest(Species ~ ., iris)
+hist(treesize(iris.rf))
+```
+
+```{r tuneRF}
+data(fgl, package="MASS")
+fgl.res <- tuneRF(fgl[,-10], fgl[,10], ntreeTry = 1000, stepFactor=1.5)
+```
+
+```{r varImpPlot}
+mtcars.rf <- randomForest(mpg ~ ., data=mtcars, ntree=1000, keep.forest=FALSE,
+                          importance=TRUE)
+varImpPlot(mtcars.rf)
+```
+
+```{r varUsed}
+varUsed(randomForest(Species~., iris, ntree=100))
 ```
