@@ -1,16 +1,3 @@
-base
-magrittr
-Matrix
-foreach
-glmnet
-leaps
-tidyverse
-ggplot2
-tibble
-tidyr
-readr
-purrr
-dplyr
-stringr
-forcats
-bindrcpp
+version https://git-lfs.github.com/spec/v1
+oid sha256:ecd7c26b6cf128ad0b2143f819a7b19472730a3b23493071a9dc6eddabef4397
+size 116
