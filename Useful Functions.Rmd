@@ -18,6 +18,10 @@ collapse_or       <- function(string) string %>% str_c(collapse = "|")
 collapse_space    <- function(string) string %>% str_c(collapse = " ")
 ```
 
+```{r}
+find_df <- function(course)  d_student_model %>% filter(`Course ID` == course)
+```
+
 
 ```{r my_cv.glmnet} 
 my_cv.glmnet <- function(df, alpha = 1, predictors){
