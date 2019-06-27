@@ -1,7 +1,3 @@
-@inproceedings{morsomme2012master,
-  title={Content-based Course Recommender System for Liberal Arts Education},
-  author={Morsomme, Raphaëland Vazquez, Sofia},
-  journal={International Educational Data Mining Society},
-  year={2019},
-  organization={IOS Press}
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:63eb0e20ab86e9991426c2f461bfd3285db59c941891da85c3d73c094b5d7c6a
+size 263

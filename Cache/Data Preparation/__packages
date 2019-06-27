@@ -1,17 +1,3 @@
-base
-tidyverse
-ggplot2
-tibble
-tidyr
-readr
-purrr
-dplyr
-stringr
-forcats
-tidytext
-gsheet
-NLP
-tm
-hunspell
-bindrcpp
-magrittr
+version https://git-lfs.github.com/spec/v1
+oid sha256:45cf464abdf894dd6b8f2e56b73b43992f218e99a82979341b30d0f381be9686
+size 120

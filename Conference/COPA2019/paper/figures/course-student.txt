@@ -1,18 +1,3 @@
-
-\begin{tabular}{cccc}
-\toprule
-Course ID & Course Title & Department & word\\
-\midrule
-SSC2060 & Comparative Constitutional Law & UCM & constitutional\\
-SSC2060 & Comparative Constitutional Law & UCM & law\\
-SSC2060 & Comparative Constitutional Law & UCM & 4th\\
-SSC2060 & Comparative Constitutional Law & UCM & oxford\\
-SSC2060 & Comparative Constitutional Law & UCM & hardt\\
-\addlinespace
-SSC2060 & Comparative Constitutional Law & UCM & 2014\\
-SSC2060 & Comparative Constitutional Law & UCM & source\\
-SSC2060 & Comparative Constitutional Law & UCM & constitutional\\
-SSC2060 & Comparative Constitutional Law & UCM & law\\
-SSC2060 & Comparative Constitutional Law & UCM & oxford\\
-\bottomrule
-\end{tabular}
+version https://git-lfs.github.com/spec/v1
+oid sha256:8d1bd3cd7b41f56f821a10dd2ebbbe03f192accac375f2248295641b6901d9c3
+size 910
