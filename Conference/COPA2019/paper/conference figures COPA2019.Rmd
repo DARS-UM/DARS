@@ -49,7 +49,9 @@ gamma <- app_model$Gamma[[1]]
 beta  <- app_model$Beta[[1]]
 ```
 
-```{r student_data}
+# Student data
+
+```{r fig_student_data}
 set.seed(2019)
 
 student_data <- d_transcript_augmented %>%
@@ -60,30 +62,20 @@ student_data <- d_transcript_augmented %>%
   
   sample_n(10) %>%
   
-  arrange(`Academic Year`) %>%
-  
-  print
-```
+  arrange(`Academic Year`)
 
-```{r course_data}
-course_data <- d_text$catalogues %>% 
-  
-  slice(50005:50014) %>%
-  
-  select(`Course ID`, `Course Title`, Department = department, word) %>%
-  
-  print
-```
-
-# Student data
-
-```{r fig_student_data}
 student_data %>% latex_table("data-student")
 ```
 
 # Course data
 
 ```{r fig_course_data}
+course_data <- d_text$catalogues %>% 
+  
+  slice(50005:50014) %>%
+  
+  select(`Course ID`, `Course Title`, Department = department, word)
+
 course_data %>% latex_table("course-student")
 ```
 
@@ -448,6 +440,12 @@ fit_lasso %>%
 
 # Conformal
 
+```{r}
+plot_width <- 8
+plot_height <- plot_width / 1.6 
+```
+
+
 ## course table
 
 ```{r}
@@ -457,69 +455,76 @@ course_table %>%
   latex_table("conformal-course")
 ```
 
-
-
-## width
-
-```{r}
-d_width <- conformal_results %>%
-  group_by(course, significance) %>%
-  summarise(q_50 = quantile(width, 0.5), # median
-            q_10 = quantile(width, 0.1),
-            q_90 = quantile(width, 0.9))
-```
-
-```{r}
-d_width %>%
-  ggplot() +
-  geom_errorbar(aes(significance, ymax = q_90, ymin = q_10), size = .5) +
-  geom_hline(yintercept = 1, linetype = "dashed") +
-  geom_line(aes(significance, q_50, group = 1)) +
-  geom_point(aes(significance, q_50)) +
-  facet_wrap( ~ course) +
-  labs(y = "Width",
-       x = "Significance Level") +
-  scale_x_continuous(breaks = c(0.05, 0.2, 0.4, 0.6, 0.8))
-
-ggsave(filename = "conformal-width.jpeg", path = output_folder,
-       width = plot_width, height = plot_height)
-```
-
 ## Error
 
 ```{r}
 d_error <- conformal_results %>%
-  group_by(course, significance) %>%
+  group_by(course, significance, underl_algo) %>%
   summarise(error = mean(!hit))
 ```
 
 ```{r}
 d_error %>%
-  ggplot(aes(x = significance, y = error)) +
+  ggplot(aes(x = significance, y = error, col = underl_algo)) +
   geom_abline(slope = 1, linetype = "longdash") +
-  geom_line(aes(group = 1)) +
+  geom_line(aes(group = underl_algo)) +
   geom_point() +
   facet_wrap( ~ course) +
-  labs(y = "Error Rate",
-       x = "Significance Level") +
-  scale_x_continuous(breaks = c(0.05, 0.2, 0.4, 0.6, 0.8))
+  labs(y = "Error Rate", x = "Significance Level") +
+  scale_x_continuous(breaks = c(0.05, 0.2, 0.4, 0.6, 0.8)) +
+  scale_color_discrete(name = "Underlying Algorithm", labels = c("Boosting", "Lasso","Random Forest"))
 
 ggsave(filename = "conformal-error.jpeg", path = output_folder,
        width = plot_width, height = plot_height)
 ```
 
+## width
+
+```{r}
+d_width <- conformal_results %>%
+  group_by(course, significance, underl_algo) %>%
+  summarise(q_50 = quantile(width_corrected, 0.5), # median
+            q_10 = quantile(width_corrected, 0.1),
+            q_90 = quantile(width_corrected, 0.9))
+```
+
+```{r}
+dodge_width <- 0.04
+
+d_width %>%
+  ggplot(aes(col = underl_algo)) +
+  geom_errorbar(aes(significance, ymax = q_90, ymin = q_10), size = .5, position = position_dodge(width = dodge_width)) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_line(aes(significance, q_50, col = underl_algo), position = position_dodge(width = dodge_width), linetype = 2) +
+  geom_point(aes(significance, q_50), position = position_dodge(width = dodge_width)) +
+  facet_wrap( ~ course) +
+  labs(y = "Width", x = "Significance Level") +
+  scale_x_continuous(breaks = c(0.05, 0.2, 0.4, 0.6, 0.8)) +
+  scale_color_discrete(name = "Underlying Algorithm", labels = c("Boosting", "Lasso","Random Forest"))
+
+ggsave(filename = "conformal-width.jpeg", path = output_folder,
+       width = plot_width, height = plot_height)
+```
+
+```{r}
+conformal_results %>%
+  ggplot() +
+  geom_boxplot(aes(significance, width_corrected, group = significance, col = underl_algo)) +
+  facet_wrap(~course)
+```
+
 ## Table
 ```{r}
 conformal_results %>%
-  filter(significance < 0.2) %>%
-  group_by(course, significance) %>%
-  summarize(width_med  = median(width),
+  filter(significance <= 0.2) %>%
+  group_by(course, significance, underl_algo) %>%
+  summarize(width_med  = median(width_corrected),
             error_rate = mean(!hit)) %>%
-  
   gather(key = "measure", value = "output", width_med, error_rate) %>%
   mutate(output = round(output, 2)) %>%
-  unite(id, measure, significance, sep = "-") %>%
-  spread(key = id, value = output) %>%
+#  unite(col = "ID", underl_algo, measure, sep = " ") %>%
+  unite(col = ID, measure, significance, underl_algo, sep = "-") %>%
+  spread(key = ID, value = output) %>%
   
   select(course, matches("med"), matches("error")) %>%
   latex_table("conformal-table")

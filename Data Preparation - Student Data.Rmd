@@ -145,7 +145,8 @@ d_transcript <- d_transcript %>%
 ```
 
 ```{r}
-d_transcript <- d_transcript %>% filter(!is.na(Grade))
+d_transcript <- d_transcript %>%
+  filter(!is.na(Grade))
 ```
 
 ## Augment d_transcript with d_course
@@ -154,6 +155,25 @@ load("Output/data_general.RDATA")
 d_transcript_augmented <- d_transcript %>%
   left_join(select(d_course, - Period), by = c("Course ID"))
 ```
+
+## Censored data for Research Project 
+
+```{r}
+student_ID <- d_transcript_augmented %>% distinct(`Student ID`)
+randomID <- sample(1 : nrow(student_ID))
+student_ID_random <- student_ID %>% mutate(Student_ID_random = randomID)
+
+d_transcript_censored <- d_transcript_augmented %>%
+  left_join(student_ID_random, by = "Student ID") %>%
+  select(Student_ID_random, Course_ID = `Course ID`, time, Concentration, Cluster,
+         Academic_year = `Academic Year`, Period = period_numerical) %>%
+  sample_frac(1, replace = FALSE)
+
+d_transcript_censored
+
+write_csv(d_transcript_censored, path = "Output/d_transcript_censored.csv")
+```
+
 
 ### Issues
 ```{r issue d_transcript, eval = FALSE}

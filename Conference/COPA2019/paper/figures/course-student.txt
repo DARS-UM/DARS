@@ -3,16 +3,16 @@
 \toprule
 Course ID & Course Title & Department & word\\
 \midrule
-HUM3034 & World History & UCM & understand\\
-HUM3034 & World History & UCM & major\\
-HUM3034 & World History & UCM & issue\\
-HUM3034 & World History & UCM & episode\\
-HUM3034 & World History & UCM & shape\\
+SSC2060 & Comparative Constitutional Law & UCM & constitutional\\
+SSC2060 & Comparative Constitutional Law & UCM & law\\
+SSC2060 & Comparative Constitutional Law & UCM & 4th\\
+SSC2060 & Comparative Constitutional Law & UCM & oxford\\
+SSC2060 & Comparative Constitutional Law & UCM & hardt\\
 \addlinespace
-HUM3034 & World History & UCM & history\\
-HUM3034 & World History & UCM & mankind\\
-HUM3034 & World History & UCM & focus\\
-HUM3034 & World History & UCM & theme\\
-HUM3034 & World History & UCM & topic\\
+SSC2060 & Comparative Constitutional Law & UCM & 2014\\
+SSC2060 & Comparative Constitutional Law & UCM & source\\
+SSC2060 & Comparative Constitutional Law & UCM & constitutional\\
+SSC2060 & Comparative Constitutional Law & UCM & law\\
+SSC2060 & Comparative Constitutional Law & UCM & oxford\\
 \bottomrule
 \end{tabular}

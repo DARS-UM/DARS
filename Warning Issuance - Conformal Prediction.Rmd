@@ -12,6 +12,8 @@ editor_options:
 # Set up
 
 ```{r setup, include = FALSE}
+time0 <- Sys.time()
+
 set.seed(1)
 
 knitr::opts_chunk$set(cache.path = "Cache/Warning Issuance/")
@@ -21,6 +23,8 @@ knitr::opts_chunk$set(fig.width = 3, fig.height = 2,
 
 library(tidyverse)
 library(glmnet)
+library(randomForest)
+library(xgboost)
 
 load("Output/CV.RDATA")
 load("Output/data_student.RDATA")
@@ -69,7 +73,7 @@ course_table <- fit_lasso %>%
 ```{r CV helper}
 create_Z <- function(course){
   
-  student_profile %>%
+  student_model %>%
     filter(`Course ID` == course) %>%
     select(Y = Grade, matches("GPA|Topic"))
  
@@ -114,20 +118,46 @@ create_calibration     <- function(df) df %>% filter(allocation == "calibration"
 
 ## Fit lasso on training set
 ```{r,lasso helper}
-fit_target_model <- function(df){
+fit_target_model <- function(df, underlying_algorithm = underlying_algo){
   
-  X <- df %>% select(matches("GPA|Topic"))
+  X <- df %>% select(matches("GPA|Topic")) %>% as.matrix
   Y <- df %>% pull(Y)
   
-  cv.glmnet(x = as.matrix(X), y = Y, type.measure = "mae") # lasso by default. Use mean absolute error 
-  
+  if(underlying_algorithm == "lasso"){
+    cv.glmnet(x = X, y = Y,
+              type.measure = "mae") # lasso by default. Use mean absolute error
+    
+  }else if(underlying_algorithm == "randomforest"){
+    randomForest(x = X, y = Y,
+                 ntree = 1000,
+                 mtry = floor(ncol(X)/3),
+                 nodesize = 5)
+      
+  }else if(underlying_algorithm == "boost"){
+    xgboost(data = X, label = Y,
+            max_depth = 2, eta = .3, nrounds = 1000,
+            objective = "reg:linear", verbose = 0)
+    
+  }else{stop("Unknown algorithm")}
+
 }
 
-predict_grade <- function(df, model){
+
+predict_grade <- function(df, model, underlying_algorithm = underlying_algo){
   
-  X <- df %>% select(matches("GPA|Topic"))
+  X <- df %>% select(matches("GPA|Topic")) %>% as.matrix
   
-  Y_hat <- predict.cv.glmnet(model, newx = as.matrix(X), s = "lambda.min") # use lambda that minimizes mae
+  if(underlying_algorithm == "lasso"){
+    Y_hat <- predict.cv.glmnet(model, newx = X, s = "lambda.min") # use lambda that minimizes mae
+    
+  }else if(underlying_algorithm == "randomforest"){
+    Y_hat <- predict(model, X)
+      
+  }else if(underlying_algorithm == "boost"){
+    Y_hat <- predict(model, X)
+  
+  }else{stop("Unknown algorithm")}
+  
   
   df %>% mutate(Y_hat = as.vector(Y_hat),
                 error = abs(Y_hat - Y),
@@ -135,33 +165,59 @@ predict_grade <- function(df, model){
   
 }
 
-fit_error_model <- function(df){
+
+fit_error_model <- function(df, underlying_algorithm = underlying_algo){
   
-  X  <- df %>% select(matches("GPA|Topic"))
+  X  <- df %>% select(matches("GPA|Topic")) %>% as.matrix
   mu <- df %>% pull(mu)
   
-  cv.glmnet(x = as.matrix(X), y = mu, type.measure = "mae")
+  if(underlying_algorithm == "lasso"){
+    cv.glmnet(x = X, y = mu, type.measure = "mae")
+    
+  }else if(underlying_algorithm == "randomforest"){
+    randomForest(x = X, y = mu,
+                 ntree = 1000,
+                 mtry = floor(ncol(X)/3),
+                 nodesize = 5)
+    
+  }else if(underlying_algorithm == "boost"){
+    xgboost(data = X, label = mu,
+            max_depth = 2, eta = .3, nrounds = 1000,
+            objective = "reg:linear", verbose = 0)
+      
+  }else{stop("Unknown algorithm")}
   
 }
 
-predict_error <- function(df, model){
+
+predict_error <- function(df, model, underlying_algorithm = underlying_algo){
   
-  X <- df %>% select(matches("GPA|Topic"))
+  X <- df %>% select(matches("GPA|Topic")) %>% as.matrix
   
-  mu_hat <- predict.cv.glmnet(model, newx = as.matrix(X), s = "lambda.min")
+  if(underlying_algorithm == "lasso"){
+    mu_hat <- predict.cv.glmnet(model, newx = X, s = "lambda.min")
+    
+  }else if(underlying_algorithm == "randomforest"){
+    mu_hat <- predict(model, X)
+      
+  }else if(underlying_algorithm == "boost"){
+    mu_hat <- predict(model, X)
+      
+  }else{stop("Unknown algorithm")}
   
   df %>% mutate(mu_hat = as.vector(mu_hat))
   
 }
 ```
 
+
 ## Compute standardized non-conformity scores on callibration test
 ```{r}
-
 compute_ncs              <- function(df) df %>% mutate(alpha = abs(Y - Y_hat))
 
 compute_standardized_ncs <- function(df) df %>% mutate(sigma = exp(mu_hat),
-                                                       alpha = abs(Y - Y_hat) / sigma )
+                                                       sigma_corrected = sigma + gamma,
+                                                       alpha = abs(Y - Y_hat) / sigma_corrected )
 
 compute_significance     <- function(df) df %>% mutate(significance = rank(-alpha) / nrow(.) ) # !!! double check!!!
 ```
@@ -173,22 +229,32 @@ compute_width <- function(df, significance_given){
   
   df <- df %>% filter(significance >= significance_given)
   
-  max(df$alpha) + 0.00001
+  max(df$alpha) + 1e-5
   
 }
 
 compute_interval <- function(df, ncs){
   
   df %>% mutate(
-    sigma       = exp(mu_hat),
-    width       = ncs * sigma,
-    border_low  = Y_hat - width,
-    border_high = Y_hat + width
+    sigma = exp(mu_hat),
+    sigma_corrected = sigma + gamma,
+    width           = ncs * sigma_corrected,
+    border_low      = Y_hat - width,
+    border_high     = Y_hat + width
     )
 }
 
+correct_interval <- function(df){
+  
+  df %>% mutate( # constraint prediction interval to [0, 10] 
+    border_low_corrected  = pmax(0 , border_low),
+    border_high_corrected = pmin(10, border_high),
+    width_corrected       = border_high_corrected - border_low_corrected)
+  
+}
+
 compute_hit <- function(df){
-  df %>% mutate(hit = (border_low <= Y) & (Y <= border_high))
+  df %>% mutate(hit = (border_low_corrected <= Y) & (Y <= border_high_corrected))
 }
 ```
 
@@ -198,11 +264,14 @@ compute_hit <- function(df){
 
 # Set up
 
-significance <- c(0.01, 0.05, seq(0.1, 0.9, 0.1))
+set.seed(1)
+significance <- c(0.05, seq(0.1, 0.9, 0.1))
 results <- list()
 n_list <- 1
+underlying_algos <- c("boost", "lasso", "randomforest")
+gamma <- 2
 
-# course <- "SSC3044"; iteration <- 1; signi <- 0.1
+# course <- "SSC3044"; iteration <- 1; signi <- 0.1; underlying_algo = 
 
 for(course in course_selection){
   
@@ -210,87 +279,110 @@ for(course in course_selection){
   Z <- create_Z(course)
   Z <- add_fold(Z)
   
-  for(iteration in 1 : 10){
-    
-    # proper training, calibration and test sets
-    Z_test            <- create_test(Z, fold_current = iteration)
-    Z_training        <- create_training(Z, fold_current = iteration) %>% add_allocation
-    Z_proper_training <- create_proper_training(Z_training)
-    Z_calibration     <- create_calibration(Z_training)
-    
-    # fit target and error model to proper training set
-    model_target      <- fit_target_model(Z_proper_training)
-    Z_proper_training <- predict_grade(Z_proper_training, model_target)
-    model_error       <- fit_error_model(Z_proper_training)
-    
-    # non-conformity scores on calibration
-    Z_calibration <- Z_calibration %>% 
-      predict_grade(model_target) %>%
-      predict_error(model_error) %>%
-      compute_standardized_ncs %>%
-      compute_significance
-    
-    # error on test set
-    Z_test <- Z_test %>% 
-      predict_grade(model_target) %>%
-      predict_error(model_error)
+  for(underlying_algo in underlying_algos){
   
-    for(signi in significance){ # loop through significance levels
+    for(iteration in 1 : 10){
       
-      ncs <- compute_width(Z_calibration, signi)
-
-      Z_test_augmented <- Z_test %>% 
-        compute_interval(ncs = ncs) %>%
-        compute_hit
+      # proper training, calibration and test sets
+      Z_test            <- create_test(Z, fold_current = iteration)
+      Z_training        <- create_training(Z, fold_current = iteration) %>% add_allocation
+      Z_proper_training <- create_proper_training(Z_training)
+      Z_calibration     <- create_calibration(Z_training)
       
-      # save results
-      results[[n_list]] <- Z_test_augmented %>%
-        mutate(significance = signi,
-               iteration    = iteration,
-               course       = course) %>%
-        select(course, iteration, significance, width, hit,
-               Y, Y_hat, error, mu, mu_hat, sigma)
+      # fit target and error model on proper training set
+      model_target      <- fit_target_model(Z_proper_training)
+      Z_proper_training <- predict_grade(Z_proper_training, model_target)
+      model_error       <- fit_error_model(Z_proper_training)
       
-      n_list <- n_list + 1
+      # non-conformity scores on calibration set
+      Z_calibration <- Z_calibration %>% 
+        predict_grade(model_target) %>%
+        predict_error(model_error) %>%
+        compute_standardized_ncs %>%
+        compute_significance
       
-    } # end loop significance
+      # predict grade and error on test set
+      Z_test <- Z_test %>% 
+        predict_grade(model_target) %>%
+        predict_error(model_error)
     
-  } # end CV fold
-
-}
+      for(signi in significance){ # loop through significance levels
+        
+        ncs <- compute_width(Z_calibration, signi)
+  
+        Z_test_augmented <- Z_test %>% 
+          compute_interval(ncs = ncs) %>%
+          correct_interval %>%
+          compute_hit
+        
+        # save results
+        results[[n_list]] <- Z_test_augmented %>%
+          mutate(significance = signi,
+                 iteration    = iteration,
+                 course       = course,
+                 underl_algo  = underlying_algo) %>%
+          select(course, iteration, significance, width, hit,
+                 Y, Y_hat, error, mu, mu_hat, sigma,
+                 border_low, border_low_corrected, border_high, border_high_corrected, width_corrected,
+                 underl_algo)
+        
+        n_list <- n_list + 1
+        
+      } # end loop significance
+      
+    } # end loop CV fold
+  
+  } # end loop underlying_algorithms
+  
+} # end loop courses
 ```
 
 ```{r}
 conformal_results <- bind_rows(results) %>%
     mutate(iteration    = as.factor(iteration),
-           course       = as.factor(course))
+           course       = as.factor(course),
+           underl_algo  = as.factor(underl_algo))
 
 save(conformal_results, course_table, file = "Output/conformal.RDATA")
 ```
 
 Illustration of the effect of error_hat on interval's width (for significance of 99%):
 ```{r, fig.height=4, eval = F}
-Z_test %>% select(Y, Y_hat, mu_hat, width, border_low, border_high, hit)
-plot(Z_test$error, Z_test$mu_hat)
+conformal_results %>%
+  ggplot() +
+  geom_density(aes(Y)) +
+  facet_wrap(~ course)
+
+conformal_results %>%
+  ggplot() +
+  geom_density(aes(Y_hat, col = underl_algo)) +
+  facet_wrap( ~ course)
+
+conformal_results %>%
+  ggplot() +
+  geom_point(aes(Y, Y_hat), size = 0.1) +
+  facet_grid(course ~ underl_algo)
+```
+
+```{r}
+conformal_results %>%
+  ggplot() +
+  geom_point(aes(mu, mu_hat)) +
+  facet_wrap(~ course)
 ```
 
 Correlation between the actual errors and the predicted errors (error_hat):
 ```{r, eval = F}
-cor(Z_test$error, Z_test$error_hat)
+conformal_results %>%
+  group_by(course, underl_algo) %>%
+  summarize(var_Y = var(Y),
+            cor_Y = cor(Y, Y_hat),
+            error = cor(mu, mu_hat))
 ```
 
-```{r, echo = FALSE, eval = F}
-ggplot(data = Z_callibration) + geom_histogram(aes(Y), bins = 15)
 
-ggplot(data = Z_callibration) + geom_histogram(aes(Y_hat), bins = 15)
-
-ggplot(data = Z_callibration) + geom_histogram(aes(alpha), bins = 15)
+# Timing
+```{r}
+Sys.time() - time0
 ```
 
-```{r, echo = FALSE, eval = F}
-ggplot(data = Z_callibration) + geom_point(aes(Y, Y_hat))
-
-ggplot(data = Z_callibration) + geom_point(aes(Y, alpha))
-
-ggplot(data = Z_callibration) + geom_point(aes(Y_hat, alpha))
-```
