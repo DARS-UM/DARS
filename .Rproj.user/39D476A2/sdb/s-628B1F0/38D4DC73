@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "version https://git-lfs.github.com/spec/v1\noid sha256:21c3ce1efbfe3dd6087676021cfe779252f95c4bb5641778e4dc5f2a009e0916\nsize 30992\n",
+    "created" : 1560329305983.000,
+    "dirty" : false,
+    "encoding" : "ISO8859-1",
+    "folds" : "",
+    "hash" : "3288124198",
+    "id" : "38D4DC73",
+    "lastKnownWriteTime" : 1560330312,
+    "last_content_update" : 1560330312,
+    "path" : "~/Documents/DARS/GitDARS/App/Recommender System/server.R",
+    "project_path" : "App/Recommender System/server.R",
+    "properties" : {
+        "source_window_id" : ""
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
