@@ -1,3 +1,18 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:2cdc1228b6e2dd008b85f1a1496ad07267c99711ee4a748aefe7bd5cd36393b3
-size 143
+base
+tidyverse
+ggplot2
+tibble
+tidyr
+readr
+purrr
+dplyr
+stringr
+forcats
+tidytext
+ggwordcloud
+topicmodels
+lemon
+ggthemes
+rlang
+ldatuning
+bindrcpp
